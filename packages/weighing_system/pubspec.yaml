@@ -1,0 +1,25 @@
+name: weighing_system_elinux
+description: Multi-function weighing system plugin for flutter-elinux
+version: 1.0.0
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: '>=3.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  plugin_platform_interface: ^2.1.0
+  sqflite: ^2.3.0
+  path: ^1.8.0
+  intl: ^0.20.2
+
+flutter:
+  plugin:
+    platforms:
+      elinux:
+        pluginClass: WeighingSystemElinuxPlugin
+        dartPluginClass: ELinuxWeighingSystem
+        sharedDarwinSource: false
+
+  generate: true
