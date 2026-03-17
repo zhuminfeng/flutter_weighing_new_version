@@ -85,6 +85,10 @@ namespace weighing
 		// Load calibration from stored data
 		void LoadCalibrationData(const CalibrationData &data);
 
+		// 【新增】注入模拟重量数据的接口
+		void SetMockMode(bool enable);
+		void FeedMockWeight(double net_weight);
+
 	private:
 		void ProcessingSample(const AdcSample &sample);
 		void UpdateState(ScaleState new_state, const std::string &msg = "");
@@ -138,6 +142,9 @@ namespace weighing
 		WeightCallback weight_callback_;
 		StatusCallback status_callback_;
 		CalibrationCallback cal_callback_;
+
+		// 【新增】标识是否开启了模拟模式
+		std::atomic<bool> mock_mode_{false};
 	};
 
 } // namespace weighing

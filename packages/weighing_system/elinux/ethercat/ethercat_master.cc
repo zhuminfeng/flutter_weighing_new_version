@@ -70,36 +70,27 @@ namespace weighing
 	bool EtherCATMaster::AddSlave(const SlaveDescriptor &desc)
 	{
 		std::lock_guard<std::mutex> lock(config_mutex_);
-
 		if (!master_)
-		{
-			fprintf(stderr, "ECMaster: Master not initialized\n");
 			return false;
-		}
 
+		// 【核心修复】：完全使用从 JSON 解析出来的 desc.position，绝对不能再强行赋值为 0
 		ec_slave_config_t *sc = ecrt_master_slave_config(
 			master_, desc.alias, desc.position, desc.vendor_id, desc.product_code);
+
 		if (!sc)
 		{
-			fprintf(stderr, "ECMaster: Failed to get slave config for pos=%u "
-							"(VID=0x%08X PID=0x%08X)\n",
-					desc.position, desc.vendor_id, desc.product_code);
+			fprintf(stderr, "ECMaster: Failed to config slave %u\n", desc.position);
 			return false;
 		}
 
-		// 创建运行时记录
-		SlaveRuntime rt{};
+		// 直接在 map 内部创建对象，拿到稳定长久的内存地址（保留了解决悬空指针的修复）
+		auto &rt = slaves_[desc.position];
 		rt.descriptor = desc;
+		// rt.config = sc;
 		rt.role = desc.role;
-		if (rt.role == SlaveRole::kUnknown)
-		{
-			rt.role = IdentifySlave(desc.vendor_id, desc.product_code);
-		}
-		memset(&rt.offsets, 0, sizeof(rt.offsets));
 
-		// 按类型配置 PDO
 		bool ok = false;
-		switch (rt.role)
+		switch (desc.role)
 		{
 		case SlaveRole::kDigitalIO:
 			ok = ConfigureDigitalIO(sc, rt);
@@ -111,20 +102,22 @@ namespace weighing
 			ok = ConfigureWeighing(sc, rt);
 			break;
 		default:
-			fprintf(stderr, "ECMaster: Unknown slave role at pos=%u\n", desc.position);
-			return false;
+			break;
 		}
 
-		if (!ok)
-			return false;
+		if (ok)
+		{
+			slave_configs_.push_back(sc);
+			printf("ECMaster: Slave configured - pos=%u role=%d desc='%s'\n",
+				   desc.position, (int)desc.role, desc.description.c_str());
+		}
+		else
+		{
+			// 如果配置失败，清理占位
+			slaves_.erase(desc.position);
+		}
 
-		rt.configured = true;
-		slave_configs_.push_back(sc);
-		slaves_[desc.position] = rt;
-
-		printf("ECMaster: Slave configured - pos=%u role=%d desc='%s'\n",
-			   desc.position, static_cast<int>(rt.role), desc.description.c_str());
-		return true;
+		return ok;
 	}
 
 	// ============================================================================
@@ -170,69 +163,53 @@ namespace weighing
 	// ============================================================================
 	bool EtherCATMaster::ConfigureServo(ec_slave_config_t *sc, SlaveRuntime &rt)
 	{
-		static ec_pdo_entry_info_t entries[] = {
-			// RxPDO (0x1701)
-			{0x6040, 0x00, 16}, // Control Word
-			{0x607A, 0x00, 32}, // Target Position
-			{0x60B8, 0x00, 16}, // Touch Probe Function
-			{0x60FE, 0x01, 32}, // Digital Outputs
-			// TxPDO (0x1B01)
-			{0x603F, 0x00, 16}, // Error Code
-			{0x6041, 0x00, 16}, // Status Word
-			{0x6064, 0x00, 32}, // Actual Position
-			{0x6077, 0x00, 16}, // Actual Torque
-			{0x60F4, 0x00, 32}, // Following Error
-			{0x60B9, 0x00, 16}, // Touch Probe Status
-			{0x60BA, 0x00, 32}, // Touch Probe Pos1
-			{0x60BC, 0x00, 32}, // Touch Probe Pos2
-			{0x60FD, 0x00, 32}, // Digital Inputs
+		static ec_pdo_entry_info_t servo_pdo_entries[] = {
+			/* RxPDO: 0x1600 */
+			{0x6040, 0x00, 16}, /* 控制字 */
+			{0x6060, 0x00, 8},	/* 模式设定 */
+			{0x60FF, 0x00, 32}, /* 目标速度 */
+			{0x6083, 0x00, 32}, /* 加速度 */
+			{0x6084, 0x00, 32}, /* 减速度 */
+			/* TxPDO: 0x1A00 */
+			{0x6041, 0x00, 16}, /* 状态字 */
+			{0x606C, 0x00, 32}, /* 实际速度 */
 		};
 
-		static ec_pdo_info_t pdos[] = {
-			{0x1701, 4, entries + 0},
-			{0x1B01, 9, entries + 4},
+		static ec_pdo_info_t servo_pdos[] = {
+			{0x1600, 5, servo_pdo_entries + 0},
+			{0x1a00, 2, servo_pdo_entries + 5},
 		};
 
-		static ec_sync_info_t syncs[] = {
-			{0, EC_DIR_OUTPUT, 0, NULL, EC_WD_DISABLE},
-			{1, EC_DIR_INPUT, 0, NULL, EC_WD_DISABLE},
-			{2, EC_DIR_OUTPUT, 1, pdos + 0, EC_WD_ENABLE},
-			{3, EC_DIR_INPUT, 1, pdos + 1, EC_WD_DISABLE},
+		static ec_sync_info_t servo_syncs[] = {
+			{0, EC_DIR_OUTPUT, 0, nullptr, EC_WD_DISABLE},
+			{1, EC_DIR_INPUT, 0, nullptr, EC_WD_DISABLE},
+			{2, EC_DIR_OUTPUT, 1, servo_pdos + 0, EC_WD_ENABLE},
+			{3, EC_DIR_INPUT, 1, servo_pdos + 1, EC_WD_DISABLE},
 			{0xff}};
 
-		if (ecrt_slave_config_pdos(sc, EC_END, syncs))
+		if (ecrt_slave_config_pdos(sc, EC_END, servo_syncs))
 		{
-			fprintf(stderr, "ECMaster: PDO config failed for InoSV630N\n");
+			fprintf(stderr, "ECMaster: PDO config failed for Servo\n");
 			return false;
 		}
 
-		// 【新增 1】：配置分布式时钟 DC (0x0300, 周期1ms = 1000000ns)
-		ecrt_slave_config_dc(sc, 0x0300, 1000000, 0, 0, 0);
+		// 汇川必须的 DC 分布式时钟配置
+		ecrt_slave_config_dc(sc, 0x0300, cycle_time_us_ * 1000, 0, 0, 0);
 
-		// 【新增 2】：通过 SDO 将运行模式(0x6060)设为 8 (CSP: 周期同步位置模式)
-		// 因为你的 ServoController 是通过不断累加 TargetPosition (0x607A) 来控制的
-		ecrt_slave_config_sdo8(sc, 0x6060, 0, 8);
+		// 注册 Domain 偏移量
+		uint16_t p = rt.descriptor.position;
+		uint16_t a = rt.descriptor.alias;
+		uint32_t v = rt.descriptor.vendor_id;
+		uint32_t c = rt.descriptor.product_code;
 
-		uint16_t pos = rt.descriptor.position;
-		uint32_t vid = inosv630n::VENDOR_ID;
-		uint32_t pid = inosv630n::PRODUCT_CODE;
+		pdo_regs_.push_back({a, p, v, c, 0x6040, 0, &rt.offsets.servo.off_control_word});
+		pdo_regs_.push_back({a, p, v, c, 0x6060, 0, &rt.offsets.servo.off_operation_mode});
+		pdo_regs_.push_back({a, p, v, c, 0x60FF, 0, &rt.offsets.servo.off_target_velocity});
+		pdo_regs_.push_back({a, p, v, c, 0x6083, 0, &rt.offsets.servo.off_profile_accel});
+		pdo_regs_.push_back({a, p, v, c, 0x6084, 0, &rt.offsets.servo.off_profile_decel});
 
-		// RxPDO offsets
-		pdo_regs_.push_back({0, pos, vid, pid, 0x6040, 0x00, &rt.offsets.servo.off_control_word});
-		pdo_regs_.push_back({0, pos, vid, pid, 0x607A, 0x00, &rt.offsets.servo.off_target_position});
-		pdo_regs_.push_back({0, pos, vid, pid, 0x60B8, 0x00, &rt.offsets.servo.off_touch_probe_func});
-		pdo_regs_.push_back({0, pos, vid, pid, 0x60FE, 0x01, &rt.offsets.servo.off_digital_outputs});
-
-		// TxPDO offsets
-		pdo_regs_.push_back({0, pos, vid, pid, 0x603F, 0x00, &rt.offsets.servo.off_error_code});
-		pdo_regs_.push_back({0, pos, vid, pid, 0x6041, 0x00, &rt.offsets.servo.off_status_word});
-		pdo_regs_.push_back({0, pos, vid, pid, 0x6064, 0x00, &rt.offsets.servo.off_actual_position});
-		pdo_regs_.push_back({0, pos, vid, pid, 0x6077, 0x00, &rt.offsets.servo.off_actual_torque});
-		pdo_regs_.push_back({0, pos, vid, pid, 0x60F4, 0x00, &rt.offsets.servo.off_following_error});
-		pdo_regs_.push_back({0, pos, vid, pid, 0x60B9, 0x00, &rt.offsets.servo.off_touch_probe_stat});
-		pdo_regs_.push_back({0, pos, vid, pid, 0x60BA, 0x00, &rt.offsets.servo.off_touch_probe_pos1});
-		pdo_regs_.push_back({0, pos, vid, pid, 0x60BC, 0x00, &rt.offsets.servo.off_touch_probe_pos2});
-		pdo_regs_.push_back({0, pos, vid, pid, 0x60FD, 0x00, &rt.offsets.servo.off_digital_inputs});
+		pdo_regs_.push_back({a, p, v, c, 0x6041, 0, &rt.offsets.servo.off_status_word});
+		pdo_regs_.push_back({a, p, v, c, 0x606C, 0, &rt.offsets.servo.off_actual_velocity});
 
 		return true;
 	}
@@ -344,6 +321,23 @@ namespace weighing
 		if (pthread_setschedparam(cyclic_thread_->native_handle(), SCHED_FIFO, &param) != 0)
 		{
 			fprintf(stderr, "ECMaster: Warning - failed to set RT priority\n");
+		}
+
+		// ==========================================================
+		// 【新增】：2. 绑定到隔离核 3 (即 Linux 中的 CPU 2)
+		// ==========================================================
+		cpu_set_t cpuset;
+		CPU_ZERO(&cpuset);
+		CPU_SET(2, &cpuset); // 强行指定 CPU 2
+
+		int rc = pthread_setaffinity_np(cyclic_thread_->native_handle(), sizeof(cpu_set_t), &cpuset);
+		if (rc != 0)
+		{
+			printf("ECMaster: Warning, failed to pin thread to CPU 2 (Core 3)!\n");
+		}
+		else
+		{
+			printf("ECMaster: Successfully pinned RT thread to CPU 2 (Core 3).\n");
 		}
 
 		printf("ECMaster: Cyclic thread started at %u us\n", cycle_time_us);

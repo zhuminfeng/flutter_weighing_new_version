@@ -17,20 +17,6 @@ class SettingsScreen extends StatelessWidget {
       appBar: AppBar(title: Text(l.tr('settings'))),
       body: ListView(
         children: [
-          SwitchListTile(
-            secondary: const Icon(Icons.science_outlined),
-            title: const Text('模拟运行模式'),
-            subtitle: Text(
-              AppStateProvider.of(context).simulationMode
-                  ? '已开启（使用样例数据）'
-                  : '已关闭（连接真实设备）',
-            ),
-            value: AppStateProvider.of(context).simulationMode,
-            onChanged: (v) async {
-              await AppStateProvider.of(context).setSimulationMode(v);
-            },
-          ),
-          const Divider(),
           _SettingsTile(
             icon: Icons.scale,
             title: l.tr('scaleSettings'),

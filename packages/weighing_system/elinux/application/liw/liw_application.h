@@ -21,7 +21,7 @@ namespace weighing
 		float safety_limit = 100.0f;	   // %
 		float hopper_min = 0.0f;		   // kg
 		float hopper_max = 15.0f;		   // kg
-		float target_flow = 10.0f;		   // kg/h (when sub_mode = flow control)
+		float target_flow = 50.0f;		   // kg/h (when sub_mode = flow control)
 		float target_control_rate = 10.0f; // % (when sub_mode = fixed frequency)
 		bool pre_refill = false;
 	};

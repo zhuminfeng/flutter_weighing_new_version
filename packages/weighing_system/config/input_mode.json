@@ -1,5 +1,5 @@
 {
-  "input_mode": "ethercat",
+  "input_mode": "shmem",
   "cycle_time_us": 1000,
 
   "input_source": {
@@ -7,7 +7,7 @@
       "slaves": [
         {
           "alias": 0,
-          "position": 0,
+          "position": 2,
           "vendor_id": "0x00000b95",
           "product_code": "0x00002201",
           "description": "EtherCAT Weighing Slave 1"
@@ -23,35 +23,34 @@
 
   "output": {
     "master_index": 0,
-    "slaves": [
+    "slaves": [{
+        "alias": 0,
+        "position": 0,
+        "vendor_id": "0x00100000",
+        "product_code": "0x000c0112",
+        "description": "InoSV630N Inovance Servo Drive - Feeder 1"
+      },
       {
         "alias": 0,
         "position": 1,
         "vendor_id": "0x00000b95",
         "product_code": "0x00001101",
         "description": "EC3A-IO1632 Remote IO Module"
-      },
-      {
-        "alias": 0,
-        "position": 2,
-        "vendor_id": "0x00100000",
-        "product_code": "0x000c0112",
-        "description": "InoSV630N Inovance Servo Drive - Feeder 1"
       }
     ]
   },
 
   "subsystem_mapping": {
     "0": {
-      "servo_position": 1,
-      "io_position": 2,
+      "servo_position": 0,
+      "io_position": 1,
       "io_channel": 0,
       "scale_id": 0,
       "description": "Subsystem 0: Feeder Line 1"
     },
     "1": {
-      "servo_position": 1,
-      "io_position": 2,
+      "servo_position": 0,
+      "io_position": 1,
       "io_channel": 1,
       "scale_id": 1,
       "description": "Subsystem 1: Feeder Line 2"

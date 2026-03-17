@@ -23,9 +23,10 @@ class _FillingDashboardState extends State<FillingDashboard>
   @override
   void initState() {
     super.initState();
+    // 液体波浪需要较平滑的周期
     _animController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 2000),
     )..repeat();
 
     _statusTimer = Timer.periodic(const Duration(milliseconds: 200), (_) {
@@ -137,27 +138,17 @@ class _FillingDashboardState extends State<FillingDashboard>
                           ),
                           child: Padding(
                             padding: const EdgeInsets.all(12),
-                            // 修复重量组件消失与溢出问题
-                            child: LayoutBuilder(
-                              builder: (context, constraints) {
-                                return FittedBox(
-                                  fit: BoxFit.contain,
-                                  // 虚拟一块 450x180 的大画布让 WeightDisplay 尽情绘制，然后整体等比缩放
-                                  child: SizedBox(
-                                    width: 450,
-                                    height: 180,
-                                    child: WeightDisplay(
-                                      weight: wd.displayWeight,
-                                      unit: wd.unitString,
-                                      isStable: wd.isStable,
-                                      isOverload: wd.isOverload,
-                                      isUnderload: wd.isUnderload,
-                                      isNetMode: wd.isNetMode,
-                                      isZero: wd.isZero,
-                                    ),
-                                  ),
-                                );
-                              },
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: WeightDisplay(
+                                weight: wd.displayWeight,
+                                unit: wd.unitString,
+                                isStable: wd.isStable,
+                                isOverload: wd.isOverload,
+                                isUnderload: wd.isUnderload,
+                                isNetMode: wd.isNetMode,
+                                isZero: wd.isZero,
+                              ),
                             ),
                           ),
                         ),
@@ -380,7 +371,7 @@ class _FillingDashboardState extends State<FillingDashboard>
   }
 }
 
-// 全新 3D 立体玻璃罐绘制
+// 容器玻璃质感与液体波纹动画绘制
 class _FillingProcessPainter extends CustomPainter {
   final double progress;
   final bool isFeeding;
@@ -401,151 +392,96 @@ class _FillingProcessPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = size.width / 2;
-    final tankWidth = 140.0;
-    final top = 40.0;
-    final bottom = size.height - 40.0;
-    final ellipseHeight = 24.0; // 决定 3D 俯视角度的立体感
+    final bottom = size.height - 30;
+    final top = 50.0;
 
-    final bodyRect = Rect.fromCenter(
-      center: Offset(center, (top + bottom) / 2),
-      width: tankWidth,
-      height: bottom - top,
+    final containerRect = Rect.fromLTRB(
+      center - 70,
+      top + 20,
+      center + 70,
+      bottom,
     );
-    final topEllipse = Rect.fromCenter(
-      center: Offset(center, top),
-      width: tankWidth,
-      height: ellipseHeight,
-    );
-    final bottomEllipse = Rect.fromCenter(
-      center: Offset(center, bottom),
-      width: tankWidth,
-      height: ellipseHeight,
-    );
+    final fillHeight = containerRect.height * fillPercentage;
 
-    // 1. 罐体背板玻璃 (半透明深色)
-    final backGlassPaint = Paint()
-      ..shader = LinearGradient(
-        colors: [
-          Colors.black.withOpacity(0.02),
-          Colors.black.withOpacity(0.08),
-          Colors.black.withOpacity(0.02),
-        ],
-        stops: const [0.0, 0.5, 1.0],
-      ).createShader(bodyRect);
-    canvas.drawRect(bodyRect, backGlassPaint);
-    canvas.drawOval(bottomEllipse, backGlassPaint);
+    // 1. 绘制液体波纹效果 (Sine Wave)
+    if (fillHeight > 0) {
+      final liquidPath = Path();
+      liquidPath.moveTo(containerRect.left, containerRect.bottom);
+      liquidPath.lineTo(containerRect.left, containerRect.bottom - fillHeight);
 
-    // 2. 液体渲染 (3D效果)
-    final liquidHeight = bodyRect.height * fillPercentage;
-    final liquidTopY = bottom - liquidHeight;
+      // 波浪效果计算
+      final waveAmplitude = (isFeeding || isEmptying) ? 4.0 : 1.0; // 动感波浪
+      for (double x = containerRect.left; x <= containerRect.right; x++) {
+        // x位置归一化
+        double normalizedX = (x - containerRect.left) / containerRect.width;
+        // 加入动画 progress 让波浪平移
+        double y =
+            containerRect.bottom -
+            fillHeight +
+            math.sin(normalizedX * math.pi * 3 + progress * math.pi * 4) *
+                waveAmplitude;
+        liquidPath.lineTo(x, y);
+      }
 
-    if (liquidHeight > 0) {
-      final liquidRect = Rect.fromLTRB(
-        bodyRect.left,
-        liquidTopY,
-        bodyRect.right,
-        bottom,
-      );
-      final liquidTopEllipse = Rect.fromCenter(
-        center: Offset(center, liquidTopY),
-        width: tankWidth,
-        height: ellipseHeight,
-      );
+      liquidPath.lineTo(containerRect.right, containerRect.bottom);
+      liquidPath.close();
 
-      // 液体主体的渐变色，边缘深中间浅，增强圆柱体质感
+      // 液体渐变色
       final liquidGradient = LinearGradient(
-        colors: [
-          _themeBlue.withOpacity(0.9),
-          _themeBlue.withOpacity(0.6),
-          _themeBlue.withOpacity(0.95),
-        ],
-        stops: const [0.0, 0.4, 1.0],
-      );
-
-      canvas.drawRect(
-        liquidRect,
-        Paint()..shader = liquidGradient.createShader(liquidRect),
-      );
-      canvas.drawOval(
-        bottomEllipse,
-        Paint()..shader = liquidGradient.createShader(bottomEllipse),
-      ); // 液体底部轮廓
-
-      // 液体顶部表面 (立体液面，使用高亮蓝色)
-      final surfaceGradient = LinearGradient(
-        colors: [Colors.lightBlueAccent.shade100, Colors.blue.shade400],
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
-      );
-      canvas.drawOval(
-        liquidTopEllipse,
-        Paint()..shader = surfaceGradient.createShader(liquidTopEllipse),
+        colors: [_themeBlue.withOpacity(0.7), _themeBlue],
       );
 
-      // 添加液体表面的高亮反射环
-      canvas.drawOval(
-        liquidTopEllipse,
-        Paint()
-          ..color = Colors.white.withOpacity(0.3)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1,
+      canvas.drawPath(
+        liquidPath,
+        Paint()..shader = liquidGradient.createShader(containerRect),
       );
     }
 
-    // 3. 罐体正面玻璃反光与边框
-    final frontGlassGradient = LinearGradient(
-      colors: [
-        Colors.white.withOpacity(0.5),
-        Colors.white.withOpacity(0.0),
-        Colors.white.withOpacity(0.3),
-      ],
-      stops: const [0.0, 0.3, 1.0],
-    );
-    canvas.drawRect(
-      bodyRect,
-      Paint()..shader = frontGlassGradient.createShader(bodyRect),
+    // 2. 绘制带有玻璃反光的容器边缘
+    final rRect = RRect.fromRectAndRadius(
+      containerRect,
+      const Radius.circular(10),
     );
 
-    // 强烈的高光条
+    // 容器背影
+    canvas.drawRRect(rRect, Paint()..color = Colors.black.withOpacity(0.02));
+
+    // 高光反光带 (左侧边缘高亮)
     final highlightRect = Rect.fromLTRB(
-      bodyRect.left + 15,
-      top,
-      bodyRect.left + 35,
-      bottom,
+      containerRect.left + 4,
+      containerRect.top + 4,
+      containerRect.left + 16,
+      containerRect.bottom - 4,
     );
-    canvas.drawRect(
-      highlightRect,
-      Paint()..color = Colors.white.withOpacity(0.2),
+    final highlightGradient = LinearGradient(
+      colors: [Colors.white.withOpacity(0.6), Colors.white.withOpacity(0.0)],
+      begin: Alignment.centerLeft,
+      end: Alignment.centerRight,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(highlightRect, const Radius.circular(6)),
+      Paint()..shader = highlightGradient.createShader(highlightRect),
     );
 
-    // 工业级容器外轮廓线
-    final borderPaint = Paint()
+    // 容器外框
+    final containerBorder = Paint()
       ..color = Colors.grey.shade400
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.5;
-    canvas.drawLine(
-      Offset(bodyRect.left, top),
-      Offset(bodyRect.left, bottom),
-      borderPaint,
-    );
-    canvas.drawLine(
-      Offset(bodyRect.right, top),
-      Offset(bodyRect.right, bottom),
-      borderPaint,
-    );
-    canvas.drawOval(topEllipse, borderPaint); // 顶部开口
-    canvas.drawOval(bottomEllipse, borderPaint); // 底部封口
+      ..strokeWidth = 3;
+    canvas.drawRRect(rRect, containerBorder);
 
-    // 4. 动态水滴注水动画
+    // 3. 绘制喂料与排空的水滴流动画
     if (isFeeding && !isEmptying) {
-      final color = isFastFeed ? _themeBlue : _themeBlue.withOpacity(0.7);
-      final width = isFastFeed ? 18.0 : 8.0;
-      // 水流注入至液面高度
+      final color = isFastFeed ? _themeBlue : _themeBlue.withOpacity(0.6);
+      final width = isFastFeed ? 16.0 : 6.0;
+      // 水柱顶部到底部液面处
       _drawWaterDrop(
         canvas,
         center,
         0,
-        liquidTopY,
+        containerRect.bottom - fillHeight,
         color,
         progress,
         width: width,
@@ -562,12 +498,12 @@ class _FillingProcessPainter extends CustomPainter {
       _drawWaterDrop(
         canvas,
         center,
-        bottom,
+        containerRect.bottom,
         size.height,
         Colors.orange,
         progress,
         isFast: true,
-        width: 22,
+        width: 20,
       );
       _drawLabel(
         canvas,
@@ -578,7 +514,7 @@ class _FillingProcessPainter extends CustomPainter {
     }
   }
 
-  // 绘制水滴流效果
+  // 绘制圆润水滴/水柱流效果
   void _drawWaterDrop(
     Canvas canvas,
     double x,
@@ -590,20 +526,24 @@ class _FillingProcessPainter extends CustomPainter {
     double width = 10,
   }) {
     if (endY <= startY) return;
+
     final paint = Paint()
       ..color = color
       ..strokeWidth = width
       ..strokeCap = StrokeCap.round;
 
-    final int dropCount = 6;
+    final int dropCount = 8;
     for (int i = 0; i < dropCount; i++) {
       double phase = i / dropCount;
       double speed = isFast ? 3.0 : 1.5;
       double p = (progress * speed + phase) % 1.0;
 
       double dropY = startY + p * (endY - startY);
-      double opacity = math.sin(p * math.pi); // 渐隐消失
-      double length = 15.0 + (p * 25); // 拉长形成水柱感
+      // 利用透明度做出渐隐消失的效果
+      double opacity = math.sin(p * math.pi);
+
+      // 变细拉长形成水滴感
+      double length = 10.0 + (p * 20);
 
       if (dropY + length > startY && dropY < endY) {
         canvas.drawLine(

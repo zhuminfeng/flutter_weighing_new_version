@@ -18,11 +18,13 @@ namespace weighing
 		enable_request_ = true;
 		disable_request_ = false;
 	}
+
 	void ServoController::Disable()
 	{
 		disable_request_ = true;
 		enable_request_ = false;
 	}
+
 	void ServoController::FaultReset() { fault_reset_request_ = true; }
 	void ServoController::Halt() { halt_request_ = true; }
 	void ServoController::SetControlRate(float r) { target_rate_ = (r < 0 ? 0 : (r > 100 ? 100 : r)); }
@@ -34,102 +36,110 @@ namespace weighing
 		if (!offsets_ || !domain_data)
 			return;
 
-		// Read TxPDO
-		uint16_t sw = EC_READ_U16(domain_data + offsets_->off_status_word);
-		last_status_word_ = sw;
-		error_code_ = EC_READ_U16(domain_data + offsets_->off_error_code);
-		actual_position_ = EC_READ_S32(domain_data + offsets_->off_actual_position);
-		actual_torque_ = static_cast<int16_t>(EC_READ_U16(domain_data + offsets_->off_actual_torque));
+		// 1. 读取状态字和当前实际速度
+		uint16_t status = EC_READ_U16(domain_data + offsets_->off_status_word);
+		int32_t current_speed = EC_READ_S32(domain_data + offsets_->off_actual_velocity);
 
-		auto state = inosv630n::DecodeStatusWord(sw);
-		bool was_enabled = enabled_.load();
-		enabled_ = (state == inosv630n::Ds402State::kOperationEnabled);
-		faulted_ = (state == inosv630n::Ds402State::kFault ||
-					state == inosv630n::Ds402State::kFaultReactionActive);
+		last_status_word_.store(status);
+		actual_velocity_.store(current_speed);
 
-		// 【新增逻辑】：刚进入 Enable 状态时，对齐目标位置和实际位置，防止指令突变
-		if (!was_enabled && enabled_.load())
+		// ============ 状态机诊断打印 ============
+		static uint16_t last_print_status = 0xFFFF;
+		if ((status & 0x006F) != last_print_status)
 		{
-			target_position_ = actual_position_.load();
-		}
-		// Build control word
-		uint16_t cw = BuildControlWord(state);
-
-		// Rate -> position increment
-		float rate = target_rate_.load();
-		int32_t pos = target_position_.load();
-		if (rate > 0.001f && enabled_.load())
-		{
-			int32_t inc = static_cast<int32_t>(
-				(rate / 100.0f) * static_cast<float>(max_speed_) / 1000.0f);
-			// pos = actual_position_.load() + inc;
-			pos += inc;
-			target_position_ = pos;
+			last_print_status = status & 0x006F;
+			printf(">> [Servo] CiA402 State changed. Masked Status: 0x%04X, Full Status: 0x%04X\n", last_print_status, status);
 		}
 
-		// Write RxPDO
-		EC_WRITE_U16(domain_data + offsets_->off_control_word, cw);
-		EC_WRITE_S32(domain_data + offsets_->off_target_position, pos);
-		EC_WRITE_U16(domain_data + offsets_->off_touch_probe_func, 0);
-		EC_WRITE_U32(domain_data + offsets_->off_digital_outputs, target_digital_out_.load());
-	}
-
-	uint16_t ServoController::BuildControlWord(inosv630n::Ds402State current_state)
-	{
-		using namespace inosv630n;
-
-		if (fault_reset_request_.load())
+		// ====================================================================
+		// 【核心修复】：未点击 Start 前，必须向控制字写入 0x0000
+		// 绝对不能提前写入 0x0006 或者 0x09 模式！这会打断伺服的内部初始化自动跃迁。
+		// C语言测试代码能跑通，就是因为它的 domain 数据默认全是 0！
+		// ====================================================================
+		if (!enable_request_.load())
 		{
-			fault_reset_request_ = false;
-			if (current_state == Ds402State::kFault)
-				return CtrlWord::FAULT_RESET;
+			// 模拟 C 语言初始化时的内存状态：全 0
+			EC_WRITE_U16(domain_data + offsets_->off_control_word, 0x0000);
+			EC_WRITE_S32(domain_data + offsets_->off_target_velocity, 0);
+			state_command_mask_ = 0x004F; // 重置掩码，随时准备重新启动
+			return;
 		}
 
-		if (halt_request_.load())
+		// ====================================================================
+		// 2. 标准且严谨的 CiA402 状态机推进 (完全复刻 C 语言版本)
+		// 只有进入此区块，才说明用户点击了 Start，我们才开始介入并激活电机
+		// ====================================================================
+		if ((status & state_command_mask_) == 0x0040)
 		{
-			halt_request_ = false;
-			return CtrlWord::SWITCH_ON | CtrlWord::ENABLE_VOLTAGE |
-				   CtrlWord::QUICK_STOP | CtrlWord::ENABLE_OPERATION | CtrlWord::HALT;
-		}
+			// 此时伺服已经自动就绪 (Switch On Disabled)
+			// 我们才开始写入 模式9 (CSV)，以及加减速
+			EC_WRITE_U8(domain_data + offsets_->off_operation_mode, 0x09);
+			EC_WRITE_U32(domain_data + offsets_->off_profile_accel, 20000);
+			EC_WRITE_U32(domain_data + offsets_->off_profile_decel, 20000);
 
-		if (disable_request_.load())
-		{
-			disable_request_ = false;
-			enable_request_ = false;
-			return CtrlWord::SWITCH_ON | CtrlWord::ENABLE_VOLTAGE | CtrlWord::QUICK_STOP;
+			// 下发 Shutdown (0x06)
+			EC_WRITE_U16(domain_data + offsets_->off_control_word, 0x0006);
+			state_command_mask_ = 0x006F;
 		}
-
-		if (enable_request_.load())
+		else if ((status & state_command_mask_) == 0x0021)
 		{
-			switch (current_state)
+			// Ready to Switch On -> Switch On (0x07)
+			EC_WRITE_U16(domain_data + offsets_->off_control_word, 0x0007);
+			state_command_mask_ = 0x006F;
+		}
+		else if ((status & state_command_mask_) == 0x0023)
+		{
+			// Switched On -> Enable Operation (0x0F)
+			EC_WRITE_U16(domain_data + offsets_->off_control_word, 0x000F);
+			state_command_mask_ = 0x006F;
+		}
+		else if ((status & state_command_mask_) == 0x0027)
+		{
+			// Operation Enabled (完全激活) -> 必须持续发 0x0F
+			EC_WRITE_U16(domain_data + offsets_->off_control_word, 0x000F);
+
+			// ===== 计算并下发目标速度 =====
+			float rate = target_rate_.load();
+			int32_t target_spd = 0;
+
+			if (rate > 0.01f)
 			{
-			case Ds402State::kSwitchOnDisabled:
-				return CtrlWord::ENABLE_VOLTAGE | CtrlWord::QUICK_STOP;
-			case Ds402State::kReadyToSwitchOn:
-				return CtrlWord::SWITCH_ON | CtrlWord::ENABLE_VOLTAGE | CtrlWord::QUICK_STOP;
-			case Ds402State::kSwitchedOn:
-				return CtrlWord::SWITCH_ON | CtrlWord::ENABLE_VOLTAGE |
-					   CtrlWord::QUICK_STOP | CtrlWord::ENABLE_OPERATION;
-			case Ds402State::kOperationEnabled:
-				enable_request_ = false;
-				return CtrlWord::SWITCH_ON | CtrlWord::ENABLE_VOLTAGE |
-					   CtrlWord::QUICK_STOP | CtrlWord::ENABLE_OPERATION |
-					   CtrlWord::NEW_SET_POINT | CtrlWord::CHANGE_SET_IMMED;
-			case Ds402State::kFault:
-				return CtrlWord::FAULT_RESET;
-			default:
-				return CtrlWord::ENABLE_VOLTAGE | CtrlWord::QUICK_STOP;
+				target_spd = static_cast<int32_t>((rate / 100.0f) * max_speed_);
+			}
+
+			// 防冲击保护逻辑 (复刻 C 代码逻辑)
+			if (current_speed == 0 || target_spd == 0)
+			{
+				EC_WRITE_S32(domain_data + offsets_->off_target_velocity, target_spd);
+			}
+			else
+			{
+				EC_WRITE_S32(domain_data + offsets_->off_target_velocity, target_spd);
+			}
+
+			// ============ 运行数据诊断打印 ============
+			// 每隔 1000 个周期（1秒）打印一次运行状态，确认控制率是否传到了底层
+			static int dbg_count = 0;
+			if (++dbg_count >= 1000)
+			{
+				printf(">> [Servo Running] UI Rate: %.1f%% | TargetSpd CMD: %d | ActualSpd: %d\n",
+					   rate, target_spd, current_speed);
+				dbg_count = 0;
 			}
 		}
-
-		if (current_state == Ds402State::kOperationEnabled)
+		else if ((status & 0x0008) == 0x0008)
 		{
-			return CtrlWord::SWITCH_ON | CtrlWord::ENABLE_VOLTAGE |
-				   CtrlWord::QUICK_STOP | CtrlWord::ENABLE_OPERATION |
-				   CtrlWord::NEW_SET_POINT | CtrlWord::CHANGE_SET_IMMED;
+			// State: Fault (故障报警状态)
+			if (fault_reset_request_.load())
+			{
+				EC_WRITE_U16(domain_data + offsets_->off_control_word, 0x0080); // 发送 Fault Reset
+				fault_reset_request_ = false;
+			}
+			else
+			{
+				EC_WRITE_U16(domain_data + offsets_->off_control_word, 0x0000);
+			}
 		}
-
-		return 0;
 	}
 
 } // namespace weighing

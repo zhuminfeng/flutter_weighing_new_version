@@ -344,17 +344,10 @@ class _LiwDashboardState extends State<LiwDashboard>
                 onPressed: () => state.clearTare(0),
               ),
               _LargeActionButton(
-                label: state.simulationMode
-                    ? l.tr('eprint')
-                    : (_axisTestEnabled ? 'Axis 0%' : 'Axis 50%'),
+                label: l.tr('eprint'),
                 icon: Icons.print_outlined,
                 onPressed: () async {
-                  if (state.simulationMode) {
-                    return;
-                  }
                   final nextEnabled = !_axisTestEnabled;
-                  final targetRate = nextEnabled ? 50.0 : 0.0;
-                  await state.setManualControlRate(targetRate);
                   if (mounted) {
                     setState(() => _axisTestEnabled = nextEnabled);
                   }

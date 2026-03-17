@@ -126,6 +126,12 @@ namespace weighing
 		AdcSample sample;
 		while (running_.load(std::memory_order_acquire))
 		{
+			// 【新增】如果处于模拟模式，就不再去读真实的传感器ADC了，防止覆盖我们的假重量
+			if (mock_mode_.load(std::memory_order_acquire))
+			{
+				std::this_thread::sleep_for(std::chrono::milliseconds(10));
+				continue;
+			}
 			if (adc_buffer_.pop(sample))
 			{
 				ProcessingSample(sample);
@@ -483,6 +489,34 @@ namespace weighing
 		if (old_state != new_state && status_callback_)
 		{
 			status_callback_(scale_id_, new_state, msg);
+		}
+	}
+
+	// 【新增】开启/关闭模拟模式
+	void ScalePlatform::SetMockMode(bool enable)
+	{
+		mock_mode_.store(enable, std::memory_order_release);
+	}
+
+	// 【新增】注入模拟数据
+	void ScalePlatform::FeedMockWeight(double net_weight)
+	{
+		// 直接覆盖底层重量数据结构
+		atomic_weight_.gross_weight.store(net_weight, std::memory_order_relaxed);
+		atomic_weight_.net_weight.store(net_weight, std::memory_order_relaxed);
+		atomic_weight_.tare_weight.store(0.0, std::memory_order_relaxed);
+		atomic_weight_.motion.store(0, std::memory_order_relaxed); // 状态设为稳定 (0=Stable)
+		atomic_weight_.is_zero.store(net_weight <= 0.01, std::memory_order_relaxed);
+
+		// 生成真实的时间戳，供 PID 控制器计算微分(流速)使用
+		auto now = std::chrono::steady_clock::now().time_since_epoch();
+		uint64_t ns = std::chrono::duration_cast<std::chrono::nanoseconds>(now).count();
+		atomic_weight_.timestamp_ns.store(ns, std::memory_order_release);
+
+		// 触发回调，让 UI 更新重量
+		if (weight_callback_)
+		{
+			weight_callback_(GetWeightData());
 		}
 	}
 

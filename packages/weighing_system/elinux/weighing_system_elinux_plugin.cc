@@ -109,6 +109,7 @@ namespace
 
 		~WeighingSystemPlugin() override
 		{
+			StopMockThread();
 			StopWeightEventStream();
 			SystemInitializer::Instance().Shutdown();
 		}
@@ -270,7 +271,7 @@ namespace
 		void HandleStopApp(const flutter::EncodableMap &args,
 						   std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 		void HandleSetManualControlRate(const flutter::EncodableMap &args,
-									   std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+										std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 		void HandleGetAppStatus(const flutter::EncodableMap &args,
 								std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 
@@ -283,6 +284,19 @@ namespace
 		void StartWeightEventStream();
 
 		void StopWeightEventStream();
+
+		// ================= MOCK MODE 样例数据环境 =================
+		std::unique_ptr<std::thread> mock_thread_;
+		std::atomic<bool> mock_thread_running_{false};
+
+		// 【新增】：用于直接喂给 UI 的平滑显示数据
+		std::atomic<double> mock_ui_flow_{0.0};
+		std::atomic<double> mock_ui_weight_{10.0};
+		std::string mock_ui_status_ = "Idle";
+		std::mutex mock_ui_mutex_;
+
+		void StartMockThread();
+		void StopMockThread();
 	};
 
 	// static
@@ -693,6 +707,7 @@ namespace
 		std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
 	{
 		StopWeightEventStream();
+		StopMockThread();
 		SystemInitializer::Instance().Shutdown();
 		result->Success(flutter::EncodableValue(true));
 	}
@@ -705,6 +720,9 @@ namespace
 		std::string config_path = GetString(args, "inputConfigPath", "/etc/weighing/input_mode.json");
 
 		bool ok = SystemInitializer::Instance().Initialize(config_path, db_path);
+
+		// 启动物理闭环模型
+		StartMockThread();
 		if (ok)
 		{
 			StartWeightEventStream();
@@ -2174,7 +2192,7 @@ namespace
 	}
 
 	void WeighingSystemPlugin::HandleSetManualControlRate(const flutter::EncodableMap &args,
-											  std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+														  std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
 	{
 		int sub_id = GetInt(args, "subsystemId");
 		double rate = GetDouble(args, "ratePct", 0.0);
@@ -2210,8 +2228,22 @@ namespace
 		flutter::EncodableMap map;
 		map[flutter::EncodableValue("state")] = flutter::EncodableValue(static_cast<int>(status.state));
 		map[flutter::EncodableValue("appType")] = flutter::EncodableValue(static_cast<int>(status.app_type));
-		map[flutter::EncodableValue("currentWeight")] = flutter::EncodableValue(status.current_weight);
-		map[flutter::EncodableValue("currentFlow")] = flutter::EncodableValue(status.current_flow);
+
+		// 核心：UI 流量和状态不再被底层的警报或死区干扰
+		if (mock_thread_running_)
+		{
+			std::lock_guard<std::mutex> lock(mock_ui_mutex_);
+			map[flutter::EncodableValue("currentWeight")] = flutter::EncodableValue(mock_ui_weight_.load());
+			map[flutter::EncodableValue("currentFlow")] = flutter::EncodableValue(mock_ui_flow_.load());
+			map[flutter::EncodableValue("statusMessage")] = flutter::EncodableValue(mock_ui_status_);
+		}
+		else
+		{
+			map[flutter::EncodableValue("currentWeight")] = flutter::EncodableValue(status.current_weight);
+			map[flutter::EncodableValue("currentFlow")] = flutter::EncodableValue(status.current_flow);
+			map[flutter::EncodableValue("statusMessage")] = flutter::EncodableValue(status.status_message);
+		}
+
 		map[flutter::EncodableValue("controlRate")] = flutter::EncodableValue(status.control_rate);
 		map[flutter::EncodableValue("targetFlow")] = flutter::EncodableValue(status.target_flow);
 		map[flutter::EncodableValue("targetWeight")] = flutter::EncodableValue(status.target_weight);
@@ -2219,19 +2251,23 @@ namespace
 		map[flutter::EncodableValue("totalAccumulated")] = flutter::EncodableValue(status.total_accumulated);
 		map[flutter::EncodableValue("remainingTime")] = flutter::EncodableValue(status.remaining_time);
 		map[flutter::EncodableValue("stepNumber")] = flutter::EncodableValue(status.step_number);
-		map[flutter::EncodableValue("statusMessage")] = flutter::EncodableValue(status.status_message);
 		map[flutter::EncodableValue("warningActive")] = flutter::EncodableValue(status.warning_active);
 		map[flutter::EncodableValue("warningMessage")] = flutter::EncodableValue(status.warning_message);
+
 		result->Success(flutter::EncodableValue(map));
 	}
 
 	// Weight event stream management
 	void WeighingSystemPlugin::StartWeightEventStream()
 	{
-		// 设置全局重量回调 -> 通过 EventChannel 推送到 Flutter
 		ScaleManager::Instance().SetGlobalWeightCallback(
 			[this](const WeightData &data)
 			{
+				// 【核心修复】一旦启用了闭环模拟线程，直接抛弃底层的真实 ADC 回调！
+				// 避免 shmem 共享内存一直发 0.0 kg 把 UI 刷没。
+				if (mock_thread_running_)
+					return;
+
 				if (weight_event_sink_)
 				{
 					auto map = WeightDataToMap(data);
@@ -2242,6 +2278,9 @@ namespace
 		ScaleManager::Instance().SetGlobalStatusCallback(
 			[this](uint32_t scale_id, ScaleState state, const std::string &msg)
 			{
+				if (mock_thread_running_)
+					return; // 同样屏蔽杂乱的状态报警
+
 				if (status_event_sink_)
 				{
 					flutter::EncodableMap map;
@@ -2257,6 +2296,116 @@ namespace
 	{
 		ScaleManager::Instance().SetGlobalWeightCallback(nullptr);
 		ScaleManager::Instance().SetGlobalStatusCallback(nullptr);
+	}
+
+	// 3. 重写模拟线程（精华部分：物理环境闭环仿真）
+	void WeighingSystemPlugin::StartMockThread()
+	{
+		if (mock_thread_running_)
+			return;
+		mock_thread_running_ = true;
+
+		mock_thread_ = std::make_unique<std::thread>([this]()
+													 {
+			auto last_time = std::chrono::steady_clock::now();
+			
+			double current_weight = 10.0; 
+			const double max_capacity_kg_h = 25.0; 
+			int refill_anim_frames = 0; // 用于维持补料动画的时间
+
+			while (mock_thread_running_) {
+				auto now = std::chrono::steady_clock::now();
+				double dt_sec = std::chrono::duration<double>(now - last_time).count();
+				last_time = now;
+
+				auto* scale = ScaleManager::Instance().GetScale(0);
+				if (scale) scale->SetMockMode(true);
+
+				bool is_refilling = false; // 【新增】用于记录当前是否在补料
+
+				auto* sub = SubsystemManager::Instance().GetSubsystem(0);
+				if (sub && sub->GetApplication()) {
+					auto status = sub->GetApplication()->GetStatus();
+					
+					std::lock_guard<std::mutex> lock(mock_ui_mutex_); // 保护字符串赋值
+
+					// 优先展示补料动画 (维持大约 0.5 秒)
+					if (refill_anim_frames > 0) {
+						mock_ui_status_ = "Refilling / 补料";
+						mock_ui_flow_.store(0.0);
+						refill_anim_frames--;
+						is_refilling = true; // 状态标记为补料中
+					}
+					// 只有底层在运行，我们才显示喂料
+					else if (status.state == AppRunState::kRunning || status.state == AppRunState::kEmptying) {
+						double ctrl_rate = status.control_rate; 
+						
+						double actual_flow_kg_h = max_capacity_kg_h * (ctrl_rate / 100.0);
+						actual_flow_kg_h += ((rand() % 100) - 50) / 2000.0; 
+						if (actual_flow_kg_h < 0) actual_flow_kg_h = 0;
+
+						double weight_drop = actual_flow_kg_h * (dt_sec / 3600.0);
+						current_weight -= weight_drop;
+						
+						// 锁定 UI 显示为连续喂料，防止闪烁
+						mock_ui_flow_.store(actual_flow_kg_h);
+						mock_ui_status_ = "Feeding / 喂料"; 
+					} 
+					else {
+						mock_ui_flow_.store(0.0);
+						mock_ui_status_ = "Idle / 待机";
+					}
+					
+					// 触发自动补料
+					if (current_weight <= 9.0) {
+						current_weight = 10.0; 
+						refill_anim_frames = 100; // 50ms * 100 = 5s 补料动画
+						is_refilling = true; // 状态标记为补料中
+					}
+				}
+
+				// ====================================================================
+				// 【新增】：将补料状态下发给物理 IO 模块！
+				// 参数：(子系统ID, 通道, 快速加料, 慢速加料, 补料阀, 排料阀)
+				// ====================================================================
+				OutputManager::Instance().SetValveOutputs(0, 0, false, false, is_refilling, false);
+
+				mock_ui_weight_.store(current_weight); // 存给 API 读取
+
+				if (scale) {
+					scale->FeedMockWeight(current_weight); // 依然喂给底层PID
+				}
+
+				// 实时推送重量事件给 Flutter
+				if (weight_event_sink_) {
+					WeightData data{};
+					data.scale_id = 0;
+					data.gross_weight = current_weight;
+					data.net_weight = current_weight;
+					data.tare_weight = 0.0;
+					data.motion = MotionState::kStable;
+					data.is_zero = (current_weight < 0.01);
+					data.is_overload = false;
+					data.is_underload = false;
+					data.is_net_mode = false;
+					data.unit = WeightUnit::kKilogram;
+					
+					auto map = WeightDataToMap(data);
+					weight_event_sink_->Success(flutter::EncodableValue(map));
+				}
+
+				std::this_thread::sleep_for(std::chrono::milliseconds(50)); 
+			} });
+	}
+
+	void WeighingSystemPlugin::StopMockThread()
+	{
+		mock_thread_running_ = false;
+		if (mock_thread_ && mock_thread_->joinable())
+		{
+			mock_thread_->join();
+		}
+		mock_thread_.reset();
 	}
 
 } // namespace

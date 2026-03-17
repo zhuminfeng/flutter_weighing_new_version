@@ -51,21 +51,16 @@ namespace weighing
 	// InoSV630N offsets
 	struct ServoOffsets
 	{
-		// RxPDO (Master -> Slave)
-		unsigned int off_control_word = 0;	   // 0x6040:00 (16bit)
-		unsigned int off_target_position = 0;  // 0x607A:00 (32bit)
-		unsigned int off_touch_probe_func = 0; // 0x60B8:00 (16bit)
-		unsigned int off_digital_outputs = 0;  // 0x60FE:01 (32bit)
-		// TxPDO (Slave -> Master)
-		unsigned int off_error_code = 0;	   // 0x603F:00 (16bit)
-		unsigned int off_status_word = 0;	   // 0x6041:00 (16bit)
-		unsigned int off_actual_position = 0;  // 0x6064:00 (32bit)
-		unsigned int off_actual_torque = 0;	   // 0x6077:00 (16bit)
-		unsigned int off_following_error = 0;  // 0x60F4:00 (32bit)
-		unsigned int off_touch_probe_stat = 0; // 0x60B9:00 (16bit)
-		unsigned int off_touch_probe_pos1 = 0; // 0x60BA:00 (32bit)
-		unsigned int off_touch_probe_pos2 = 0; // 0x60BC:00 (32bit)
-		unsigned int off_digital_inputs = 0;   // 0x60FD:00 (32bit)
+		// RxPDO (Master -> Slave) 对应 C 语言的 0x1600
+		unsigned int off_control_word = 0;	  // 0x6040:00 (16bit)
+		unsigned int off_operation_mode = 0;  // 0x6060:00 (8bit)
+		unsigned int off_target_velocity = 0; // 0x60FF:00 (32bit)
+		unsigned int off_profile_accel = 0;	  // 0x6083:00 (32bit)
+		unsigned int off_profile_decel = 0;	  // 0x6084:00 (32bit)
+
+		// TxPDO (Slave -> Master) 对应 C 语言的 0x1A00
+		unsigned int off_status_word = 0;	  // 0x6041:00 (16bit)
+		unsigned int off_actual_velocity = 0; // 0x606C:00 (32bit)
 	};
 
 	// 称重从站 offsets (示例，根据实际从站调整)

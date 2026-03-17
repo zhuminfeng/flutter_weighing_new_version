@@ -50,11 +50,15 @@ namespace weighing
 		std::atomic<bool> enabled_{false};
 		std::atomic<bool> faulted_{false};
 		std::atomic<uint16_t> last_status_word_{0};
+		std::atomic<int32_t> actual_velocity_{0};
 		std::atomic<int32_t> actual_position_{0};
 		std::atomic<int16_t> actual_torque_{0};
 		std::atomic<uint16_t> error_code_{0};
 
-		int32_t max_speed_ = 100000;
+		int32_t max_speed_ = 1000000;
+
+		// 【新增】：用于复刻 C 语言状态机的掩码
+		uint16_t state_command_mask_ = 0x004F;
 
 		uint16_t BuildControlWord(inosv630n::Ds402State state);
 	};
