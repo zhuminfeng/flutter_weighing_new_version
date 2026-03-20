@@ -9,6 +9,7 @@ import 'models/filter_stability_config.dart';
 import 'models/liw_config.dart';
 import 'models/filling_config.dart';
 import 'models/system_status.dart';
+import 'models/digital_output_map.dart';
 
 class ELinuxWeighingSystem extends WeighingPlatform {
   static const MethodChannel _channel =
@@ -434,5 +435,33 @@ class ELinuxWeighingSystem extends WeighingPlatform {
     final result = await _channel
         .invokeMethod<Map>('getAppStatus', {'subsystemId': subsystemId});
     return AppStatusData.fromMap(Map<String, dynamic>.from(result!));
+  }
+
+  // ============ Digital Output Mapping ============
+  @override
+  Future<DigitalOutputMapConfig> getDigitalOutputMap() async {
+    final m =
+        await _channel.invokeMapMethod<String, dynamic>('getDigitalOutputMap');
+    return DigitalOutputMapConfig.fromMap(m ?? const {});
+  }
+
+  @override
+  Future<Map<String, dynamic>> validateDigitalOutputMap(
+      DigitalOutputMapConfig config) async {
+    final m = await _channel.invokeMapMethod<String, dynamic>(
+      'validateDigitalOutputMap',
+      config.toMap(),
+    );
+    return Map<String, dynamic>.from(
+        m ?? const {'ok': false, 'error': 'null response'});
+  }
+
+  @override
+  Future<bool> updateDigitalOutputMap(DigitalOutputMapConfig config) async {
+    final m = await _channel.invokeMapMethod<String, dynamic>(
+      'updateDigitalOutputMap',
+      config.toMap(),
+    );
+    return (m?['ok'] == true);
   }
 }

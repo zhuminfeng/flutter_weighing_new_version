@@ -5,6 +5,7 @@
 #include "../application/liw/liw_application.h"
 #include "../application/filling/filling_application.h"
 #include "../subsystem/subsystem.h"
+#include "../output/digital_output_mapping.h"
 
 namespace weighing
 {

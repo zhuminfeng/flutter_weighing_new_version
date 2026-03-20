@@ -5,6 +5,7 @@ namespace weighing
 {
 
 	DigitalIOController::DigitalIOController(uint16_t slave_position)
+		: slave_position_(slave_position)
 	{
 		const auto *rt = EtherCATMaster::Instance().GetSlaveRuntime(slave_position);
 		if (rt && rt->role == SlaveRole::kDigitalIO)
@@ -38,69 +39,50 @@ namespace weighing
 		output_value_ = value;
 	}
 
-	void DigitalIOController::ApplyDioOutputs(uint16_t channel_offset,
-											  bool feed_fast, bool feed_slow,
-											  bool refill, bool emptying)
+	void DigitalIOController::ApplyDioOutputs(uint32_t subsystem_id,
+											  uint16_t channel,
+											  AppType app_type,
+											  bool fast,
+											  bool slow,
+											  bool refill,
+											  bool emptying,
+											  const DigitalOutputMap &map)
 	{
-		using namespace ec3a_io1632;
-
-		uint16_t current = output_value_.load();
-
-		// Select channel-specific bits (channel 0 or channel 1)
-		uint16_t fast_bit, slow_bit, refill_bit, empty_bit;
-		if (channel_offset == 0)
-		{
-			fast_bit = DO_Bit::FEED_FAST_0;
-			slow_bit = DO_Bit::FEED_SLOW_0;
-			refill_bit = DO_Bit::REFILL_VALVE_0;
-			empty_bit = DO_Bit::EMPTYING_VALVE_0;
-		}
-		else
-		{
-			fast_bit = DO_Bit::FEED_FAST_1;
-			slow_bit = DO_Bit::FEED_SLOW_1;
-			refill_bit = DO_Bit::REFILL_VALVE_1;
-			empty_bit = DO_Bit::EMPTYING_VALVE_1;
-		}
-
-		// Clear all channel bits first
-		current &= ~(fast_bit | slow_bit | refill_bit | empty_bit);
-
-		// Set active bits
-		if (feed_fast)
-			current |= fast_bit;
-		if (feed_slow)
-			current |= slow_bit;
-		if (refill)
-			current |= refill_bit;
-		if (emptying)
-			current |= empty_bit;
-
-		output_value_ = current;
+		SetMappedSignal(subsystem_id, channel, app_type, DigitalSignalType::kFeedFast, fast, map);
+		SetMappedSignal(subsystem_id, channel, app_type, DigitalSignalType::kFeedSlow, slow, map);
+		SetMappedSignal(subsystem_id, channel, app_type, DigitalSignalType::kRefillValve, refill, map);
+		SetMappedSignal(subsystem_id, channel, app_type, DigitalSignalType::kEmptyingValve, emptying, map);
 	}
 
-	void DigitalIOController::SetAlarm(bool active)
+	void DigitalIOController::SetAlarm(uint32_t subsystem_id, AppType app_type, bool active, const DigitalOutputMap &map)
 	{
-		if (active)
-			SetBit(ec3a_io1632::DO_Bit::ALARM_OUT);
-		else
-			ClearBit(ec3a_io1632::DO_Bit::ALARM_OUT);
+		SetMappedSignal(subsystem_id, 0, app_type, DigitalSignalType::kAlarmOut, active, map);
 	}
 
-	void DigitalIOController::SetRunningIndicator(bool running)
+	void DigitalIOController::SetRunningIndicator(uint32_t subsystem_id, AppType app_type, bool running, const DigitalOutputMap &map)
 	{
-		if (running)
-			SetBit(ec3a_io1632::DO_Bit::RUNNING_IND);
-		else
-			ClearBit(ec3a_io1632::DO_Bit::RUNNING_IND);
+		SetMappedSignal(subsystem_id, 0, app_type, DigitalSignalType::kRunningInd, running, map);
 	}
 
-	void DigitalIOController::SetWarningIndicator(bool warning)
+	void DigitalIOController::SetWarningIndicator(uint32_t subsystem_id, AppType app_type, bool warning, const DigitalOutputMap &map)
 	{
-		if (warning)
-			SetBit(ec3a_io1632::DO_Bit::WARNING_IND);
+		SetMappedSignal(subsystem_id, 0, app_type, DigitalSignalType::kWarningInd, warning, map);
+	}
+
+	void DigitalIOController::SetMappedSignal(uint32_t subsystem_id,
+											  uint16_t channel,
+											  AppType app_type,
+											  DigitalSignalType signal,
+											  bool on,
+											  const DigitalOutputMap &map)
+	{
+		auto bit = map.ResolveBit(subsystem_id, slave_position_, channel, signal, app_type);
+		if (!bit.has_value())
+			return;
+		if (on)
+			SetBit(*bit);
 		else
-			ClearBit(ec3a_io1632::DO_Bit::WARNING_IND);
+			ClearBit(*bit);
 	}
 
 	void DigitalIOController::ParseDioInputs(

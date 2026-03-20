@@ -7,6 +7,7 @@ import 'models/filter_stability_config.dart';
 import 'models/liw_config.dart';
 import 'models/filling_config.dart';
 import 'models/system_status.dart';
+import 'models/digital_output_map.dart';
 
 abstract class WeighingPlatform extends PlatformInterface {
   WeighingPlatform() : super(token: _token);
@@ -122,9 +123,15 @@ abstract class WeighingPlatform extends PlatformInterface {
       int subsystemId, FillingAdvancedConfig config);
   Future<FillingAdvancedConfig> getFillingAdvancedConfig(int subsystemId);
 
+  // Digital output mapping
+  Future<bool> updateDigitalOutputMap(DigitalOutputMapConfig config);
+  Future<DigitalOutputMapConfig> getDigitalOutputMap();
+  Future<Map<String, dynamic>> validateDigitalOutputMap(
+      DigitalOutputMapConfig config);
+
   // App control
   Future<bool> startApp(int subsystemId);
   Future<bool> stopApp(int subsystemId);
-    Future<bool> setManualControlRate(int subsystemId, double ratePct);
+  Future<bool> setManualControlRate(int subsystemId, double ratePct);
   Future<AppStatusData> getAppStatus(int subsystemId);
 }

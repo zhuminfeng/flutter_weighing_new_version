@@ -124,41 +124,44 @@ namespace weighing
 		}
 	}
 
-	void OutputManager::SetValveOutputs(uint32_t sub_id, uint16_t channel,
+	void OutputManager::SetValveOutputs(uint32_t subsystem_id,
+										uint16_t channel,
+										AppType app_type,
 										bool fast, bool slow, bool refill, bool emptying)
 	{
-		auto it = subsystem_io_map_.find(sub_id);
-		if (it != subsystem_io_map_.end())
-		{
-			auto dit = digital_ios_.find(it->second);
-			if (dit != digital_ios_.end())
-			{
-				dit->second->ApplyDioOutputs(channel, fast, slow, refill, emptying);
-			}
-		}
+		const uint16_t io_pos = GetSubsystemIOPosition(subsystem_id);
+		auto *dio = GetDigitalIO(io_pos);
+		if (!dio)
+			return;
+		dio->ApplyDioOutputs(subsystem_id, channel, app_type, fast, slow, refill, emptying, dio_map_);
 	}
 
-	void OutputManager::SetAlarm(uint32_t io_pos, bool active)
+	void OutputManager::SetAlarm(uint32_t subsystem_id, AppType app_type, bool active)
 	{
-		auto it = digital_ios_.find(static_cast<uint16_t>(io_pos));
-		if (it != digital_ios_.end())
-			it->second->SetAlarm(active);
+		const uint16_t io_pos = GetSubsystemIOPosition(subsystem_id);
+		auto *dio = GetDigitalIO(io_pos);
+		if (!dio)
+			return;
+		dio->SetAlarm(subsystem_id, app_type, active, dio_map_);
 	}
 
-	void OutputManager::SetRunning(uint32_t io_pos, bool running)
+	void OutputManager::SetRunning(uint32_t subsystem_id, AppType app_type, bool running)
 	{
-		auto it = digital_ios_.find(static_cast<uint16_t>(io_pos));
-		if (it != digital_ios_.end())
-			it->second->SetRunningIndicator(running);
+		const uint16_t io_pos = GetSubsystemIOPosition(subsystem_id);
+		auto *dio = GetDigitalIO(io_pos);
+		if (!dio)
+			return;
+		dio->SetRunningIndicator(subsystem_id, app_type, running, dio_map_);
 	}
 
-	void OutputManager::SetWarning(uint32_t io_pos, bool warning)
+	void OutputManager::SetWarning(uint32_t subsystem_id, AppType app_type, bool warning)
 	{
-		auto it = digital_ios_.find(static_cast<uint16_t>(io_pos));
-		if (it != digital_ios_.end())
-			it->second->SetWarningIndicator(warning);
+		const uint16_t io_pos = GetSubsystemIOPosition(subsystem_id);
+		auto *dio = GetDigitalIO(io_pos);
+		if (!dio)
+			return;
+		dio->SetWarningIndicator(subsystem_id, app_type, warning, dio_map_);
 	}
-
 	ServoController *OutputManager::GetServo(uint16_t pos)
 	{
 		auto it = servos_.find(pos);
@@ -169,6 +172,16 @@ namespace weighing
 	{
 		auto it = digital_ios_.find(pos);
 		return it != digital_ios_.end() ? it->second.get() : nullptr;
+	}
+
+	bool OutputManager::UpdateDigitalOutputMap(const DigitalOutputMapConfig &cfg, std::string *err)
+	{
+		return dio_map_.SetConfig(cfg, err);
+	}
+
+	DigitalOutputMapConfig OutputManager::GetDigitalOutputMapConfig() const
+	{
+		return dio_map_.GetConfig();
 	}
 
 } // namespace weighing

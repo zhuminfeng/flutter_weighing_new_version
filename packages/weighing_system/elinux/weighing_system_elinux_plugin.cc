@@ -82,6 +82,158 @@ namespace
 		return def;
 	}
 
+	using EV = flutter::EncodableValue;
+	using EMap = flutter::EncodableMap;
+	using EList = flutter::EncodableList;
+
+	bool GetIntField(const EMap &m, const char *key, int *out)
+	{
+		auto it = m.find(EV(key));
+		if (it == m.end())
+			return false;
+		if (auto p = std::get_if<int>(&it->second))
+		{
+			*out = *p;
+			return true;
+		}
+		if (auto p64 = std::get_if<int64_t>(&it->second))
+		{
+			*out = static_cast<int>(*p64);
+			return true;
+		}
+		return false;
+	}
+
+	bool GetBoolField(const EMap &m, const char *key, bool *out)
+	{
+		auto it = m.find(EV(key));
+		if (it == m.end())
+			return false;
+		if (auto p = std::get_if<bool>(&it->second))
+		{
+			*out = *p;
+			return true;
+		}
+		return false;
+	}
+
+	bool ParseBinding(const EMap &item,
+					  weighing::DigitalOutputBinding *out,
+					  std::string *err)
+	{
+		int subsystem_id = 0, io_pos = 0, channel = 0, signal = 0, bit_index = 0, app_scope = -1;
+		bool active_high = true, enabled = true;
+
+		if (!GetIntField(item, "subsystem_id", &subsystem_id))
+		{
+			if (err)
+				*err = "binding missing subsystem_id";
+			return false;
+		}
+		if (!GetIntField(item, "io_pos", &io_pos))
+		{
+			if (err)
+				*err = "binding missing io_pos";
+			return false;
+		}
+		if (!GetIntField(item, "channel", &channel))
+		{
+			if (err)
+				*err = "binding missing channel";
+			return false;
+		}
+		if (!GetIntField(item, "signal", &signal))
+		{
+			if (err)
+				*err = "binding missing signal";
+			return false;
+		}
+		if (!GetIntField(item, "bit_index", &bit_index))
+		{
+			if (err)
+				*err = "binding missing bit_index";
+			return false;
+		}
+
+		// 可选字段
+		(void)GetBoolField(item, "active_high", &active_high);
+		(void)GetBoolField(item, "enabled", &enabled);
+		(void)GetIntField(item, "app_scope", &app_scope);
+
+		if (signal < 0 || signal > static_cast<int>(weighing::DigitalSignalType::kReadyInd))
+		{
+			if (err)
+				*err = "binding signal out of range";
+			return false;
+		}
+
+		out->subsystem_id = static_cast<uint32_t>(subsystem_id);
+		out->io_pos = static_cast<uint16_t>(io_pos);
+		out->channel = static_cast<uint16_t>(channel);
+		out->signal = static_cast<weighing::DigitalSignalType>(signal);
+		out->bit_index = static_cast<uint8_t>(bit_index);
+		out->active_high = active_high;
+		out->enabled = enabled;
+		out->app_scope = app_scope;
+		return true;
+	}
+
+	bool ParseDigitalOutputMapConfig(const EMap &args,
+									 weighing::DigitalOutputMapConfig *cfg,
+									 std::string *err)
+	{
+		int version = 1;
+		(void)GetIntField(args, "version", &version);
+		cfg->version = version;
+		cfg->bindings.clear();
+
+		auto it = args.find(EV("bindings"));
+		if (it == args.end())
+		{
+			if (err)
+				*err = "missing bindings";
+			return false;
+		}
+
+		const auto *list = std::get_if<EList>(&it->second);
+		if (!list)
+		{
+			if (err)
+				*err = "bindings must be list";
+			return false;
+		}
+
+		for (size_t i = 0; i < list->size(); ++i)
+		{
+			const auto *item_map = std::get_if<EMap>(&(*list)[i]);
+			if (!item_map)
+			{
+				if (err)
+					*err = "bindings[" + std::to_string(i) + "] must be map";
+				return false;
+			}
+			weighing::DigitalOutputBinding b;
+			std::string item_err;
+			if (!ParseBinding(*item_map, &b, &item_err))
+			{
+				if (err)
+					*err = "bindings[" + std::to_string(i) + "]: " + item_err;
+				return false;
+			}
+			cfg->bindings.push_back(b);
+		}
+
+		return true;
+	}
+
+	flutter::EncodableMap BuildMapResult(bool ok, const std::string &error = "")
+	{
+		flutter::EncodableMap out;
+		out[EV("ok")] = EV(ok);
+		out[EV("error")] = EV(error);
+		return out;
+	}
+
 	flutter::EncodableMap WeightDataToMap(const WeightData &data)
 	{
 		flutter::EncodableMap map;
@@ -274,6 +426,14 @@ namespace
 										std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 		void HandleGetAppStatus(const flutter::EncodableMap &args,
 								std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+
+		// === Digital output mapping ===
+		void HandleUpdateDigitalOutputMapConfig(const flutter::EncodableMap &args,
+												std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+		void HandleValidateDigitalOutputMapConfig(const flutter::EncodableMap &args,
+												  std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+		void HandleGetDigitalOutputMapConfig(const flutter::EncodableMap &args,
+											 std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 
 		// flutter::PluginRegistrar *registrar_;
 		std::unique_ptr<InputSource> input_source_;
@@ -694,6 +854,20 @@ namespace
 		else if (method == "getAppStatus")
 		{
 			HandleGetAppStatus(args, std::move(result));
+		}
+		else if (method == "getDigitalOutputMap")
+		{
+			HandleGetDigitalOutputMapConfig(args, std::move(result));
+		}
+
+		else if (method == "validateDigitalOutputMap")
+		{
+			HandleValidateDigitalOutputMapConfig(args, std::move(result));
+		}
+
+		else if (method == "updateDigitalOutputMap")
+		{
+			HandleUpdateDigitalOutputMapConfig(args, std::move(result));
 		}
 		else
 		{
@@ -2257,6 +2431,86 @@ namespace
 		result->Success(flutter::EncodableValue(map));
 	}
 
+	void WeighingSystemPlugin::HandleGetDigitalOutputMapConfig(const flutter::EncodableMap &args,
+															   std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		auto cfg = weighing::OutputManager::Instance().GetDigitalOutputMapConfig();
+
+		flutter::EncodableList bindings;
+		for (const auto &b : cfg.bindings)
+		{
+			flutter::EncodableMap item;
+			item[flutter::EncodableValue("subsystem_id")] = flutter::EncodableValue((int)b.subsystem_id);
+			item[flutter::EncodableValue("io_pos")] = flutter::EncodableValue((int)b.io_pos);
+			item[flutter::EncodableValue("channel")] = flutter::EncodableValue((int)b.channel);
+			item[flutter::EncodableValue("signal")] = flutter::EncodableValue((int)b.signal);
+			item[flutter::EncodableValue("bit_index")] = flutter::EncodableValue((int)b.bit_index);
+			item[flutter::EncodableValue("active_high")] = flutter::EncodableValue(b.active_high);
+			item[flutter::EncodableValue("enabled")] = flutter::EncodableValue(b.enabled);
+			item[flutter::EncodableValue("app_scope")] = flutter::EncodableValue((int)b.app_scope);
+			bindings.emplace_back(item);
+		}
+
+		flutter::EncodableMap out;
+		out[flutter::EncodableValue("version")] = flutter::EncodableValue(cfg.version);
+		out[flutter::EncodableValue("bindings")] = flutter::EncodableValue(bindings);
+		result->Success(flutter::EncodableValue(out));
+		return;
+	}
+
+	void WeighingSystemPlugin::HandleValidateDigitalOutputMapConfig(const flutter::EncodableMap &args,
+																	std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		weighing::DigitalOutputMapConfig cfg;
+		std::string parse_err;
+		if (!ParseDigitalOutputMapConfig(args, &cfg, &parse_err))
+		{
+			result->Success(flutter::EncodableValue(BuildMapResult(false, parse_err)));
+			return;
+		}
+
+		weighing::DigitalOutputMap tmp;
+		std::string err;
+		bool ok = tmp.SetConfig(cfg, &err);
+
+		flutter::EncodableMap out;
+		out[flutter::EncodableValue("ok")] = flutter::EncodableValue(ok);
+		out[flutter::EncodableValue("error")] = flutter::EncodableValue(err);
+		result->Success(flutter::EncodableValue(out));
+		return;
+	}
+
+	void WeighingSystemPlugin::HandleUpdateDigitalOutputMapConfig(const flutter::EncodableMap &args,
+																  std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		weighing::DigitalOutputMapConfig cfg;
+		std::string parse_err;
+		if (!ParseDigitalOutputMapConfig(args, &cfg, &parse_err))
+		{
+			result->Success(flutter::EncodableValue(BuildMapResult(false, parse_err)));
+			return;
+		}
+
+		std::string err;
+
+		// 1) 先校验 + 热应用（内存）
+		if (!OutputManager::Instance().UpdateDigitalOutputMap(cfg, &err))
+		{
+			result->Success(flutter::EncodableValue(BuildMapResult(false, "apply: " + err)));
+			return;
+		}
+
+		// 2) 再持久化到 input_mode.json
+		if (!SystemInitializer::Instance().SaveDigitalOutputMapToConfig(cfg, &err))
+		{
+			result->Success(flutter::EncodableValue(BuildMapResult(false, "save: " + err)));
+			return;
+		}
+
+		result->Success(flutter::EncodableValue(BuildMapResult(true, "")));
+		return;
+	}
+
 	// Weight event stream management
 	void WeighingSystemPlugin::StartWeightEventStream()
 	{
@@ -2368,7 +2622,7 @@ namespace
 				// 【新增】：将补料状态下发给物理 IO 模块！
 				// 参数：(子系统ID, 通道, 快速加料, 慢速加料, 补料阀, 排料阀)
 				// ====================================================================
-				OutputManager::Instance().SetValveOutputs(0, 0, false, false, is_refilling, false);
+				OutputManager::Instance().SetValveOutputs(0, 0, sub->GetApplication()->GetAppType(), false, false, is_refilling, false);
 
 				mock_ui_weight_.store(current_weight); // 存给 API 读取
 

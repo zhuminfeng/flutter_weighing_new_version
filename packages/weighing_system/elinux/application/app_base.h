@@ -97,7 +97,7 @@ namespace weighing
 
 		void SetValveOutputs(uint16_t channel, bool fast, bool slow, bool refill, bool emptying)
 		{
-			OutputManager::Instance().SetValveOutputs(subsystem_id_, channel, fast, slow, refill, emptying);
+			OutputManager::Instance().SetValveOutputs(subsystem_id_, channel, app_type_, fast, slow, refill, emptying);
 		}
 
 		void SetAlarmOutput(bool active);

@@ -5,6 +5,7 @@
 #include "../ethercat/ethercat_master.h"
 #include "servo_controller.h"
 #include "digital_io_controller.h"
+#include "digital_output_mapping.h"
 
 #include <memory>
 #include <map>
@@ -27,13 +28,15 @@ namespace weighing
 
 		// 子系统级控制（通过映射查找从站）
 		void SetControlRate(uint32_t subsystem_id, float rate_pct);
-		void SetValveOutputs(uint32_t subsystem_id, uint16_t channel,
+		void SetValveOutputs(uint32_t subsystem_id,
+							 uint16_t channel,
+							 AppType app_type,
 							 bool fast, bool slow, bool refill, bool emptying);
 
 		// 指示灯/报警输出（直接操作指定 IO 从站位置）
-		void SetAlarm(uint32_t io_pos, bool active);
-		void SetRunning(uint32_t io_pos, bool running);
-		void SetWarning(uint32_t io_pos, bool warning);
+		void SetAlarm(uint32_t subsystem_id, AppType app_type, bool active);
+		void SetRunning(uint32_t subsystem_id, AppType app_type, bool running);
+		void SetWarning(uint32_t subsystem_id, AppType app_type, bool warning);
 
 		void SetDioInputCallback(DioInputCallback cb) { dio_callback_ = cb; }
 
@@ -58,11 +61,19 @@ namespace weighing
 		ServoController *GetServo(uint16_t pos);
 		DigitalIOController *GetDigitalIO(uint16_t pos);
 
+		bool UpdateDigitalOutputMap(const DigitalOutputMapConfig &cfg, std::string *err = nullptr);
+		DigitalOutputMapConfig GetDigitalOutputMapConfig() const;
+
+		DigitalOutputMap GetDigitalOutputMap() { return dio_map_; }
+
+		const std::map<uint32_t, uint16_t> &GetSubsystemIOMap() const { return subsystem_io_map_; }
+
 	private:
 		OutputManager() = default;
 		~OutputManager() { Stop(); }
 
 		void OnCyclicOutput(uint8_t *domain_data);
+		DigitalOutputMap dio_map_;
 
 		std::map<uint16_t, std::unique_ptr<ServoController>> servos_;
 		std::map<uint16_t, std::unique_ptr<DigitalIOController>> digital_ios_;

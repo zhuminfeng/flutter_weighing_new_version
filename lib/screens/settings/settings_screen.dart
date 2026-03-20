@@ -5,6 +5,7 @@ import 'scale_settings_screen.dart';
 import 'calibration_screen.dart';
 import 'filter_screen.dart';
 import 'app_settings_screen.dart';
+import 'digital_output_settings_screen.dart'; // 新增
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -56,6 +57,20 @@ class SettingsScreen extends StatelessWidget {
               MaterialPageRoute(builder: (_) => const AppSettingsScreen()),
             ),
           ),
+
+          // 新增：Digital Output Mapping 入口
+          _SettingsTile(
+            icon: Icons.power,
+            title: 'Digital Output Mapping',
+            subtitle: 'DO bit routing / subsystem mapping',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const DigitalOutputSettingsScreen(),
+              ),
+            ),
+          ),
+
           const Divider(),
           _SettingsTile(
             icon: Icons.language,

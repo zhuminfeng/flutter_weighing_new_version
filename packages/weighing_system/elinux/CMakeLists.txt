@@ -43,6 +43,7 @@ set(CXX_SOURCES
   "input/shmem_input.cc"
   "input/input_factory.cc"
   "output/output_manager.cc"
+  "output/digital_output_mapping.cc"
   "output/digital_io_controller.cc"
   "output/servo_controller.cc"
   "application/app_base.cc"

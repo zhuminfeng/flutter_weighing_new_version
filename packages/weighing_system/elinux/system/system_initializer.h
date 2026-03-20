@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include "../output/digital_output_mapping.h"
 
 namespace weighing
 {
@@ -31,6 +32,8 @@ namespace weighing
 
 		bool IsInitialized() const { return initialized_; }
 		const std::string &GetInputMode() const { return input_mode_; }
+
+		bool SaveDigitalOutputMapToConfig(const DigitalOutputMapConfig &cfg, std::string *err);
 
 	private:
 		SystemInitializer() = default;
@@ -73,6 +76,10 @@ namespace weighing
 				std::string description;
 			};
 			std::vector<SubMapping> subsystem_mappings;
+
+			// DIO 映射配置
+			DigitalOutputMapConfig dio_map_cfg;
+			bool has_dio_map_cfg = false;
 
 			// shmem config
 			std::string shm_path = "/dev/mem";

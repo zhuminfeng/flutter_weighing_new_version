@@ -40,6 +40,22 @@
     ]
   },
 
+  "digital_output_map": {
+    "version": 1,
+    "bindings": [
+      {
+        "subsystem_id": 1,
+        "io_pos": 3,
+        "channel": 0,
+        "signal": 0,
+        "bit_index": 0,
+        "active_high": true,
+        "enabled": true,
+        "app_scope": -1
+      }
+    ]
+  },
+
   "subsystem_mapping": {
     "0": {
       "servo_position": 0,
