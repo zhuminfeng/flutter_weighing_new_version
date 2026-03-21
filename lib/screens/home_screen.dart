@@ -23,12 +23,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
+    final l = AppLocalizations.of(context)!;
     final state = AppStateProvider.of(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l.tr('appTitle')),
+        title: Text(l.appTitle),
         actions: [
           // Language toggle
           PopupMenuButton<Locale>(
@@ -38,14 +38,8 @@ class _HomeScreenState extends State<HomeScreen> {
               state.setLocale(locale);
             },
             itemBuilder: (ctx) => [
-              PopupMenuItem(
-                value: const Locale('zh'),
-                child: Text(l.tr('chinese')),
-              ),
-              PopupMenuItem(
-                value: const Locale('en'),
-                child: Text(l.tr('english')),
-              ),
+              PopupMenuItem(value: const Locale('zh'), child: Text(l.chinese)),
+              PopupMenuItem(value: const Locale('en'), child: Text(l.english)),
             ],
           ),
           IconButton(
@@ -72,24 +66,21 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(
-            l.tr('selectApp'),
-            style: Theme.of(context).textTheme.headlineMedium,
-          ),
+          Text(l.selectApp, style: Theme.of(context).textTheme.headlineMedium),
           const SizedBox(height: 48),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               _AppCard(
                 icon: Icons.trending_down,
-                title: l.tr('lossInWeight'),
+                title: l.lossInWeight,
                 color: Colors.blue,
                 onTap: () => state.selectAppType(0),
               ),
               const SizedBox(width: 32),
               _AppCard(
                 icon: Icons.local_drink,
-                title: l.tr('filling'),
+                title: l.filling,
                 color: Colors.green,
                 onTap: () => state.selectAppType(1),
               ),
@@ -98,7 +89,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 24),
           TextButton.icon(
             icon: const Icon(Icons.settings),
-            label: Text(l.tr('settings')),
+            label: Text(l.settings),
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const SettingsScreen()),

@@ -16,15 +16,11 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
     4,
     (_) => TextEditingController(),
   );
+
   String _calStatus = '';
   bool _calInProgress = false;
-
-  static const _linearModeLabels = [
-    'Disabled (Zero + 1 point)',
-    '3-Point (Zero + Mid + High)',
-    '4-Point (Zero + Low + Mid + High)',
-    '5-Point (Zero + Low + Mid + MidHigh + High)',
-  ];
+  // 新增一个 flag，用于正确判断状态框颜色，避免依赖英文字符串匹配
+  bool _isCalError = false;
 
   // Step calibration
   final TextEditingController _stepWeightController = TextEditingController(
@@ -39,27 +35,33 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
   }
 
   Future<void> _doZeroCal() async {
+    final l = AppLocalizations.of(context)!;
     setState(() {
       _calInProgress = true;
-      _calStatus = 'Zero calibration in progress...';
+      _isCalError = false;
+      _calStatus = l.calZeroInProgress;
     });
     try {
       await WeighingPlatform.instance.triggerCalZero(_scaleId);
       // In real app: listen to calibration event stream for completion
       await Future.delayed(const Duration(seconds: 3));
+      if (!mounted) return;
       setState(() {
-        _calStatus = 'Zero calibration completed';
+        _calStatus = l.calZeroCompleted;
         _calInProgress = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
-        _calStatus = 'Zero calibration failed: $e';
+        _isCalError = true;
+        _calStatus = '${l.calZeroFailed}$e';
         _calInProgress = false;
       });
     }
   }
 
   Future<void> _doSpanCal() async {
+    final l = AppLocalizations.of(context)!;
     List<double> loads = [];
     int numPoints;
     switch (_linearMode) {
@@ -82,7 +84,10 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
     for (int i = 0; i < numPoints; i++) {
       final v = double.tryParse(_loadControllers[i].text);
       if (v == null || v <= 0) {
-        setState(() => _calStatus = 'Invalid test load ${i + 1}');
+        setState(() {
+          _isCalError = true;
+          _calStatus = '${l.invalidTestLoad} ${i + 1}';
+        });
         return;
       }
       loads.add(v);
@@ -90,7 +95,8 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
 
     setState(() {
       _calInProgress = true;
-      _calStatus = 'Span calibration in progress...';
+      _isCalError = false;
+      _calStatus = l.calSpanInProgress;
     });
     try {
       await WeighingPlatform.instance.triggerCalSpan(
@@ -99,59 +105,75 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
         loads,
       );
       await Future.delayed(const Duration(seconds: 5));
-      setState(
-        () => _calStatus = 'Span calibration - waiting for confirmation',
-      );
-    } catch (e) {
+      if (!mounted) return;
       setState(() {
-        _calStatus = 'Span calibration failed: $e';
+        _calStatus = l.calSpanWaiting;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isCalError = true;
+        _calStatus = '${l.calSpanFailed}$e';
         _calInProgress = false;
       });
     }
   }
 
   Future<void> _saveCal() async {
+    final l = AppLocalizations.of(context)!;
     try {
       final ok = await WeighingPlatform.instance.triggerSaveCalibration(
         _scaleId,
       );
+      if (!mounted) return;
       setState(() {
-        _calStatus = ok
-            ? 'Calibration saved successfully'
-            : 'Failed to save calibration';
+        _isCalError = !ok;
+        _calStatus = ok ? l.calSavedSuccess : l.calSaveFailed;
         _calInProgress = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
-        _calStatus = 'Save failed: $e';
+        _isCalError = true;
+        _calStatus = '${l.saveFailed}$e';
         _calInProgress = false;
       });
     }
   }
 
   Future<void> _abortCal() async {
+    final l = AppLocalizations.of(context)!;
     await WeighingPlatform.instance.triggerAbortCalibration(_scaleId);
+    if (!mounted) return;
     setState(() {
-      _calStatus = 'Calibration aborted';
+      _isCalError = false;
+      _calStatus = l.calAborted;
       _calInProgress = false;
     });
   }
 
   Future<void> _doStepCal() async {
+    final l = AppLocalizations.of(context)!;
     final w = double.tryParse(_stepWeightController.text);
     if (w == null || w <= 0) {
-      setState(() => _calStatus = 'Invalid step test weight');
+      setState(() {
+        _isCalError = true;
+        _calStatus = l.invalidStepWeight;
+      });
       return;
     }
     setState(() {
       _calInProgress = true;
-      _calStatus = 'Step calibration started...';
+      _isCalError = false;
+      _calStatus = l.calStepStarted;
     });
     try {
       await WeighingPlatform.instance.triggerStepCalibration(_scaleId, w);
     } catch (e) {
+      if (!mounted) return;
       setState(() {
-        _calStatus = 'Step calibration failed: $e';
+        _isCalError = true;
+        _calStatus = '${l.calStepFailed}$e';
         _calInProgress = false;
       });
     }
@@ -159,7 +181,16 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
+    final l = AppLocalizations.of(context)!;
+
+    // 动态生成模式标签，支持国际化切换
+    final linearModeLabels = [
+      l.linearDisabled,
+      l.linear3Point,
+      l.linear4Point,
+      l.linear5Point,
+    ];
+
     int numPoints;
     switch (_linearMode) {
       case 0:
@@ -179,24 +210,18 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text(l.tr('calibration'))),
+      appBar: AppBar(title: Text(l.calibration)),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Status
+          // Status Box
           if (_calStatus.isNotEmpty)
             Card(
-              color:
-                  _calStatus.contains('failed') ||
-                      _calStatus.contains('Invalid')
-                  ? Colors.red.shade50
-                  : Colors.green.shade50,
+              color: _isCalError ? Colors.red.shade50 : Colors.green.shade50,
               child: ListTile(
                 leading: Icon(
-                  _calStatus.contains('failed') ? Icons.error : Icons.info,
-                  color: _calStatus.contains('failed')
-                      ? Colors.red
-                      : Colors.green,
+                  _isCalError ? Icons.error : Icons.info,
+                  color: _isCalError ? Colors.red : Colors.green,
                 ),
                 title: Text(_calStatus),
               ),
@@ -211,15 +236,15 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    l.tr('calZero'),
+                    l.calZero,
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 8),
-                  const Text('Clear the scale platform and press Start.'),
+                  Text(l.clearScalePressStart),
                   const SizedBox(height: 12),
                   ElevatedButton.icon(
                     icon: const Icon(Icons.play_arrow),
-                    label: Text(l.tr('calStart')),
+                    label: Text(l.calStart),
                     onPressed: _calInProgress ? null : _doZeroCal,
                   ),
                 ],
@@ -236,23 +261,23 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    l.tr('calSpan'),
+                    l.calSpan,
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 8),
 
                   DropdownButtonFormField<int>(
                     value: _linearMode,
-                    decoration: const InputDecoration(
-                      labelText: 'Linear Calibration',
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: l.linearCalibration,
+                      border: const OutlineInputBorder(),
                       isDense: true,
                     ),
                     items: List.generate(
                       4,
                       (i) => DropdownMenuItem(
                         value: i,
-                        child: Text(_linearModeLabels[i]),
+                        child: Text(linearModeLabels[i]),
                       ),
                     ),
                     onChanged: (v) => setState(() => _linearMode = v!),
@@ -263,7 +288,8 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
                     TextFormField(
                       controller: _loadControllers[i],
                       decoration: InputDecoration(
-                        labelText: 'Test Load ${i + 1} (kg)',
+                        // 使用带参生成的属性
+                        labelText: l.testLoadKg(i + 1),
                         border: const OutlineInputBorder(),
                         isDense: true,
                       ),
@@ -278,19 +304,19 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
                     children: [
                       ElevatedButton.icon(
                         icon: const Icon(Icons.play_arrow),
-                        label: Text(l.tr('calStart')),
+                        label: Text(l.calStart),
                         onPressed: _calInProgress ? null : _doSpanCal,
                       ),
                       const SizedBox(width: 8),
                       ElevatedButton.icon(
                         icon: const Icon(Icons.save),
-                        label: Text(l.tr('calSave')),
+                        label: Text(l.calSave),
                         onPressed: _calInProgress ? _saveCal : null,
                       ),
                       const SizedBox(width: 8),
                       OutlinedButton.icon(
                         icon: const Icon(Icons.cancel),
-                        label: Text(l.tr('calAbort')),
+                        label: Text(l.calAbort),
                         onPressed: _calInProgress ? _abortCal : null,
                       ),
                     ],
@@ -309,15 +335,15 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    l.tr('calStep'),
+                    l.calStep,
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 8),
                   TextFormField(
                     controller: _stepWeightController,
-                    decoration: const InputDecoration(
-                      labelText: 'Test Weight (kg)',
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: l.testWeightKg,
+                      border: const OutlineInputBorder(),
                       isDense: true,
                     ),
                     keyboardType: const TextInputType.numberWithOptions(
@@ -327,7 +353,7 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
                   const SizedBox(height: 12),
                   ElevatedButton.icon(
                     icon: const Icon(Icons.play_arrow),
-                    label: Text(l.tr('calStart')),
+                    label: Text(l.calStart),
                     onPressed: _calInProgress ? null : _doStepCal,
                   ),
                 ],

@@ -72,6 +72,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   int _fillingWorkMode = 0;
   int _powerFailRecovery = 0;
   int _startDelay = 0;
+
   // Filling configs
   int _fillingFeedSpeed = 1;
   double _fillingTargetValue = 1;
@@ -114,23 +115,6 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   double _fillingFineFeedSpeed = 30;
 
   bool _loading = true;
-
-  static const _appTypeLabels = ['Loss-in-Weight', 'Filling/Dispensing'];
-  static const _liwModeLabels = [
-    'Continuous',
-    'Batch',
-    'System Identification',
-  ];
-  static const _liwSubModeLabels = ['Flow Control', 'Fixed Frequency'];
-  static const _fillingWorkModeLabels = [
-    'Fill',
-    'Fill/Empty',
-    'Dispense',
-    'Refill/Dispense',
-    'Absolute Value',
-  ];
-  static const _powerFailLabels = ['Idle', 'Pause'];
-  static const _startDelayLabels = ['Disabled', '5 min', '15 min', '30 min'];
 
   @override
   void initState() {
@@ -538,29 +522,44 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context).tr('save'))),
+        SnackBar(content: Text(AppLocalizations.of(context)!.save)),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
+    // 强制声明解包获取生成的本地化实例
+    final l = AppLocalizations.of(context)!;
+
+    // 动态生成多语言下拉菜单文本
+    final appTypeLabels = [l.lossInWeight, l.filling];
+    final liwModeLabels = [l.continuous, l.batch, l.systemId];
+    final liwSubModeLabels = [l.flowControl, l.fixedFrequency];
+    final fillingWorkModeLabels = [
+      l.fill,
+      l.fillEmpty,
+      l.dispense,
+      l.refillDispense,
+      l.absoluteValue,
+    ];
+    final powerFailLabels = [l.idle, l.pause];
+    final startDelayLabels = [l.disabled, l.min5, l.min15, l.min30];
 
     if (_loading) {
       return Scaffold(
-        appBar: AppBar(title: Text(l.tr('appSettings'))),
+        appBar: AppBar(title: Text(l.appSettings)),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l.tr('appSettings')),
+        title: Text(l.appSettings),
         actions: [
           TextButton.icon(
             icon: const Icon(Icons.save),
-            label: Text(l.tr('save')),
+            label: Text(l.save),
             onPressed: _save,
           ),
         ],
@@ -568,16 +567,15 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // 1. App type selection: 改用分段按钮直接点击切换
+          // 1. App type selection
           Padding(
             padding: const EdgeInsets.only(bottom: 24.0),
             child: SizedBox(
               width: double.infinity,
               child: SegmentedButton<int>(
                 segments: List.generate(
-                  _appTypeLabels.length,
-                  (i) =>
-                      ButtonSegment(value: i, label: Text(_appTypeLabels[i])),
+                  appTypeLabels.length,
+                  (i) => ButtonSegment(value: i, label: Text(appTypeLabels[i])),
                 ),
                 selected: {_appType},
                 onSelectionChanged: (Set<int> newSelection) {
@@ -593,16 +591,16 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           if (_appType == 0) ...[
             _buildExpandableCard(
               context: context,
-              title: 'Base',
+              title: l.baseConfig,
               children: [
                 DropdownButtonFormField<int>(
                   value: _liwMode,
-                  decoration: const InputDecoration(labelText: 'Mode'),
+                  decoration: InputDecoration(labelText: l.mode),
                   items: List.generate(
-                    _liwModeLabels.length,
+                    liwModeLabels.length,
                     (i) => DropdownMenuItem(
                       value: i,
-                      child: Text(_liwModeLabels[i]),
+                      child: Text(liwModeLabels[i]),
                     ),
                   ),
                   onChanged: (v) => setState(() => _liwMode = v!),
@@ -610,12 +608,12 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 if (_liwMode == 0)
                   DropdownButtonFormField<int>(
                     value: _liwSubMode,
-                    decoration: const InputDecoration(labelText: 'Sub-Mode'),
+                    decoration: InputDecoration(labelText: l.subMode),
                     items: List.generate(
-                      _liwSubModeLabels.length,
+                      liwSubModeLabels.length,
                       (i) => DropdownMenuItem(
                         value: i,
-                        child: Text(_liwSubModeLabels[i]),
+                        child: Text(liwSubModeLabels[i]),
                       ),
                     ),
                     onChanged: (v) => setState(() => _liwSubMode = v!),
@@ -624,11 +622,11 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             ),
             _buildExpandableCard(
               context: context,
-              title: 'System',
+              title: l.system,
               children: [
                 TextFormField(
                   initialValue: _liwSafetyLimit.toString(),
-                  decoration: const InputDecoration(labelText: 'Safety Limit'),
+                  decoration: InputDecoration(labelText: l.safetyLimit),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () =>
@@ -637,7 +635,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 TextFormField(
                   initialValue: _liwHopperMin.toString(),
-                  decoration: const InputDecoration(labelText: 'Hopper Min'),
+                  decoration: InputDecoration(labelText: l.hopperMin),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _liwHopperMin = double.tryParse(v) ?? _liwHopperMin,
@@ -645,7 +643,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 TextFormField(
                   initialValue: _liwHopperMax.toString(),
-                  decoration: const InputDecoration(labelText: 'Hopper Max'),
+                  decoration: InputDecoration(labelText: l.hopperMax),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _liwHopperMax = double.tryParse(v) ?? _liwHopperMax,
@@ -653,7 +651,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 TextFormField(
                   initialValue: _liwTargetFlow.toString(),
-                  decoration: const InputDecoration(labelText: 'Target Flow'),
+                  decoration: InputDecoration(labelText: l.targetFlow),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _liwTargetFlow = double.tryParse(v) ?? _liwTargetFlow,
@@ -661,9 +659,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 TextFormField(
                   initialValue: _liwTargetControlRate.toString(),
-                  decoration: const InputDecoration(
-                    labelText: 'Target Control Rate',
-                  ),
+                  decoration: InputDecoration(labelText: l.targetControlRate),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _liwTargetControlRate =
@@ -671,7 +667,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                   ),
                 ),
                 SwitchListTile(
-                  title: const Text('Pre Refill'),
+                  title: Text(l.preRefill),
                   value: _liwPreRefill,
                   contentPadding: EdgeInsets.zero,
                   onChanged: (v) => setState(() => _liwPreRefill = v),
@@ -680,13 +676,11 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             ),
             _buildExpandableCard(
               context: context,
-              title: 'System ID',
+              title: l.systemId,
               children: [
                 TextFormField(
                   initialValue: _liwAdjustRangeLower.toString(),
-                  decoration: const InputDecoration(
-                    labelText: 'Adjust Range Lower',
-                  ),
+                  decoration: InputDecoration(labelText: l.adjustRangeLower),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _liwAdjustRangeLower =
@@ -695,9 +689,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 TextFormField(
                   initialValue: _liwAdjustRangeUpper.toString(),
-                  decoration: const InputDecoration(
-                    labelText: 'Adjust Range Upper',
-                  ),
+                  decoration: InputDecoration(labelText: l.adjustRangeUpper),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _liwAdjustRangeUpper =
@@ -705,14 +697,14 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                   ),
                 ),
                 SwitchListTile(
-                  title: const Text('Smart Step Control'),
+                  title: Text(l.smartStepControl),
                   value: _liwSmartStepControl,
                   contentPadding: EdgeInsets.zero,
                   onChanged: (v) => setState(() => _liwSmartStepControl = v),
                 ),
                 TextFormField(
                   initialValue: _liwStepDuration.toString(),
-                  decoration: const InputDecoration(labelText: 'Step Duration'),
+                  decoration: InputDecoration(labelText: l.stepDuration),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _liwStepDuration =
@@ -721,9 +713,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 TextFormField(
                   initialValue: _liwFilterWindowSysId.toString(),
-                  decoration: const InputDecoration(
-                    labelText: 'Filter Window (SysId)',
-                  ),
+                  decoration: InputDecoration(labelText: l.filterWindowSysId),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _liwFilterWindowSysId =
@@ -734,22 +724,20 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             ),
             _buildExpandableCard(
               context: context,
-              title: 'Controller',
+              title: l.controller,
               children: [
                 DropdownButtonFormField<int>(
                   value: _liwTuningMode,
-                  decoration: const InputDecoration(labelText: 'Tuning Mode'),
-                  items: const [
-                    DropdownMenuItem(value: 0, child: Text('Auto')),
-                    DropdownMenuItem(value: 1, child: Text('Manual')),
+                  decoration: InputDecoration(labelText: l.tuningMode),
+                  items: [
+                    DropdownMenuItem(value: 0, child: Text(l.auto)),
+                    DropdownMenuItem(value: 1, child: Text(l.manual)),
                   ],
                   onChanged: (v) => setState(() => _liwTuningMode = v!),
                 ),
                 TextFormField(
                   initialValue: _liwFilterWindowCtrl.toString(),
-                  decoration: const InputDecoration(
-                    labelText: 'Filter Window (Ctrl)',
-                  ),
+                  decoration: InputDecoration(labelText: l.filterWindowCtrl),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _liwFilterWindowCtrl =
@@ -758,28 +746,28 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 TextFormField(
                   initialValue: _liwKp.toString(),
-                  decoration: const InputDecoration(labelText: 'Kp'),
+                  decoration: InputDecoration(labelText: l.kp),
                   keyboardType: TextInputType.number,
                   onChanged: (v) =>
                       setState(() => _liwKp = double.tryParse(v) ?? _liwKp),
                 ),
                 TextFormField(
                   initialValue: _liwKi.toString(),
-                  decoration: const InputDecoration(labelText: 'Ki'),
+                  decoration: InputDecoration(labelText: l.ki),
                   keyboardType: TextInputType.number,
                   onChanged: (v) =>
                       setState(() => _liwKi = double.tryParse(v) ?? _liwKi),
                 ),
                 TextFormField(
                   initialValue: _liwKd.toString(),
-                  decoration: const InputDecoration(labelText: 'Kd'),
+                  decoration: InputDecoration(labelText: l.kd),
                   keyboardType: TextInputType.number,
                   onChanged: (v) =>
                       setState(() => _liwKd = double.tryParse(v) ?? _liwKd),
                 ),
                 TextFormField(
                   initialValue: _liwMaxFlow.toString(),
-                  decoration: const InputDecoration(labelText: 'Max Flow'),
+                  decoration: InputDecoration(labelText: l.maxFlow),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _liwMaxFlow = double.tryParse(v) ?? _liwMaxFlow,
@@ -787,7 +775,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 TextFormField(
                   initialValue: _liwStartupTime.toString(),
-                  decoration: const InputDecoration(labelText: 'Startup Time'),
+                  decoration: InputDecoration(labelText: l.startupTime),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () =>
@@ -798,20 +786,20 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             ),
             _buildExpandableCard(
               context: context,
-              title: 'Refill',
+              title: l.refill,
               children: [
                 DropdownButtonFormField<int>(
                   value: _liwRefillMode,
-                  decoration: const InputDecoration(labelText: 'Mode'),
-                  items: const [
-                    DropdownMenuItem(value: 0, child: Text('Auto')),
-                    DropdownMenuItem(value: 1, child: Text('Manual')),
+                  decoration: InputDecoration(labelText: l.mode),
+                  items: [
+                    DropdownMenuItem(value: 0, child: Text(l.auto)),
+                    DropdownMenuItem(value: 1, child: Text(l.manual)),
                   ],
                   onChanged: (v) => setState(() => _liwRefillMode = v!),
                 ),
                 TextFormField(
                   initialValue: _liwLowerLimit.toString(),
-                  decoration: const InputDecoration(labelText: 'Lower Limit'),
+                  decoration: InputDecoration(labelText: l.lowerLimit),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _liwLowerLimit = double.tryParse(v) ?? _liwLowerLimit,
@@ -819,7 +807,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 TextFormField(
                   initialValue: _liwUpperLimit.toString(),
-                  decoration: const InputDecoration(labelText: 'Upper Limit'),
+                  decoration: InputDecoration(labelText: l.upperLimit),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _liwUpperLimit = double.tryParse(v) ?? _liwUpperLimit,
@@ -827,19 +815,17 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 DropdownButtonFormField<int>(
                   value: _liwRefillControlMode,
-                  decoration: const InputDecoration(labelText: 'Control Mode'),
-                  items: const [
-                    DropdownMenuItem(value: 0, child: Text('Fixed')),
-                    DropdownMenuItem(value: 1, child: Text('Last Freq')),
-                    DropdownMenuItem(value: 2, child: Text('Smart')),
+                  decoration: InputDecoration(labelText: l.controlMode),
+                  items: [
+                    DropdownMenuItem(value: 0, child: Text(l.fixed)),
+                    DropdownMenuItem(value: 1, child: Text(l.lastFreq)),
+                    DropdownMenuItem(value: 2, child: Text(l.smart)),
                   ],
                   onChanged: (v) => setState(() => _liwRefillControlMode = v!),
                 ),
                 TextFormField(
                   initialValue: _liwRefillControlSetpoint.toString(),
-                  decoration: const InputDecoration(
-                    labelText: 'Control Setpoint',
-                  ),
+                  decoration: InputDecoration(labelText: l.controlSetpoint),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _liwRefillControlSetpoint =
@@ -848,9 +834,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 TextFormField(
                   initialValue: _liwRefillStabilizeTime.toString(),
-                  decoration: const InputDecoration(
-                    labelText: 'Stabilize Time',
-                  ),
+                  decoration: InputDecoration(labelText: l.stabilizeTime),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _liwRefillStabilizeTime =
@@ -861,11 +845,11 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             ),
             _buildExpandableCard(
               context: context,
-              title: 'Target Values',
+              title: l.targetValues,
               children: [
                 TextFormField(
                   initialValue: _liwBatchTarget.toString(),
-                  decoration: const InputDecoration(labelText: 'Batch Target'),
+                  decoration: InputDecoration(labelText: l.batchTarget),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () =>
@@ -874,7 +858,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 TextFormField(
                   initialValue: _liwInFlight.toString(),
-                  decoration: const InputDecoration(labelText: 'In Flight'),
+                  decoration: InputDecoration(labelText: l.inFlight),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _liwInFlight = double.tryParse(v) ?? _liwInFlight,
@@ -882,9 +866,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 TextFormField(
                   initialValue: _liwFineFeedThreshold.toString(),
-                  decoration: const InputDecoration(
-                    labelText: 'Fine Feed Threshold',
-                  ),
+                  decoration: InputDecoration(labelText: l.fineFeedThreshold),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _liwFineFeedThreshold =
@@ -893,9 +875,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 TextFormField(
                   initialValue: _liwFineFeedFlow.toString(),
-                  decoration: const InputDecoration(
-                    labelText: 'Fine Feed Flow',
-                  ),
+                  decoration: InputDecoration(labelText: l.fineFeedFlow),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _liwFineFeedFlow =
@@ -906,13 +886,11 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             ),
             _buildExpandableCard(
               context: context,
-              title: 'Tolerance Check',
+              title: l.toleranceCheck,
               children: [
                 TextFormField(
                   initialValue: _liwPreCheckDelay.toString(),
-                  decoration: const InputDecoration(
-                    labelText: 'Pre Check Delay',
-                  ),
+                  decoration: InputDecoration(labelText: l.preCheckDelay),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _liwPreCheckDelay =
@@ -921,9 +899,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 TextFormField(
                   initialValue: _liwStabilityTimeout.toString(),
-                  decoration: const InputDecoration(
-                    labelText: 'Stability Timeout',
-                  ),
+                  decoration: InputDecoration(labelText: l.stabilityTimeout),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _liwStabilityTimeout =
@@ -932,7 +908,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 TextFormField(
                   initialValue: _liwTolerance.toString(),
-                  decoration: const InputDecoration(labelText: 'Tolerance'),
+                  decoration: InputDecoration(labelText: l.tolerance),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _liwTolerance = double.tryParse(v) ?? _liwTolerance,
@@ -942,19 +918,17 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             ),
             _buildExpandableCard(
               context: context,
-              title: 'Emptying',
+              title: l.emptying,
               children: [
                 SwitchListTile(
-                  title: const Text('Auto Stop At Alarm'),
+                  title: Text(l.autoStopAtAlarm),
                   value: _liwAutoStopAtAlarm,
                   contentPadding: EdgeInsets.zero,
                   onChanged: (v) => setState(() => _liwAutoStopAtAlarm = v),
                 ),
                 TextFormField(
                   initialValue: _liwEmptyingControlSetpoint.toString(),
-                  decoration: const InputDecoration(
-                    labelText: 'Control Setpoint',
-                  ),
+                  decoration: InputDecoration(labelText: l.controlSetpoint),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _liwEmptyingControlSetpoint =
@@ -965,13 +939,11 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             ),
             _buildExpandableCard(
               context: context,
-              title: 'Warning',
+              title: l.warningConfig,
               children: [
                 TextFormField(
                   initialValue: _liwControlRateLower.toString(),
-                  decoration: const InputDecoration(
-                    labelText: 'Control Rate Lower',
-                  ),
+                  decoration: InputDecoration(labelText: l.controlRateLower),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _liwControlRateLower =
@@ -980,9 +952,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 TextFormField(
                   initialValue: _liwControlRateUpper.toString(),
-                  decoration: const InputDecoration(
-                    labelText: 'Control Rate Upper',
-                  ),
+                  decoration: InputDecoration(labelText: l.controlRateUpper),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _liwControlRateUpper =
@@ -991,9 +961,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 TextFormField(
                   initialValue: _liwRefillTimeout.toString(),
-                  decoration: const InputDecoration(
-                    labelText: 'Refill Timeout',
-                  ),
+                  decoration: InputDecoration(labelText: l.refillTimeout),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _liwRefillTimeout =
@@ -1001,7 +969,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                   ),
                 ),
                 SwitchListTile(
-                  title: const Text('Stop On Error'),
+                  title: Text(l.stopOnError),
                   value: _liwStopOnError,
                   contentPadding: EdgeInsets.zero,
                   onChanged: (v) => setState(() => _liwStopOnError = v),
@@ -1010,13 +978,11 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             ),
             _buildExpandableCard(
               context: context,
-              title: 'Flow Monitor',
+              title: l.flowMonitor,
               children: [
                 TextFormField(
                   initialValue: _liwEvaluationWindow.toString(),
-                  decoration: const InputDecoration(
-                    labelText: 'Evaluation Window',
-                  ),
+                  decoration: InputDecoration(labelText: l.evaluationWindow),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _liwEvaluationWindow =
@@ -1025,9 +991,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 TextFormField(
                   initialValue: _liwDeviationThreshold.toString(),
-                  decoration: const InputDecoration(
-                    labelText: 'Deviation Threshold',
-                  ),
+                  decoration: InputDecoration(labelText: l.deviationThreshold),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _liwDeviationThreshold =
@@ -1036,9 +1000,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 TextFormField(
                   initialValue: _liwSurgeThreshold.toString(),
-                  decoration: const InputDecoration(
-                    labelText: 'Surge Threshold',
-                  ),
+                  decoration: InputDecoration(labelText: l.surgeThreshold),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _liwSurgeThreshold =
@@ -1049,19 +1011,17 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             ),
             _buildExpandableCard(
               context: context,
-              title: 'Advanced',
+              title: l.advancedConfig,
               children: [
                 SwitchListTile(
-                  title: const Text('Interlock Enabled'),
+                  title: Text(l.interlockEnabled),
                   value: _liwInterlockEnabled,
                   contentPadding: EdgeInsets.zero,
                   onChanged: (v) => setState(() => _liwInterlockEnabled = v),
                 ),
                 TextFormField(
                   initialValue: _liwInterlockDelay.toString(),
-                  decoration: const InputDecoration(
-                    labelText: 'Interlock Delay',
-                  ),
+                  decoration: InputDecoration(labelText: l.interlockDelay),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _liwInterlockDelay =
@@ -1072,11 +1032,11 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             ),
             _buildExpandableCard(
               context: context,
-              title: 'Stats',
+              title: l.stats,
               children: [
                 TextFormField(
                   initialValue: _liwSamplePeriod.toString(),
-                  decoration: const InputDecoration(labelText: 'Sample Period'),
+                  decoration: InputDecoration(labelText: l.samplePeriod),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _liwSamplePeriod =
@@ -1085,9 +1045,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 TextFormField(
                   initialValue: _liwSampleTolerance.toString(),
-                  decoration: const InputDecoration(
-                    labelText: 'Sample Tolerance',
-                  ),
+                  decoration: InputDecoration(labelText: l.sampleTolerance),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _liwSampleTolerance =
@@ -1102,52 +1060,50 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           if (_appType == 1) ...[
             _buildExpandableCard(
               context: context,
-              title: 'General',
+              title: l.general,
               children: [
                 DropdownButtonFormField<int>(
                   value: _fillingWorkMode,
-                  decoration: const InputDecoration(labelText: 'Work Mode'),
+                  decoration: InputDecoration(labelText: l.workMode),
                   items: List.generate(
-                    _fillingWorkModeLabels.length,
+                    fillingWorkModeLabels.length,
                     (i) => DropdownMenuItem(
                       value: i,
-                      child: Text(_fillingWorkModeLabels[i]),
+                      child: Text(fillingWorkModeLabels[i]),
                     ),
                   ),
                   onChanged: (v) => setState(() => _fillingWorkMode = v!),
                 ),
                 DropdownButtonFormField<int>(
                   value: _powerFailRecovery,
-                  decoration: const InputDecoration(
-                    labelText: 'Power Fail Recovery',
-                  ),
+                  decoration: InputDecoration(labelText: l.powerFailRecovery),
                   items: List.generate(
-                    _powerFailLabels.length,
+                    powerFailLabels.length,
                     (i) => DropdownMenuItem(
                       value: i,
-                      child: Text(_powerFailLabels[i]),
+                      child: Text(powerFailLabels[i]),
                     ),
                   ),
                   onChanged: (v) => setState(() => _powerFailRecovery = v!),
                 ),
                 DropdownButtonFormField<int>(
                   value: _startDelay,
-                  decoration: const InputDecoration(labelText: 'Start Delay'),
+                  decoration: InputDecoration(labelText: l.startDelay),
                   items: List.generate(
-                    _startDelayLabels.length,
+                    startDelayLabels.length,
                     (i) => DropdownMenuItem(
                       value: i,
-                      child: Text(_startDelayLabels[i]),
+                      child: Text(startDelayLabels[i]),
                     ),
                   ),
                   onChanged: (v) => setState(() => _startDelay = v!),
                 ),
                 DropdownButtonFormField<int>(
                   value: _fillingFeedSpeed,
-                  decoration: const InputDecoration(labelText: 'Feed Speed'),
-                  items: const [
-                    DropdownMenuItem(value: 0, child: Text('Single')),
-                    DropdownMenuItem(value: 1, child: Text('Dual')),
+                  decoration: InputDecoration(labelText: l.feedSpeed),
+                  items: [
+                    DropdownMenuItem(value: 0, child: Text(l.single)),
+                    DropdownMenuItem(value: 1, child: Text(l.dual)),
                   ],
                   onChanged: (v) => setState(() => _fillingFeedSpeed = v!),
                 ),
@@ -1155,11 +1111,11 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             ),
             _buildExpandableCard(
               context: context,
-              title: 'Target',
+              title: l.target,
               children: [
                 TextFormField(
                   initialValue: _fillingTargetValue.toString(),
-                  decoration: const InputDecoration(labelText: 'Target Value'),
+                  decoration: InputDecoration(labelText: l.targetValue),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _fillingTargetValue =
@@ -1168,7 +1124,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 TextFormField(
                   initialValue: _fillingInFlight.toString(),
-                  decoration: const InputDecoration(labelText: 'In Flight'),
+                  decoration: InputDecoration(labelText: l.inFlight),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _fillingInFlight =
@@ -1177,7 +1133,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 TextFormField(
                   initialValue: _fillingFeed.toString(),
-                  decoration: const InputDecoration(labelText: 'Feed'),
+                  decoration: InputDecoration(labelText: l.feed),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _fillingFeed = double.tryParse(v) ?? _fillingFeed,
@@ -1185,9 +1141,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 TextFormField(
                   initialValue: _fillingFeedInhibitTime.toString(),
-                  decoration: const InputDecoration(
-                    labelText: 'Feed Inhibit Time',
-                  ),
+                  decoration: InputDecoration(labelText: l.feedInhibitTime),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _fillingFeedInhibitTime =
@@ -1196,9 +1150,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 TextFormField(
                   initialValue: _fillingFastFeedInhibitTime.toString(),
-                  decoration: const InputDecoration(
-                    labelText: 'Fast Feed Inhibit Time',
-                  ),
+                  decoration: InputDecoration(labelText: l.fastFeedInhibitTime),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _fillingFastFeedInhibitTime =
@@ -1209,19 +1161,17 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             ),
             _buildExpandableCard(
               context: context,
-              title: 'Auto Tare',
+              title: l.autoTare,
               children: [
                 SwitchListTile(
-                  title: const Text('Auto Tare Enabled'),
+                  title: Text(l.autoTareEnabled),
                   value: _fillingAutoTareEnabled,
                   contentPadding: EdgeInsets.zero,
                   onChanged: (v) => setState(() => _fillingAutoTareEnabled = v),
                 ),
                 TextFormField(
                   initialValue: _fillingContainerTareUpper.toString(),
-                  decoration: const InputDecoration(
-                    labelText: 'Container Tare Upper',
-                  ),
+                  decoration: InputDecoration(labelText: l.containerTareUpper),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _fillingContainerTareUpper =
@@ -1230,9 +1180,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 TextFormField(
                   initialValue: _fillingContainerTareLower.toString(),
-                  decoration: const InputDecoration(
-                    labelText: 'Container Tare Lower',
-                  ),
+                  decoration: InputDecoration(labelText: l.containerTareLower),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _fillingContainerTareLower =
@@ -1243,13 +1191,11 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             ),
             _buildExpandableCard(
               context: context,
-              title: 'Tolerance',
+              title: l.tolerance,
               children: [
                 TextFormField(
                   initialValue: _fillingPreCheckDelay.toString(),
-                  decoration: const InputDecoration(
-                    labelText: 'Pre Check Delay',
-                  ),
+                  decoration: InputDecoration(labelText: l.preCheckDelay),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _fillingPreCheckDelay =
@@ -1258,9 +1204,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 TextFormField(
                   initialValue: _fillingStabilityTimeout.toString(),
-                  decoration: const InputDecoration(
-                    labelText: 'Stability Timeout',
-                  ),
+                  decoration: InputDecoration(labelText: l.stabilityTimeout),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _fillingStabilityTimeout =
@@ -1269,9 +1213,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 TextFormField(
                   initialValue: _fillingPositiveTolerance.toString(),
-                  decoration: const InputDecoration(
-                    labelText: 'Positive Tolerance',
-                  ),
+                  decoration: InputDecoration(labelText: l.positiveTolerance),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _fillingPositiveTolerance =
@@ -1280,9 +1222,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 TextFormField(
                   initialValue: _fillingNegativeTolerance.toString(),
-                  decoration: const InputDecoration(
-                    labelText: 'Negative Tolerance',
-                  ),
+                  decoration: InputDecoration(labelText: l.negativeTolerance),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _fillingNegativeTolerance =
@@ -1293,21 +1233,21 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             ),
             _buildExpandableCard(
               context: context,
-              title: 'Spill Optimization',
+              title: l.spillOpt,
               children: [
                 DropdownButtonFormField<int>(
                   value: _fillingSpillMode,
-                  decoration: const InputDecoration(labelText: 'Mode'),
-                  items: const [
-                    DropdownMenuItem(value: 0, child: Text('Disabled')),
-                    DropdownMenuItem(value: 1, child: Text('Auto')),
-                    DropdownMenuItem(value: 2, child: Text('Manual')),
+                  decoration: InputDecoration(labelText: l.mode),
+                  items: [
+                    DropdownMenuItem(value: 0, child: Text(l.disabled)),
+                    DropdownMenuItem(value: 1, child: Text(l.auto)),
+                    DropdownMenuItem(value: 2, child: Text(l.manual)),
                   ],
                   onChanged: (v) => setState(() => _fillingSpillMode = v!),
                 ),
                 TextFormField(
                   initialValue: _fillingSpillAdjustRange.toString(),
-                  decoration: const InputDecoration(labelText: 'Adjust Range'),
+                  decoration: InputDecoration(labelText: l.adjustRange),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _fillingSpillAdjustRange =
@@ -1316,9 +1256,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 TextFormField(
                   initialValue: _fillingSpillAdjustSamples.toString(),
-                  decoration: const InputDecoration(
-                    labelText: 'Adjust Samples',
-                  ),
+                  decoration: InputDecoration(labelText: l.adjustSamples),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _fillingSpillAdjustSamples =
@@ -1327,7 +1265,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 TextFormField(
                   initialValue: _fillingSpillAdjustFactor.toString(),
-                  decoration: const InputDecoration(labelText: 'Adjust Factor'),
+                  decoration: InputDecoration(labelText: l.adjustFactor),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _fillingSpillAdjustFactor =
@@ -1338,22 +1276,22 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             ),
             _buildExpandableCard(
               context: context,
-              title: 'Cutoff Optimization',
+              title: l.cutoffOpt,
               children: [
                 DropdownButtonFormField<int>(
                   value: _fillingCutoffMode,
-                  decoration: const InputDecoration(labelText: 'Mode'),
-                  items: const [
-                    DropdownMenuItem(value: 0, child: Text('Disabled')),
-                    DropdownMenuItem(value: 1, child: Text('Auto')),
-                    DropdownMenuItem(value: 2, child: Text('Manual')),
+                  decoration: InputDecoration(labelText: l.mode),
+                  items: [
+                    DropdownMenuItem(value: 0, child: Text(l.disabled)),
+                    DropdownMenuItem(value: 1, child: Text(l.auto)),
+                    DropdownMenuItem(value: 2, child: Text(l.manual)),
                   ],
                   onChanged: (v) => setState(() => _fillingCutoffMode = v!),
                 ),
                 TextFormField(
                   initialValue: _fillingCutoffReliabilityRange.toString(),
-                  decoration: const InputDecoration(
-                    labelText: 'Control Reliability Range',
+                  decoration: InputDecoration(
+                    labelText: l.controlReliabilityRange,
                   ),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
@@ -1363,7 +1301,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 TextFormField(
                   initialValue: _fillingCutoffAdjustCycles.toString(),
-                  decoration: const InputDecoration(labelText: 'Adjust Cycles'),
+                  decoration: InputDecoration(labelText: l.adjustCycles),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _fillingCutoffAdjustCycles =
@@ -1372,7 +1310,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 TextFormField(
                   initialValue: _fillingCutoffAdjustFactor.toString(),
-                  decoration: const InputDecoration(labelText: 'Adjust Factor'),
+                  decoration: InputDecoration(labelText: l.adjustFactor),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _fillingCutoffAdjustFactor =
@@ -1383,22 +1321,22 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             ),
             _buildExpandableCard(
               context: context,
-              title: 'Jog',
+              title: l.jog,
               children: [
                 DropdownButtonFormField<int>(
                   value: _fillingJogMode,
-                  decoration: const InputDecoration(labelText: 'Mode'),
-                  items: const [
-                    DropdownMenuItem(value: 0, child: Text('Disabled')),
-                    DropdownMenuItem(value: 1, child: Text('Auto')),
-                    DropdownMenuItem(value: 2, child: Text('Single Pulse')),
-                    DropdownMenuItem(value: 3, child: Text('Manual')),
+                  decoration: InputDecoration(labelText: l.mode),
+                  items: [
+                    DropdownMenuItem(value: 0, child: Text(l.disabled)),
+                    DropdownMenuItem(value: 1, child: Text(l.auto)),
+                    DropdownMenuItem(value: 2, child: Text(l.singlePulse)),
+                    DropdownMenuItem(value: 3, child: Text(l.manual)),
                   ],
                   onChanged: (v) => setState(() => _fillingJogMode = v!),
                 ),
                 TextFormField(
                   initialValue: _fillingJogDuration.toString(),
-                  decoration: const InputDecoration(labelText: 'Jog Duration'),
+                  decoration: InputDecoration(labelText: l.jogDuration),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _fillingJogDuration =
@@ -1407,9 +1345,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 TextFormField(
                   initialValue: _fillingJogPauseTime.toString(),
-                  decoration: const InputDecoration(
-                    labelText: 'Jog Pause Time',
-                  ),
+                  decoration: InputDecoration(labelText: l.jogPauseTime),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _fillingJogPauseTime =
@@ -1418,7 +1354,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 TextFormField(
                   initialValue: _fillingJogMaxCycles.toString(),
-                  decoration: const InputDecoration(labelText: 'Max Cycles'),
+                  decoration: InputDecoration(labelText: l.maxCycles),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _fillingJogMaxCycles =
@@ -1429,11 +1365,11 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             ),
             _buildExpandableCard(
               context: context,
-              title: 'Refill',
+              title: l.refill,
               children: [
                 TextFormField(
                   initialValue: _fillingRefillUpperLimit.toString(),
-                  decoration: const InputDecoration(labelText: 'Upper Limit'),
+                  decoration: InputDecoration(labelText: l.upperLimit),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _fillingRefillUpperLimit =
@@ -1442,7 +1378,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 TextFormField(
                   initialValue: _fillingRefillLowerLimit.toString(),
-                  decoration: const InputDecoration(labelText: 'Lower Limit'),
+                  decoration: InputDecoration(labelText: l.lowerLimit),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _fillingRefillLowerLimit =
@@ -1453,23 +1389,21 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             ),
             _buildExpandableCard(
               context: context,
-              title: 'Emptying',
+              title: l.emptying,
               children: [
                 DropdownButtonFormField<int>(
                   value: _fillingEmptyingCompleteMode,
-                  decoration: const InputDecoration(labelText: 'Complete Mode'),
-                  items: const [
-                    DropdownMenuItem(value: 0, child: Text('Residual Weight')),
-                    DropdownMenuItem(value: 1, child: Text('Time')),
+                  decoration: InputDecoration(labelText: l.completeMode),
+                  items: [
+                    DropdownMenuItem(value: 0, child: Text(l.residualWeight)),
+                    DropdownMenuItem(value: 1, child: Text(l.time)),
                   ],
                   onChanged: (v) =>
                       setState(() => _fillingEmptyingCompleteMode = v!),
                 ),
                 TextFormField(
                   initialValue: _fillingEmptyingResidualWeight.toString(),
-                  decoration: const InputDecoration(
-                    labelText: 'Residual Weight',
-                  ),
+                  decoration: InputDecoration(labelText: l.residualWeight),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _fillingEmptyingResidualWeight =
@@ -1478,9 +1412,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 TextFormField(
                   initialValue: _fillingEmptyingCompletionTime.toString(),
-                  decoration: const InputDecoration(
-                    labelText: 'Completion Time',
-                  ),
+                  decoration: InputDecoration(labelText: l.completionTime),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _fillingEmptyingCompletionTime =
@@ -1491,13 +1423,11 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             ),
             _buildExpandableCard(
               context: context,
-              title: 'Events',
+              title: l.events,
               children: [
                 TextFormField(
                   initialValue: _fillingInitialFeedTimeout.toString(),
-                  decoration: const InputDecoration(
-                    labelText: 'Initial Feed Timeout',
-                  ),
+                  decoration: InputDecoration(labelText: l.initialFeedTimeout),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _fillingInitialFeedTimeout =
@@ -1506,9 +1436,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 TextFormField(
                   initialValue: _fillingEmptyingTimeout.toString(),
-                  decoration: const InputDecoration(
-                    labelText: 'Emptying Timeout',
-                  ),
+                  decoration: InputDecoration(labelText: l.emptyingTimeout),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _fillingEmptyingTimeout =
@@ -1517,9 +1445,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 TextFormField(
                   initialValue: _fillingRefillTimeout.toString(),
-                  decoration: const InputDecoration(
-                    labelText: 'Refill Timeout',
-                  ),
+                  decoration: InputDecoration(labelText: l.refillTimeout),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _fillingRefillTimeout =
@@ -1528,9 +1454,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 TextFormField(
                   initialValue: _fillingProcessTimeout.toString(),
-                  decoration: const InputDecoration(
-                    labelText: 'Process Timeout',
-                  ),
+                  decoration: InputDecoration(labelText: l.processTimeout),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _fillingProcessTimeout =
@@ -1541,30 +1465,30 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             ),
             _buildExpandableCard(
               context: context,
-              title: 'Advanced',
+              title: l.advancedConfig,
               children: [
                 DropdownButtonFormField<int>(
                   value: _fillingCycleConfirm,
-                  decoration: const InputDecoration(labelText: 'Cycle Confirm'),
-                  items: const [
-                    DropdownMenuItem(value: 0, child: Text('Disabled')),
-                    DropdownMenuItem(value: 1, child: Text('Every')),
-                    DropdownMenuItem(value: 2, child: Text('Out of Tolerance')),
+                  decoration: InputDecoration(labelText: l.cycleConfirm),
+                  items: [
+                    DropdownMenuItem(value: 0, child: Text(l.disabled)),
+                    DropdownMenuItem(value: 1, child: Text(l.every)),
+                    DropdownMenuItem(value: 2, child: Text(l.outOfTolerance)),
                   ],
                   onChanged: (v) => setState(() => _fillingCycleConfirm = v!),
                 ),
                 DropdownButtonFormField<int>(
                   value: _fillingFastRecovery,
-                  decoration: const InputDecoration(labelText: 'Fast Recovery'),
-                  items: const [
-                    DropdownMenuItem(value: 0, child: Text('Auto')),
-                    DropdownMenuItem(value: 1, child: Text('Static')),
-                    DropdownMenuItem(value: 2, child: Text('Disabled')),
+                  decoration: InputDecoration(labelText: l.fastRecovery),
+                  items: [
+                    DropdownMenuItem(value: 0, child: Text(l.auto)),
+                    DropdownMenuItem(value: 1, child: Text(l.staticVal)),
+                    DropdownMenuItem(value: 2, child: Text(l.disabled)),
                   ],
                   onChanged: (v) => setState(() => _fillingFastRecovery = v!),
                 ),
                 SwitchListTile(
-                  title: const Text('Interlock Enabled'),
+                  title: Text(l.interlockEnabled),
                   value: _fillingInterlockEnabled,
                   contentPadding: EdgeInsets.zero,
                   onChanged: (v) =>
@@ -1572,9 +1496,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 TextFormField(
                   initialValue: _fillingFastFeedSpeed.toString(),
-                  decoration: const InputDecoration(
-                    labelText: 'Fast Feed Speed',
-                  ),
+                  decoration: InputDecoration(labelText: l.fastFeedSpeed),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _fillingFastFeedSpeed =
@@ -1583,9 +1505,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 TextFormField(
                   initialValue: _fillingFineFeedSpeed.toString(),
-                  decoration: const InputDecoration(
-                    labelText: 'Fine Feed Speed',
-                  ),
+                  decoration: InputDecoration(labelText: l.fineFeedSpeed),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => setState(
                     () => _fillingFineFeedSpeed =
@@ -1600,7 +1520,6 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
     );
   }
 
-  // 辅助方法：生成支持默认折叠的卡片
   Widget _buildExpandableCard({
     required BuildContext context,
     required String title,
@@ -1608,9 +1527,9 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   }) {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
-      clipBehavior: Clip.antiAlias, // 让点击展开的波纹效果限制在圆角内
+      clipBehavior: Clip.antiAlias,
       child: ExpansionTile(
-        initiallyExpanded: false, // 默认折叠
+        initiallyExpanded: false,
         title: Text(title, style: Theme.of(context).textTheme.titleMedium),
         childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         expandedCrossAxisAlignment: CrossAxisAlignment.start,

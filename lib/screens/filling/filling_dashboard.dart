@@ -43,11 +43,13 @@ class _FillingDashboardState extends State<FillingDashboard>
 
   @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
+    // 获取强类型的本地化实例
+    final l = AppLocalizations.of(context)!;
     final state = AppStateProvider.of(context);
     final wd = state.getWeightData(0);
     final status = state.getAppStatus(state.activeSubsystemId);
 
+    // 这里的字符串匹配逻辑属于解析底层状态，不涉及UI展示，予以保留
     final stateStr = status.stateString.toLowerCase();
     final isFeeding =
         stateStr.contains('feed') ||
@@ -87,7 +89,7 @@ class _FillingDashboardState extends State<FillingDashboard>
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  l.tr('filling'),
+                  l.filling,
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: _themeBlue,
@@ -108,7 +110,7 @@ class _FillingDashboardState extends State<FillingDashboard>
               ),
               const SizedBox(width: 12),
               StatusIndicator(
-                label: wd.isStable ? l.tr('stable') : l.tr('inMotion'),
+                label: wd.isStable ? l.stable : l.inMotion,
                 isActive: wd.isStable,
                 color: wd.isStable ? Colors.green : Colors.orange,
               ),
@@ -175,6 +177,10 @@ class _FillingDashboardState extends State<FillingDashboard>
                                     isEmptying: isEmptying,
                                     fillPercentage: fillPercentage,
                                     theme: Theme.of(context),
+                                    // 将多语言文本传给画板
+                                    fastFeedLabel: l.fastFeedPhase,
+                                    fineFeedLabel: l.fineFeedPhase,
+                                    emptyingLabel: l.emptyingPhase,
                                   ),
                                   child: const SizedBox.expand(),
                                 );
@@ -203,7 +209,7 @@ class _FillingDashboardState extends State<FillingDashboard>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            l.tr('targetValues'),
+                            l.targetValues,
                             style: Theme.of(context).textTheme.titleLarge
                                 ?.copyWith(
                                   fontWeight: FontWeight.bold,
@@ -217,18 +223,18 @@ class _FillingDashboardState extends State<FillingDashboard>
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   _HighlightDataRow(
-                                    l.tr('targetFlow'),
+                                    l.targetFlow, // 这里实际上是目标重量，如果 .arb 里 targetFlow 含义不准，建议在 .arb 修改或增加 targetWeight
                                     status.targetWeight.toStringAsFixed(3),
                                     'kg',
                                     _themeBlue,
                                   ),
                                   const SizedBox(height: 12),
                                   _DataRow(
-                                    l.tr('weight'),
+                                    l.weight,
                                     '${wd.displayWeight.toStringAsFixed(3)} ${wd.unitString}',
                                   ),
                                   _DataRow(
-                                    l.tr('controlRate'),
+                                    l.controlRate,
                                     '${status.controlRate.toStringAsFixed(1)} %',
                                   ),
 
@@ -242,9 +248,9 @@ class _FillingDashboardState extends State<FillingDashboard>
                                         mainAxisAlignment:
                                             MainAxisAlignment.spaceBetween,
                                         children: [
-                                          const Text(
-                                            "灌装进度 (Fill Progress)",
-                                            style: TextStyle(
+                                          Text(
+                                            l.fillProgress,
+                                            style: const TextStyle(
                                               fontWeight: FontWeight.bold,
                                               fontSize: 14,
                                             ),
@@ -336,7 +342,7 @@ class _FillingDashboardState extends State<FillingDashboard>
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               _LargeActionButton(
-                label: status.isRunning ? l.tr('stop') : l.tr('start'),
+                label: status.isRunning ? l.stop : l.start,
                 icon: status.isRunning ? Icons.stop : Icons.play_arrow,
                 color: status.isRunning ? Colors.red.shade600 : _themeBlue,
                 onPressed: () =>
@@ -344,22 +350,22 @@ class _FillingDashboardState extends State<FillingDashboard>
                 isPrimary: true,
               ),
               _LargeActionButton(
-                label: l.tr('zero'),
+                label: l.zero,
                 icon: Icons.exposure_zero,
                 onPressed: () => state.doZero(0),
               ),
               _LargeActionButton(
-                label: l.tr('tare'),
+                label: l.tare,
                 icon: Icons.remove_circle_outline,
                 onPressed: () => state.doTare(0),
               ),
               _LargeActionButton(
-                label: l.tr('clearTare'),
+                label: l.clearTare,
                 icon: Icons.layers_clear,
                 onPressed: () => state.clearTare(0),
               ),
               _LargeActionButton(
-                label: l.tr('eprint'),
+                label: l.eprint,
                 icon: Icons.print_outlined,
                 onPressed: () {},
               ),
@@ -380,6 +386,11 @@ class _FillingProcessPainter extends CustomPainter {
   final double fillPercentage;
   final ThemeData theme;
 
+  // 多语言标签属性
+  final String fastFeedLabel;
+  final String fineFeedLabel;
+  final String emptyingLabel;
+
   _FillingProcessPainter({
     required this.progress,
     required this.isFeeding,
@@ -387,6 +398,9 @@ class _FillingProcessPainter extends CustomPainter {
     required this.isEmptying,
     required this.fillPercentage,
     required this.theme,
+    required this.fastFeedLabel,
+    required this.fineFeedLabel,
+    required this.emptyingLabel,
   });
 
   @override
@@ -488,7 +502,7 @@ class _FillingProcessPainter extends CustomPainter {
       );
       _drawLabel(
         canvas,
-        isFastFeed ? "粗流喂料 (Fast Feed)" : "细流喂料 (Fine Feed)",
+        isFastFeed ? fastFeedLabel : fineFeedLabel, // 替换为动态获取的多语言文本
         Offset(center, 15),
         color,
       );
@@ -507,7 +521,7 @@ class _FillingProcessPainter extends CustomPainter {
       );
       _drawLabel(
         canvas,
-        "排空容器 (Emptying)",
+        emptyingLabel, // 替换为动态获取的多语言文本
         Offset(center, size.height - 15),
         Colors.orange,
       );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:weighing_system_elinux/weighing_system_elinux.dart';
+import '../../l10n/app_localizations.dart';
 
 class DigitalOutputSettingsScreen extends StatefulWidget {
   const DigitalOutputSettingsScreen({super.key});
@@ -30,25 +31,29 @@ class _DigitalOutputSettingsScreenState
   }
 
   Future<void> _validate() async {
+    final l = AppLocalizations.of(context)!;
     final r = await WeighingPlatform.instance.validateDigitalOutputMap(_cfg);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(r['ok'] == true ? '配置校验通过' : '校验失败: ${r['error']}'),
+        content: Text(
+          r['ok'] == true
+              ? l.validationPassed
+              : '${l.validationFailed}${r['error']}',
+        ),
       ),
     );
   }
 
   Future<void> _save() async {
+    final l = AppLocalizations.of(context)!;
     setState(() => _saving = true);
     final ok = await WeighingPlatform.instance.updateDigitalOutputMap(_cfg);
-    if (mounted) {
-      setState(() => _saving = false);
-    }
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(ok ? '保存成功' : '保存失败')));
+    setState(() => _saving = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(ok ? l.saveSuccess : l.saveFailedMsg)),
+    );
   }
 
   void _replaceBinding(int index, DigitalOutputBinding updated) {
@@ -68,20 +73,21 @@ class _DigitalOutputSettingsScreenState
   }
 
   Future<void> _confirmRemoveBinding(int index) async {
+    final l = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('确认删除'),
-          content: const Text('确定删除这条 Digital Output 映射吗？'),
+          title: Text(l.confirmDelete),
+          content: Text(l.confirmDeleteDOMsg),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('取消'),
+              child: Text(l.cancel),
             ),
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('删除'),
+              child: Text(l.delete),
             ),
           ],
         );
@@ -110,6 +116,7 @@ class _DigitalOutputSettingsScreenState
   }
 
   Future<void> _editBinding(int index) async {
+    final l = AppLocalizations.of(context)!;
     final current = _cfg.bindings[index];
     final subsystemController = TextEditingController(
       text: current.subsystemId.toString(),
@@ -136,7 +143,7 @@ class _DigitalOutputSettingsScreenState
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setDialogState) => AlertDialog(
-            title: const Text('编辑映射'),
+            title: Text(l.editMapping),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -202,7 +209,7 @@ class _DigitalOutputSettingsScreenState
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(dialogContext).pop(),
-                child: const Text('取消'),
+                child: Text(l.cancel),
               ),
               TextButton(
                 onPressed: () {
@@ -217,9 +224,9 @@ class _DigitalOutputSettingsScreenState
                       channel == null ||
                       bitIndex == null ||
                       appScope == null) {
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(const SnackBar(content: Text('请输入有效整数')));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(l.enterValidInteger)),
+                    );
                     return;
                   }
 
@@ -236,7 +243,7 @@ class _DigitalOutputSettingsScreenState
                     ),
                   );
                 },
-                child: const Text('确定'),
+                child: Text(l.confirm),
               ),
             ],
           ),
@@ -254,20 +261,20 @@ class _DigitalOutputSettingsScreenState
     if (_loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
+
+    final l = AppLocalizations.of(context)!;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Digital Output Mapping'),
+        title: Text(l.digitalOutputMapping),
         actions: [
-          TextButton(onPressed: _addBinding, child: const Text('新增')),
-          TextButton(onPressed: _validate, child: const Text('校验')),
-          TextButton(
-            onPressed: _saving ? null : _save,
-            child: const Text('保存'),
-          ),
+          TextButton(onPressed: _addBinding, child: Text(l.add)),
+          TextButton(onPressed: _validate, child: Text(l.validate)),
+          TextButton(onPressed: _saving ? null : _save, child: Text(l.save)),
         ],
       ),
       body: _cfg.bindings.isEmpty
-          ? const Center(child: Text('暂无映射，点击右上角“新增”添加'))
+          ? Center(child: Text(l.noMappingsMsg))
           : ListView.builder(
               itemCount: _cfg.bindings.length,
               itemBuilder: (_, i) {

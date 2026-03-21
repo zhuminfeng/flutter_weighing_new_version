@@ -16,6 +16,9 @@ class _ScaleSettingsScreenState extends State<ScaleSettingsScreen> {
   TareConfig _tareConfig = const TareConfig();
   bool _loading = true;
 
+  // 单位通常是国际通用符号，无需翻译
+  static const _unitOptions = ['g', 'kg', 'lb', 't', 'ton'];
+
   @override
   void initState() {
     super.initState();
@@ -41,33 +44,34 @@ class _ScaleSettingsScreenState extends State<ScaleSettingsScreen> {
     await platform.updateTareConfig(_scaleId, _tareConfig);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context).tr('save'))),
+        SnackBar(content: Text(AppLocalizations.of(context)!.save)),
       );
     }
   }
 
-  static const _unitOptions = ['g', 'kg', 'lb', 't', 'ton'];
-  static const _autoZeroOptions = ['off', 'gross', 'gross+net'];
-  static const _powerUpZeroOptions = ['last', 'calibrated', 'new'];
-
   @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
+    // 获取强类型的本地化实例
+    final l = AppLocalizations.of(context)!;
+
+    // 动态生成选项标签以支持国际化
+    final autoZeroOptions = [l.off, l.grossText, l.grossNet];
+    final powerUpZeroOptions = [l.lastVal, l.calibrated, l.newVal];
 
     if (_loading) {
       return Scaffold(
-        appBar: AppBar(title: Text(l.tr('scaleSettings'))),
+        appBar: AppBar(title: Text(l.scaleSettings)),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l.tr('scaleSettings')),
+        title: Text(l.scaleSettings),
         actions: [
           TextButton.icon(
             icon: const Icon(Icons.save),
-            label: Text(l.tr('save')),
+            label: Text(l.save),
             onPressed: _saveAll,
           ),
         ],
@@ -76,10 +80,10 @@ class _ScaleSettingsScreenState extends State<ScaleSettingsScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           // === Scale Params ===
-          _SectionHeader(l.tr('scaleSettings')),
+          _SectionHeader(l.scaleSettings),
 
           _DropdownField(
-            label: l.tr('unit'),
+            label: l.unit,
             value: _params.primaryUnit,
             items: List.generate(
               _unitOptions.length,
@@ -90,7 +94,7 @@ class _ScaleSettingsScreenState extends State<ScaleSettingsScreen> {
           ),
 
           _NumberField(
-            label: l.tr('capacity'),
+            label: l.capacity,
             value: _params.capacity,
             min: 0.05,
             max: 20000000,
@@ -99,7 +103,7 @@ class _ScaleSettingsScreenState extends State<ScaleSettingsScreen> {
           ),
 
           _NumberField(
-            label: l.tr('division'),
+            label: l.division,
             value: _params.division,
             min: 0.0001,
             max: 200,
@@ -110,7 +114,8 @@ class _ScaleSettingsScreenState extends State<ScaleSettingsScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: Text(
-              '${l.tr("division")} count: ${_params.maxDivisions}',
+              // 使用带参生成的本地化属性
+              l.divisionCount(_params.maxDivisions),
               style: TextStyle(
                 color:
                     _params.maxDivisions > 100000 || _params.maxDivisions < 500
@@ -121,7 +126,7 @@ class _ScaleSettingsScreenState extends State<ScaleSettingsScreen> {
           ),
 
           _NumberField(
-            label: l.tr('overloadRange'),
+            label: l.overloadRange,
             value: _params.overloadRange.toDouble(),
             min: 0,
             max: 99,
@@ -134,15 +139,15 @@ class _ScaleSettingsScreenState extends State<ScaleSettingsScreen> {
           const Divider(height: 32),
 
           // === Auto Zero Tracking ===
-          _SectionHeader(l.tr('autoZeroTracking')),
+          _SectionHeader(l.autoZeroTracking),
 
           _DropdownField(
-            label: l.tr('autoZeroTracking'),
+            label: l.autoZeroTracking,
             value: _zeroConfig.autoZeroMode,
             items: List.generate(
-              _autoZeroOptions.length,
+              autoZeroOptions.length,
               (i) =>
-                  DropdownMenuItem(value: i, child: Text(_autoZeroOptions[i])),
+                  DropdownMenuItem(value: i, child: Text(autoZeroOptions[i])),
             ),
             onChanged: (v) => setState(
               () => _zeroConfig = ZeroConfig(
@@ -161,7 +166,7 @@ class _ScaleSettingsScreenState extends State<ScaleSettingsScreen> {
 
           if (_zeroConfig.autoZeroMode != 0) ...[
             _NumberField(
-              label: '${l.tr("autoZeroTracking")} (d)',
+              label: l.autoZeroTrackingD,
               value: _zeroConfig.autoZeroRangeD,
               min: 0,
               max: 100,
@@ -182,7 +187,7 @@ class _ScaleSettingsScreenState extends State<ScaleSettingsScreen> {
           ],
 
           _NumberField(
-            label: 'Underload (d)',
+            label: l.underloadD,
             value: _zeroConfig.underloadRangeD,
             min: 0,
             max: 1000,
@@ -204,16 +209,16 @@ class _ScaleSettingsScreenState extends State<ScaleSettingsScreen> {
           const Divider(height: 32),
 
           // === Zero Settings ===
-          _SectionHeader(l.tr('zeroConfig')),
+          _SectionHeader(l.zeroConfig),
 
           _DropdownField(
-            label: 'Power-up Zero',
+            label: l.powerUpZero,
             value: _zeroConfig.powerUpZero,
             items: List.generate(
-              _powerUpZeroOptions.length,
+              powerUpZeroOptions.length,
               (i) => DropdownMenuItem(
                 value: i,
-                child: Text(_powerUpZeroOptions[i]),
+                child: Text(powerUpZeroOptions[i]),
               ),
             ),
             onChanged: (v) => setState(
@@ -232,7 +237,7 @@ class _ScaleSettingsScreenState extends State<ScaleSettingsScreen> {
           ),
 
           SwitchListTile(
-            title: Text('Pushbutton Zero'),
+            title: Text(l.pushbuttonZero),
             value: _zeroConfig.pushbuttonZeroEnabled,
             onChanged: (v) => setState(
               () => _zeroConfig = ZeroConfig(
@@ -252,10 +257,10 @@ class _ScaleSettingsScreenState extends State<ScaleSettingsScreen> {
           const Divider(height: 32),
 
           // === Tare Settings ===
-          _SectionHeader(l.tr('tareConfig')),
+          _SectionHeader(l.tareConfig),
 
           SwitchListTile(
-            title: Text('Pushbutton Tare'),
+            title: Text(l.pushbuttonTare),
             value: _tareConfig.pushbuttonTareEnabled,
             onChanged: (v) => setState(
               () => _tareConfig = TareConfig(
@@ -266,7 +271,7 @@ class _ScaleSettingsScreenState extends State<ScaleSettingsScreen> {
           ),
 
           SwitchListTile(
-            title: Text(l.tr('presetTare')),
+            title: Text(l.presetTare),
             value: _tareConfig.presetTareEnabled,
             onChanged: (v) => setState(
               () => _tareConfig = TareConfig(

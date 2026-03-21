@@ -46,11 +46,13 @@ class _LiwDashboardState extends State<LiwDashboard>
 
   @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
+    // 获取强类型的本地化实例
+    final l = AppLocalizations.of(context)!;
     final state = AppStateProvider.of(context);
     final weightData = state.getWeightData(0);
     final appStatus = state.getAppStatus(state.activeSubsystemId);
 
+    // 状态解析保留，此部分不作为展示文案
     final stateStr = appStatus.stateString.toLowerCase();
     final isRefilling = stateStr.contains('refill') || stateStr.contains('补料');
     final isEmptying = stateStr.contains('empty') || stateStr.contains('清空');
@@ -85,7 +87,7 @@ class _LiwDashboardState extends State<LiwDashboard>
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  '${l.tr('lossInWeight')} - ${_getModeString(l, appStatus)}',
+                  '${l.lossInWeight} - ${_getModeString(l, appStatus)}',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: _themeBlue,
@@ -100,7 +102,7 @@ class _LiwDashboardState extends State<LiwDashboard>
               ),
               const SizedBox(width: 12),
               StatusIndicator(
-                label: weightData.isStable ? l.tr('stable') : l.tr('inMotion'),
+                label: weightData.isStable ? l.stable : l.inMotion,
                 isActive: weightData.isStable,
                 color: weightData.isStable ? Colors.green : Colors.orange,
               ),
@@ -180,6 +182,10 @@ class _LiwDashboardState extends State<LiwDashboard>
                                             appStatus.currentFlow > 0),
                                     isEmptying: isEmptying,
                                     theme: Theme.of(context),
+                                    // 传递多语言文本
+                                    refillingLabel: l.refillingPhase,
+                                    feedingLabel: l.feedingPhase,
+                                    emptyingLabel: l.emptyingFlowPhase,
                                   ),
                                   child: const SizedBox.expand(),
                                 );
@@ -208,7 +214,7 @@ class _LiwDashboardState extends State<LiwDashboard>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            l.tr('processDetails'),
+                            l.processDetails,
                             style: Theme.of(context).textTheme.titleLarge
                                 ?.copyWith(
                                   fontWeight: FontWeight.bold,
@@ -222,41 +228,41 @@ class _LiwDashboardState extends State<LiwDashboard>
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   _HighlightDataRow(
-                                    l.tr('currentFlow'),
+                                    l.currentFlow,
                                     appStatus.currentFlow.toStringAsFixed(2),
                                     'kg/h',
                                     _themeBlue,
                                   ),
                                   _HighlightDataRow(
-                                    l.tr('controlRate'),
+                                    l.controlRate,
                                     appStatus.controlRate.toStringAsFixed(1),
                                     '%',
                                     _themeBlue.withOpacity(0.8),
                                   ),
                                   const SizedBox(height: 16),
                                   _DataRow(
-                                    l.tr('targetFlow'),
+                                    l.targetFlow,
                                     '${appStatus.targetFlow.toStringAsFixed(2)} kg/h',
                                   ),
                                   _DataRow(
-                                    l.tr('accumulatedWeight'),
+                                    l.accumulatedWeight,
                                     '${appStatus.accumulatedWeight.toStringAsFixed(3)} kg',
                                   ),
                                   _DataRow(
-                                    l.tr('totalAccumulated'),
+                                    l.totalAccumulated,
                                     '${appStatus.totalAccumulated.toStringAsFixed(3)} kg',
                                   ),
                                   _DataRow(
-                                    l.tr('grossWeight'),
+                                    l.grossWeight,
                                     '${weightData.grossWeight.toStringAsFixed(3)} ${weightData.unitString}',
                                   ),
                                   _DataRow(
-                                    l.tr('tareWeight'),
+                                    l.tareWeight,
                                     '${weightData.tareWeight.toStringAsFixed(3)} ${weightData.unitString}',
                                   ),
                                   if (appStatus.remainingTime > 0)
                                     _DataRow(
-                                      l.tr('remainingTime'),
+                                      l.remainingTime,
                                       '${appStatus.remainingTime.toStringAsFixed(0)} s',
                                     ),
 
@@ -321,7 +327,7 @@ class _LiwDashboardState extends State<LiwDashboard>
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               _LargeActionButton(
-                label: appStatus.isRunning ? l.tr('stop') : l.tr('start'),
+                label: appStatus.isRunning ? l.stop : l.start,
                 icon: appStatus.isRunning ? Icons.stop : Icons.play_arrow,
                 color: appStatus.isRunning ? Colors.red.shade600 : _themeBlue,
                 onPressed: () =>
@@ -329,22 +335,22 @@ class _LiwDashboardState extends State<LiwDashboard>
                 isPrimary: true,
               ),
               _LargeActionButton(
-                label: l.tr('zero'),
+                label: l.zero,
                 icon: Icons.exposure_zero,
                 onPressed: () => state.doZero(0),
               ),
               _LargeActionButton(
-                label: l.tr('tare'),
+                label: l.tare,
                 icon: Icons.remove_circle_outline,
                 onPressed: () => state.doTare(0),
               ),
               _LargeActionButton(
-                label: l.tr('clearTare'),
+                label: l.clearTare,
                 icon: Icons.layers_clear,
                 onPressed: () => state.clearTare(0),
               ),
               _LargeActionButton(
-                label: l.tr('eprint'),
+                label: l.eprint,
                 icon: Icons.print_outlined,
                 onPressed: () async {
                   final nextEnabled = !_axisTestEnabled;
@@ -369,7 +375,7 @@ class _LiwDashboardState extends State<LiwDashboard>
   }
 
   String _getModeString(AppLocalizations l, AppStatusData status) =>
-      l.tr('continuous');
+      l.continuous;
 }
 
 // 失重秤料斗与流体粒子动画
@@ -380,12 +386,20 @@ class _LiwProcessPainter extends CustomPainter {
   final bool isEmptying;
   final ThemeData theme;
 
+  // 多语言标签属性
+  final String refillingLabel;
+  final String feedingLabel;
+  final String emptyingLabel;
+
   _LiwProcessPainter({
     required this.progress,
     required this.isRefilling,
     required this.isFeeding,
     required this.isEmptying,
     required this.theme,
+    required this.refillingLabel,
+    required this.feedingLabel,
+    required this.emptyingLabel,
   });
 
   @override
@@ -442,7 +456,7 @@ class _LiwProcessPainter extends CustomPainter {
     // 2. 绘制物料流动动画 (粉体/颗粒效果)
     if (isRefilling) {
       _drawParticles(canvas, center, 0, top, _themeBlue, progress, width: 80);
-      _drawLabel(canvas, "补料中 (Refilling)", Offset(center, 15), _themeBlue);
+      _drawLabel(canvas, refillingLabel, Offset(center, 15), _themeBlue);
     }
     if (isFeeding && !isEmptying) {
       _drawParticles(
@@ -456,7 +470,7 @@ class _LiwProcessPainter extends CustomPainter {
       );
       _drawLabel(
         canvas,
-        "喂料中 (Feeding)",
+        feedingLabel,
         Offset(center, size.height - 15),
         Colors.green.shade700,
       );
@@ -474,7 +488,7 @@ class _LiwProcessPainter extends CustomPainter {
       );
       _drawLabel(
         canvas,
-        "清空流 (Emptying)",
+        emptyingLabel,
         Offset(center, size.height - 15),
         Colors.orange.shade700,
       );

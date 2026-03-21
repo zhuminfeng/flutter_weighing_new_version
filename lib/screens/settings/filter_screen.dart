@@ -14,8 +14,6 @@ class _FilterScreenState extends State<FilterScreen> {
   FilterStabilityConfig _config = const FilterStabilityConfig();
   bool _loading = true;
 
-  static const _lpLabels = ['Very Light', 'Light', 'Medium', 'Heavy'];
-
   @override
   void initState() {
     super.initState();
@@ -33,7 +31,7 @@ class _FilterScreenState extends State<FilterScreen> {
     await WeighingPlatform.instance.updateFilterStability(_scaleId, _config);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context).tr('save'))),
+        SnackBar(content: Text(AppLocalizations.of(context)!.save)),
       );
     }
   }
@@ -62,22 +60,26 @@ class _FilterScreenState extends State<FilterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
+    // 获取强类型的本地化实例
+    final l = AppLocalizations.of(context)!;
+
+    // 将原先静态的 _lpLabels 放在 build 中动态获取，以响应语言切换
+    final lpLabels = [l.veryLight, l.light, l.medium, l.heavy];
 
     if (_loading) {
       return Scaffold(
-        appBar: AppBar(title: Text(l.tr('filter'))),
+        appBar: AppBar(title: Text(l.filter)),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l.tr('filter')),
+        title: Text(l.filter),
         actions: [
           TextButton.icon(
             icon: const Icon(Icons.save),
-            label: Text(l.tr('save')),
+            label: Text(l.save),
             onPressed: _save,
           ),
         ],
@@ -86,21 +88,18 @@ class _FilterScreenState extends State<FilterScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           // Low-pass filter
-          Text(
-            l.tr('lowPassFilter'),
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
+          Text(l.lowPassFilter, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           DropdownButtonFormField<int>(
             value: _config.lowPassLevel,
             decoration: InputDecoration(
-              labelText: l.tr('lowPassFilter'),
+              labelText: l.lowPassFilter,
               border: const OutlineInputBorder(),
               isDense: true,
             ),
             items: List.generate(
               4,
-              (i) => DropdownMenuItem(value: i, child: Text(_lpLabels[i])),
+              (i) => DropdownMenuItem(value: i, child: Text(lpLabels[i])),
             ),
             onChanged: (v) =>
                 setState(() => _config = _update(lowPassLevel: v)),
@@ -109,12 +108,9 @@ class _FilterScreenState extends State<FilterScreen> {
           const Divider(height: 32),
 
           // Notch filter
-          Text(
-            l.tr('notchFilter'),
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
+          Text(l.notchFilter, style: Theme.of(context).textTheme.titleMedium),
           SwitchListTile(
-            title: Text(l.tr('enabled')),
+            title: Text(l.enabled),
             value: _config.notchEnabled,
             onChanged: (v) =>
                 setState(() => _config = _update(notchEnabled: v)),
@@ -124,9 +120,9 @@ class _FilterScreenState extends State<FilterScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: TextFormField(
                 initialValue: _config.notchFrequency.toString(),
-                decoration: const InputDecoration(
-                  labelText: 'Frequency (Hz)',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l.frequencyHz, // 替换为国际化变量
+                  border: const OutlineInputBorder(),
                   isDense: true,
                 ),
                 keyboardType: const TextInputType.numberWithOptions(
@@ -134,8 +130,9 @@ class _FilterScreenState extends State<FilterScreen> {
                 ),
                 onChanged: (t) {
                   final v = double.tryParse(t);
-                  if (v != null && v > 0)
+                  if (v != null && v > 0) {
                     setState(() => _config = _update(notchFrequency: v));
+                  }
                 },
               ),
             ),
@@ -144,11 +141,11 @@ class _FilterScreenState extends State<FilterScreen> {
 
           // Adaptive filter
           Text(
-            l.tr('adaptiveFilter'),
+            l.adaptiveFilter,
             style: Theme.of(context).textTheme.titleMedium,
           ),
           SwitchListTile(
-            title: Text(l.tr('enabled')),
+            title: Text(l.enabled),
             value: _config.adaptiveEnabled,
             onChanged: (v) =>
                 setState(() => _config = _update(adaptiveEnabled: v)),
@@ -158,9 +155,9 @@ class _FilterScreenState extends State<FilterScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: TextFormField(
                 initialValue: _config.adaptiveRangeD.toString(),
-                decoration: const InputDecoration(
-                  labelText: 'Range (d)',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l.rangeD, // 替换为国际化变量
+                  border: const OutlineInputBorder(),
                   isDense: true,
                 ),
                 keyboardType: const TextInputType.numberWithOptions(
@@ -168,8 +165,9 @@ class _FilterScreenState extends State<FilterScreen> {
                 ),
                 onChanged: (t) {
                   final v = double.tryParse(t);
-                  if (v != null && v > 0)
+                  if (v != null && v > 0) {
                     setState(() => _config = _update(adaptiveRangeD: v));
+                  }
                 },
               ),
             ),
@@ -177,24 +175,22 @@ class _FilterScreenState extends State<FilterScreen> {
           const Divider(height: 32),
 
           // Stability
-          Text(
-            l.tr('stability'),
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
+          Text(l.stability, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
 
           TextFormField(
             initialValue: _config.motionRangeD.toString(),
             decoration: InputDecoration(
-              labelText: '${l.tr("motionRange")} (d)',
+              labelText: '${l.motionRange} (d)',
               border: const OutlineInputBorder(),
               isDense: true,
             ),
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             onChanged: (t) {
               final v = double.tryParse(t);
-              if (v != null && v >= 0)
+              if (v != null && v >= 0) {
                 setState(() => _config = _update(motionRangeD: v));
+              }
             },
           ),
           const SizedBox(height: 12),
@@ -202,15 +198,16 @@ class _FilterScreenState extends State<FilterScreen> {
           TextFormField(
             initialValue: _config.motionDetectTime.toString(),
             decoration: InputDecoration(
-              labelText: '${l.tr("motionDetectTime")} (s)',
+              labelText: '${l.motionDetectTime} (s)',
               border: const OutlineInputBorder(),
               isDense: true,
             ),
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             onChanged: (t) {
               final v = double.tryParse(t);
-              if (v != null && v >= 0)
+              if (v != null && v >= 0) {
                 setState(() => _config = _update(motionDetectTime: v));
+              }
             },
           ),
           const SizedBox(height: 12),
@@ -218,15 +215,16 @@ class _FilterScreenState extends State<FilterScreen> {
           TextFormField(
             initialValue: _config.stabilityTimeout.toString(),
             decoration: InputDecoration(
-              labelText: '${l.tr("stabilityTimeout")} (s)',
+              labelText: '${l.stabilityTimeout} (s)',
               border: const OutlineInputBorder(),
               isDense: true,
             ),
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             onChanged: (t) {
               final v = double.tryParse(t);
-              if (v != null && v >= 0)
+              if (v != null && v >= 0) {
                 setState(() => _config = _update(stabilityTimeout: v));
+              }
             },
           ),
         ],

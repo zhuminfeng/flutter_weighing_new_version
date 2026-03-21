@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+// 引入生成的强类型国际化包
+import '../../l10n/app_localizations.dart';
 
 class WeightDisplay extends StatelessWidget {
   final double weight;
@@ -22,10 +24,14 @@ class WeightDisplay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 获取强类型的本地化实例
+    final l = AppLocalizations.of(context)!;
+
     String displayText;
     // 默认使用深邃的工业主题蓝
     Color textColor = const Color(0xFF005C99);
 
+    // OL 和 UL 为国际通用工业超欠载符号，无需翻译
     if (isOverload) {
       displayText = '--- OL ---';
       textColor = Colors.red;
@@ -59,7 +65,8 @@ class WeightDisplay extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 _Indicator(
-                  label: isStable ? '◉ STABLE' : '◎ MOTION',
+                  // 使用国际化文本
+                  label: isStable ? l.stableIndicator : l.motionIndicator,
                   color: isStable
                       ? Colors.green.shade600
                       : Colors.orange.shade600,
@@ -76,9 +83,9 @@ class WeightDisplay extends StatelessWidget {
                       borderRadius: BorderRadius.circular(4),
                       border: Border.all(color: Colors.blue.shade200),
                     ),
-                    child: const Text(
-                      'NET',
-                      style: TextStyle(
+                    child: Text(
+                      l.netIndicator, // 替换硬编码的 'NET'
+                      style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
                         color: Colors.blue,
@@ -98,7 +105,7 @@ class WeightDisplay extends StatelessWidget {
                       border: Border.all(color: Colors.grey.shade300),
                     ),
                     child: Text(
-                      '→0←',
+                      '→0←', // 国际通用零点符号，无需翻译
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,

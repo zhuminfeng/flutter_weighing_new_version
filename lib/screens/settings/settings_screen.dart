@@ -12,17 +12,16 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
+    final l = AppLocalizations.of(context)!;
 
     return Scaffold(
-      appBar: AppBar(title: Text(l.tr('settings'))),
+      appBar: AppBar(title: Text(l.settings)),
       body: ListView(
         children: [
           _SettingsTile(
             icon: Icons.scale,
-            title: l.tr('scaleSettings'),
-            subtitle:
-                '${l.tr('capacity')}, ${l.tr('division')}, ${l.tr('unit')}',
+            title: l.scaleSettings,
+            subtitle: '${l.capacity}, ${l.division}, ${l.unit}',
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const ScaleSettingsScreen()),
@@ -30,9 +29,8 @@ class SettingsScreen extends StatelessWidget {
           ),
           _SettingsTile(
             icon: Icons.tune,
-            title: l.tr('calibration'),
-            subtitle:
-                '${l.tr('calZero')}, ${l.tr('calSpan')}, ${l.tr('calStep')}',
+            title: l.calibration,
+            subtitle: '${l.calZero}, ${l.calSpan}, ${l.calStep}',
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const CalibrationScreen()),
@@ -40,9 +38,8 @@ class SettingsScreen extends StatelessWidget {
           ),
           _SettingsTile(
             icon: Icons.filter_alt,
-            title: l.tr('filter'),
-            subtitle:
-                '${l.tr('lowPassFilter')}, ${l.tr('notchFilter')}, ${l.tr('stability')}',
+            title: l.filter,
+            subtitle: '${l.lowPassFilter}, ${l.notchFilter}, ${l.stability}',
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const FilterScreen()),
@@ -50,8 +47,8 @@ class SettingsScreen extends StatelessWidget {
           ),
           _SettingsTile(
             icon: Icons.settings_applications,
-            title: l.tr('appSettings'),
-            subtitle: '${l.tr('lossInWeight')} / ${l.tr('filling')}',
+            title: l.appSettings,
+            subtitle: '${l.lossInWeight} / ${l.filling}',
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const AppSettingsScreen()),
@@ -61,8 +58,8 @@ class SettingsScreen extends StatelessWidget {
           // 新增：Digital Output Mapping 入口
           _SettingsTile(
             icon: Icons.power,
-            title: 'Digital Output Mapping',
-            subtitle: 'DO bit routing / subsystem mapping',
+            title: l.digitalOutputMapping,
+            subtitle: l.doBitRouting,
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
@@ -74,12 +71,10 @@ class SettingsScreen extends StatelessWidget {
           const Divider(),
           _SettingsTile(
             icon: Icons.language,
-            title: l.tr('language'),
-            subtitle: l.tr(
-              AppStateProvider.of(context).locale.languageCode == 'zh'
-                  ? 'chinese'
-                  : 'english',
-            ),
+            title: l.language,
+            subtitle: AppStateProvider.of(context).locale.languageCode == 'zh'
+                ? l.chinese
+                : l.english,
             onTap: () {
               final current = AppStateProvider.of(context).locale;
               final next = current.languageCode == 'zh'
