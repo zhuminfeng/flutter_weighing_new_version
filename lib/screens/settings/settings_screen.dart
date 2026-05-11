@@ -6,6 +6,7 @@ import 'calibration_screen.dart';
 import 'filter_screen.dart';
 import 'app_settings_screen.dart';
 import 'digital_output_settings_screen.dart'; // 新增
+import 'signal_analyzer_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -65,6 +66,16 @@ class SettingsScreen extends StatelessWidget {
               MaterialPageRoute(
                 builder: (_) => const DigitalOutputSettingsScreen(),
               ),
+            ),
+          ),
+
+          const Divider(),
+          _SettingsTile(
+            icon: Icons.analytics,
+            title: l.signalAnalyzer,
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SignalAnalyzerScreen()),
             ),
           ),
 

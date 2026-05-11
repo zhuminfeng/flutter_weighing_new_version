@@ -785,4 +785,55 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get netIndicator => 'NET';
+
+  @override
+  String get signalAnalyzer => 'Signal Analyzer';
+
+  @override
+  String get exportCsv => 'Export';
+
+  @override
+  String get startAnalysis => 'Start';
+
+  @override
+  String get stopAnalysis => 'Stop';
+
+  @override
+  String get showFlow => 'Flow Rate';
+
+  @override
+  String get showTargetFlow => 'Target Flow';
+
+  @override
+  String get showControlRate => 'Control Rate';
+
+  @override
+  String get showRefill => 'Refill Signal';
+
+  @override
+  String get showRunning => 'Run Signal';
+
+  @override
+  String get showFillingLevel => 'Filling Level';
+
+  @override
+  String get runtimeInfo => 'Runtime Information';
+
+  @override
+  String get xAxisViewLength => 'X-Axis View Length (s)';
+
+  @override
+  String get autoStopRecording => 'Auto Stop Recording (s)';
+
+  @override
+  String get exportSuccess => 'Exported to: ';
+
+  @override
+  String get batchTargetWeight => 'Batch Target Weight (kg)';
+
+  @override
+  String get currentBatchWeight => 'Current Batch Weight (kg)';
+
+  @override
+  String get eta => 'ETA (hh:mm:ss)';
 }

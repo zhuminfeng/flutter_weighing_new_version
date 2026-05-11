@@ -271,5 +271,22 @@
   "emptyingFlowPhase": "Emptying Flow",
   "stableIndicator": "◉ STABLE",
   "motionIndicator": "◎ MOTION",
-  "netIndicator": "NET"
+  "netIndicator": "NET",
+  "signalAnalyzer": "Signal Analyzer",
+  "exportCsv": "Export",
+  "startAnalysis": "Start",
+  "stopAnalysis": "Stop",
+  "showFlow": "Flow Rate",
+  "showTargetFlow": "Target Flow",
+  "showControlRate": "Control Rate",
+  "showRefill": "Refill Signal",
+  "showRunning": "Run Signal",
+  "showFillingLevel": "Filling Level",
+  "runtimeInfo": "Runtime Information",
+  "xAxisViewLength": "X-Axis View Length (s)",
+  "autoStopRecording": "Auto Stop Recording (s)",
+  "exportSuccess": "Exported to: ",
+  "batchTargetWeight":"Batch Target Weight (kg)",
+  "currentBatchWeight":"Current Batch Weight (kg)",
+  "eta":"ETA (hh:mm:ss)"
 }

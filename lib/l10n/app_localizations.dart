@@ -1639,6 +1639,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'NET'**
   String get netIndicator;
+
+  /// No description provided for @signalAnalyzer.
+  ///
+  /// In en, this message translates to:
+  /// **'Signal Analyzer'**
+  String get signalAnalyzer;
+
+  /// No description provided for @exportCsv.
+  ///
+  /// In en, this message translates to:
+  /// **'Export'**
+  String get exportCsv;
+
+  /// No description provided for @startAnalysis.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get startAnalysis;
+
+  /// No description provided for @stopAnalysis.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get stopAnalysis;
+
+  /// No description provided for @showFlow.
+  ///
+  /// In en, this message translates to:
+  /// **'Flow Rate'**
+  String get showFlow;
+
+  /// No description provided for @showTargetFlow.
+  ///
+  /// In en, this message translates to:
+  /// **'Target Flow'**
+  String get showTargetFlow;
+
+  /// No description provided for @showControlRate.
+  ///
+  /// In en, this message translates to:
+  /// **'Control Rate'**
+  String get showControlRate;
+
+  /// No description provided for @showRefill.
+  ///
+  /// In en, this message translates to:
+  /// **'Refill Signal'**
+  String get showRefill;
+
+  /// No description provided for @showRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Run Signal'**
+  String get showRunning;
+
+  /// No description provided for @showFillingLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'Filling Level'**
+  String get showFillingLevel;
+
+  /// No description provided for @runtimeInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Runtime Information'**
+  String get runtimeInfo;
+
+  /// No description provided for @xAxisViewLength.
+  ///
+  /// In en, this message translates to:
+  /// **'X-Axis View Length (s)'**
+  String get xAxisViewLength;
+
+  /// No description provided for @autoStopRecording.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto Stop Recording (s)'**
+  String get autoStopRecording;
+
+  /// No description provided for @exportSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Exported to: '**
+  String get exportSuccess;
+
+  /// No description provided for @batchTargetWeight.
+  ///
+  /// In en, this message translates to:
+  /// **'Batch Target Weight (kg)'**
+  String get batchTargetWeight;
+
+  /// No description provided for @currentBatchWeight.
+  ///
+  /// In en, this message translates to:
+  /// **'Current Batch Weight (kg)'**
+  String get currentBatchWeight;
+
+  /// No description provided for @eta.
+  ///
+  /// In en, this message translates to:
+  /// **'ETA (hh:mm:ss)'**
+  String get eta;
 }
 
 class _AppLocalizationsDelegate

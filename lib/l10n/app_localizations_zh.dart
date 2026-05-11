@@ -782,4 +782,55 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get netIndicator => '净重';
+
+  @override
+  String get signalAnalyzer => '信号分析器';
+
+  @override
+  String get exportCsv => '导出';
+
+  @override
+  String get startAnalysis => '开始';
+
+  @override
+  String get stopAnalysis => '停止';
+
+  @override
+  String get showFlow => '流量';
+
+  @override
+  String get showTargetFlow => '目标流量';
+
+  @override
+  String get showControlRate => '控制率';
+
+  @override
+  String get showRefill => '补料信号';
+
+  @override
+  String get showRunning => '运行信号';
+
+  @override
+  String get showFillingLevel => '灌装量';
+
+  @override
+  String get runtimeInfo => '运行时信息';
+
+  @override
+  String get xAxisViewLength => 'X轴视图长度 (s)';
+
+  @override
+  String get autoStopRecording => '记录自动停止 (s)';
+
+  @override
+  String get exportSuccess => '成功导出至: ';
+
+  @override
+  String get batchTargetWeight => '批次目标重量 (kg)';
+
+  @override
+  String get currentBatchWeight => '当前批次重量 (kg)';
+
+  @override
+  String get eta => 'ETA (hh:mm:ss)';
 }

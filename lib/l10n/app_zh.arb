@@ -271,5 +271,22 @@
   "emptyingFlowPhase": "清空流",
   "stableIndicator": "◉ 稳定",
   "motionIndicator": "◎ 动态",
-  "netIndicator": "净重"
+  "netIndicator": "净重",
+  "signalAnalyzer": "信号分析器",
+  "exportCsv": "导出",
+  "startAnalysis": "开始",
+  "stopAnalysis": "停止",
+  "showFlow": "流量",
+  "showTargetFlow": "目标流量",
+  "showControlRate": "控制率",
+  "showRefill": "补料信号",
+  "showRunning": "运行信号",
+  "showFillingLevel": "灌装量",
+  "runtimeInfo": "运行时信息",
+  "xAxisViewLength": "X轴视图长度 (s)",
+  "autoStopRecording": "记录自动停止 (s)",
+  "exportSuccess": "成功导出至: ",
+  "batchTargetWeight":"批次目标重量 (kg)",
+  "currentBatchWeight":"当前批次重量 (kg)",
+  "eta":"ETA (hh:mm:ss)"
 }
