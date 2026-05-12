@@ -522,6 +522,8 @@ class _BindingCard extends StatelessWidget {
                     valueColor: binding.activeHigh
                         ? Colors.green
                         : colorScheme.error,
+                    semanticsLabel:
+                        '$activeHighLabel: ${binding.activeHigh ? enabledLabel : disabledLabel}',
                   ),
                 ],
               ),
@@ -572,31 +574,39 @@ class _FieldLabel extends StatelessWidget {
     required this.label,
     required this.value,
     this.valueColor,
+    this.semanticsLabel,
   });
 
   final String label;
   final String value;
   final Color? valueColor;
 
+  /// Optional override for screen-reader label (defaults to "$label: $value").
+  final String? semanticsLabel;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return RichText(
-      text: TextSpan(
-        style: theme.textTheme.bodySmall,
-        children: [
-          TextSpan(
-            text: '$label: ',
-            style: TextStyle(color: theme.colorScheme.outline),
-          ),
-          TextSpan(
-            text: value,
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              color: valueColor ?? theme.colorScheme.onSurface,
+    return Semantics(
+      label: semanticsLabel ?? '$label: $value',
+      excludeSemantics: true,
+      child: RichText(
+        text: TextSpan(
+          style: theme.textTheme.bodySmall,
+          children: [
+            TextSpan(
+              text: '$label: ',
+              style: TextStyle(color: theme.colorScheme.outline),
             ),
-          ),
-        ],
+            TextSpan(
+              text: value,
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: valueColor ?? theme.colorScheme.onSurface,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
