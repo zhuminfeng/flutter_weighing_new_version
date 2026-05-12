@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:weighing_system_elinux/weighing_system_elinux.dart';
 import '../../l10n/app_localizations.dart';
 
@@ -138,6 +139,9 @@ class _DigitalOutputSettingsScreenState
         return l.sigWarningInd;
       case DigitalSignalType.readyInd:
         return l.sigReadyInd;
+      // ignore: unreachable_switch_default
+      default:
+        return signal.name;
     }
   }
 
@@ -178,6 +182,7 @@ class _DigitalOutputSettingsScreenState
                   TextField(
                     controller: subsystemController,
                     keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     decoration: InputDecoration(
                       labelText: l.doSubsystemId,
                       border: const OutlineInputBorder(),
@@ -188,6 +193,7 @@ class _DigitalOutputSettingsScreenState
                   TextField(
                     controller: ioPosController,
                     keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     decoration: InputDecoration(
                       labelText: l.doIoPos,
                       border: const OutlineInputBorder(),
@@ -198,6 +204,7 @@ class _DigitalOutputSettingsScreenState
                   TextField(
                     controller: channelController,
                     keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     decoration: InputDecoration(
                       labelText: l.doChannel,
                       border: const OutlineInputBorder(),
@@ -208,6 +215,7 @@ class _DigitalOutputSettingsScreenState
                   TextField(
                     controller: bitIndexController,
                     keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     decoration: InputDecoration(
                       labelText: l.doBitIndex,
                       border: const OutlineInputBorder(),
@@ -218,6 +226,9 @@ class _DigitalOutputSettingsScreenState
                   TextField(
                     controller: appScopeController,
                     keyboardType: TextInputType.numberWithOptions(signed: true),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[-\d]')),
+                    ],
                     decoration: InputDecoration(
                       labelText: l.doAppScope,
                       helperText: l.doAppScopeHint,
