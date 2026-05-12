@@ -387,52 +387,66 @@ namespace weighing
 	void LiwApplication::SystemIdLoop(float dt)
 	{
 		auto now = std::chrono::steady_clock::now();
+		float step_elapsed = std::chrono::duration<float>(now - sysid_step_start_).count();
 
 		if (sysid_step_ == 0)
 		{
-			// Start first step
 			sysid_step_ = 1;
-			sysid_current_rate_ = 0.0f;
+			sysid_phase_ = SysIdPhase::kSettling;
 			sysid_step_start_ = now;
-			sysid_step_start_weight_ = current_weight_.load();
-			OutputManager::Instance().SetControlRate(subsystem_id_, sysid_current_rate_);
+			sysid_points_.clear();
 		}
 
-		float step_elapsed = std::chrono::duration<float>(now - sysid_step_start_).count();
-		float step_dur = sysid_config_.step_duration;
+		float target_duration = sysid_config_.step_duration;
+		// 如果开启智能步进，归零平稳时间缩短以提高效率
+		float settle_duration = sysid_config_.smart_step_control ? (target_duration * 0.3f) : (target_duration * 0.5f);
 
-		if (step_elapsed >= step_dur)
+		if (sysid_phase_ == SysIdPhase::kSettling)
 		{
-			// Measure flow at current rate
-			// double weight_change = sysid_step_start_weight_ - current_weight_.load();
-			// double flow_at_rate = weight_change / step_elapsed * 3600.0; // kg/h
-
-			// Advance to next step
-			sysid_step_++;
-
-			if (sysid_step_ > sysid_total_steps_)
+			// 阶段 1: 归零平稳
+			OutputManager::Instance().SetControlRate(subsystem_id_, 0.0f);
+			if (step_elapsed >= settle_duration)
 			{
-				// System ID complete
-				SetRunState(AppRunState::kCompleted);
-				OutputManager::Instance().SetControlRate(subsystem_id_, 0.0f);
-				return;
+				sysid_phase_ = SysIdPhase::kMeasuring;
+				sysid_step_start_ = now;
+				sysid_step_start_weight_ = current_weight_.load();
+
+				// 计算当前步进的测试控制率
+				float range = sysid_config_.adjust_range_upper - sysid_config_.adjust_range_lower;
+				sysid_current_rate_ = sysid_config_.adjust_range_lower +
+									  (range / (sysid_total_steps_ - 1)) * (sysid_step_ - 1);
 			}
-
-			// Calculate next test rate
-			float range = sysid_config_.adjust_range_upper - sysid_config_.adjust_range_lower;
-			float step_size = range / (sysid_total_steps_ - 1);
-			sysid_current_rate_ = sysid_config_.adjust_range_lower +
-								  step_size * (sysid_step_ - 1);
-
-			sysid_step_start_ = now;
-			sysid_step_start_weight_ = current_weight_.load();
+		}
+		else
+		{
+			// 阶段 2: 目标率测量
 			OutputManager::Instance().SetControlRate(subsystem_id_, sysid_current_rate_);
 
-			// Check material level
-			if (current_weight_.load() < system_config_.hopper_min)
+			if (step_elapsed >= target_duration)
 			{
-				// Need refill
-				CheckRefill();
+				double weight_drop = sysid_step_start_weight_ - current_weight_.load();
+				float flow_at_rate = static_cast<float>(weight_drop / step_elapsed * 3600.0);
+
+				// 错误检查：如果控制率 > 10% 但流量接近 0，触发喂料器堵塞预警
+				if (sysid_current_rate_ > 10.0f && flow_at_rate < 0.01f)
+				{
+					EmitWarning("System ID Error: No material flow detected (Feeder blocked?)");
+				}
+
+				sysid_points_.push_back({sysid_current_rate_, flow_at_rate});
+
+				if (sysid_step_ >= sysid_total_steps_)
+				{
+					CalculateParametersFromSysId(); // 5 个点集齐，开始计算
+					SetRunState(AppRunState::kCompleted);
+					Stop();
+				}
+				else
+				{
+					sysid_step_++;
+					sysid_phase_ = SysIdPhase::kSettling; // 返回 0 准备下一步
+					sysid_step_start_ = now;
+				}
 			}
 		}
 
@@ -445,6 +459,45 @@ namespace weighing
 			status_data_.current_weight = current_weight_.load();
 			status_data_.current_flow = current_flow;
 		}
+	}
+
+	void LiwApplication::CalculateParametersFromSysId()
+	{
+		if (sysid_points_.size() < 2)
+			return;
+
+		// 1. 使用最小二乘法计算斜率 (流量 / 控制率)
+		float sum_x = 0, sum_y = 0, sum_xy = 0, sum_xx = 0;
+		for (const auto &p : sysid_points_)
+		{
+			sum_x += p.rate;
+			sum_y += p.flow;
+			sum_xy += p.rate * p.flow;
+			sum_xx += p.rate * p.rate;
+		}
+		float n = static_cast<float>(sysid_points_.size());
+		float slope = (n * sum_xy - sum_x * sum_y) / (n * sum_xx - sum_x * sum_x);
+
+		// 2. 计算最大流量 (100% 控制率下的流量)
+		float calculated_max_flow = slope * 100.0f;
+		if (calculated_max_flow <= 0)
+			calculated_max_flow = 100.0f; // 安全保底
+
+		// 3. 计算 PID 参数 (根据 IND360 典型逻辑: Kp 与增益成反比)
+		// 假设系统响应时间常数由步进周期决定
+		float new_kp = 1.0f / (slope > 0 ? (slope / (calculated_max_flow / 100.0f)) : 1.0f);
+		float new_ki = sysid_config_.step_duration * 0.5f; // 积分时间常数
+
+		// 4. 更新控制器配置
+		LiwControllerConfig new_cfg = controller_config_;
+		new_cfg.max_flow = calculated_max_flow;
+		new_cfg.Kp = std::max(0.1f, std::min(new_kp, 20.0f)); // 范围限制
+		new_cfg.Ki = std::max(0.01f, new_ki);
+
+		SetControllerConfig(new_cfg);
+
+		// 发送系统日志
+		EmitWarning("System ID Finished: MaxFlow updated to " + std::to_string(calculated_max_flow));
 	}
 
 	void LiwApplication::CheckRefill()

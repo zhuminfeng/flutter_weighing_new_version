@@ -188,6 +188,22 @@ namespace weighing
 		// Warning checks
 		void CheckWarnings();
 
+		enum class SysIdPhase
+		{
+			kSettling,
+			kMeasuring
+		}; // 识别子阶段
+		SysIdPhase sysid_phase_ = SysIdPhase::kSettling;
+
+		struct SysIdPoint
+		{
+			float rate;
+			float flow;
+		};
+		std::vector<SysIdPoint> sysid_points_; // 存储识别到的 5 个点
+
+		void CalculateParametersFromSysId(); // 核心计算算法
+
 		// Configuration
 		LiwBaseConfig base_config_;
 		LiwSystemConfig system_config_;
