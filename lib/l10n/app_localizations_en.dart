@@ -836,4 +836,52 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get eta => 'ETA (hh:mm:ss)';
+
+  @override
+  String get doSubsystemId => 'Subsystem ID';
+
+  @override
+  String get doIoPos => 'IO Position';
+
+  @override
+  String get doChannel => 'Channel';
+
+  @override
+  String get doBitIndex => 'Bit Index';
+
+  @override
+  String get doAppScope => 'App Scope';
+
+  @override
+  String get doAppScopeHint => '-1 = All applications';
+
+  @override
+  String get doSignalType => 'Signal Type';
+
+  @override
+  String get doActiveHigh => 'Active High';
+
+  @override
+  String get sigFeedFast => 'Fast Feed';
+
+  @override
+  String get sigFeedSlow => 'Fine Feed';
+
+  @override
+  String get sigRefillValve => 'Refill Valve';
+
+  @override
+  String get sigEmptyingValve => 'Emptying Valve';
+
+  @override
+  String get sigAlarmOut => 'Alarm Output';
+
+  @override
+  String get sigRunningInd => 'Running Indicator';
+
+  @override
+  String get sigWarningInd => 'Warning Indicator';
+
+  @override
+  String get sigReadyInd => 'Ready Indicator';
 }

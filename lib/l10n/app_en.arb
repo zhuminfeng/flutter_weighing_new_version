@@ -288,5 +288,21 @@
   "exportSuccess": "Exported to: ",
   "batchTargetWeight":"Batch Target Weight (kg)",
   "currentBatchWeight":"Current Batch Weight (kg)",
-  "eta":"ETA (hh:mm:ss)"
+  "eta":"ETA (hh:mm:ss)",
+  "doSubsystemId": "Subsystem ID",
+  "doIoPos": "IO Position",
+  "doChannel": "Channel",
+  "doBitIndex": "Bit Index",
+  "doAppScope": "App Scope",
+  "doAppScopeHint": "-1 = All applications",
+  "doSignalType": "Signal Type",
+  "doActiveHigh": "Active High",
+  "sigFeedFast": "Fast Feed",
+  "sigFeedSlow": "Fine Feed",
+  "sigRefillValve": "Refill Valve",
+  "sigEmptyingValve": "Emptying Valve",
+  "sigAlarmOut": "Alarm Output",
+  "sigRunningInd": "Running Indicator",
+  "sigWarningInd": "Warning Indicator",
+  "sigReadyInd": "Ready Indicator"
 }

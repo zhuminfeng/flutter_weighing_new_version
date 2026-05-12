@@ -833,4 +833,52 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get eta => 'ETA (hh:mm:ss)';
+
+  @override
+  String get doSubsystemId => '子系统 ID';
+
+  @override
+  String get doIoPos => 'IO 位置';
+
+  @override
+  String get doChannel => '通道';
+
+  @override
+  String get doBitIndex => '位索引';
+
+  @override
+  String get doAppScope => '应用范围';
+
+  @override
+  String get doAppScopeHint => '-1 = 全部应用';
+
+  @override
+  String get doSignalType => '信号类型';
+
+  @override
+  String get doActiveHigh => '高电平有效';
+
+  @override
+  String get sigFeedFast => '快加料';
+
+  @override
+  String get sigFeedSlow => '细加料';
+
+  @override
+  String get sigRefillValve => '补料阀';
+
+  @override
+  String get sigEmptyingValve => '排空阀';
+
+  @override
+  String get sigAlarmOut => '报警输出';
+
+  @override
+  String get sigRunningInd => '运行指示';
+
+  @override
+  String get sigWarningInd => '警告指示';
+
+  @override
+  String get sigReadyInd => '就绪指示';
 }

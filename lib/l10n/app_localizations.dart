@@ -1741,6 +1741,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'ETA (hh:mm:ss)'**
   String get eta;
+
+  /// No description provided for @doSubsystemId.
+  ///
+  /// In en, this message translates to:
+  /// **'Subsystem ID'**
+  String get doSubsystemId;
+
+  /// No description provided for @doIoPos.
+  ///
+  /// In en, this message translates to:
+  /// **'IO Position'**
+  String get doIoPos;
+
+  /// No description provided for @doChannel.
+  ///
+  /// In en, this message translates to:
+  /// **'Channel'**
+  String get doChannel;
+
+  /// No description provided for @doBitIndex.
+  ///
+  /// In en, this message translates to:
+  /// **'Bit Index'**
+  String get doBitIndex;
+
+  /// No description provided for @doAppScope.
+  ///
+  /// In en, this message translates to:
+  /// **'App Scope'**
+  String get doAppScope;
+
+  /// No description provided for @doAppScopeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'-1 = All applications'**
+  String get doAppScopeHint;
+
+  /// No description provided for @doSignalType.
+  ///
+  /// In en, this message translates to:
+  /// **'Signal Type'**
+  String get doSignalType;
+
+  /// No description provided for @doActiveHigh.
+  ///
+  /// In en, this message translates to:
+  /// **'Active High'**
+  String get doActiveHigh;
+
+  /// No description provided for @sigFeedFast.
+  ///
+  /// In en, this message translates to:
+  /// **'Fast Feed'**
+  String get sigFeedFast;
+
+  /// No description provided for @sigFeedSlow.
+  ///
+  /// In en, this message translates to:
+  /// **'Fine Feed'**
+  String get sigFeedSlow;
+
+  /// No description provided for @sigRefillValve.
+  ///
+  /// In en, this message translates to:
+  /// **'Refill Valve'**
+  String get sigRefillValve;
+
+  /// No description provided for @sigEmptyingValve.
+  ///
+  /// In en, this message translates to:
+  /// **'Emptying Valve'**
+  String get sigEmptyingValve;
+
+  /// No description provided for @sigAlarmOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Alarm Output'**
+  String get sigAlarmOut;
+
+  /// No description provided for @sigRunningInd.
+  ///
+  /// In en, this message translates to:
+  /// **'Running Indicator'**
+  String get sigRunningInd;
+
+  /// No description provided for @sigWarningInd.
+  ///
+  /// In en, this message translates to:
+  /// **'Warning Indicator'**
+  String get sigWarningInd;
+
+  /// No description provided for @sigReadyInd.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready Indicator'**
+  String get sigReadyInd;
 }
 
 class _AppLocalizationsDelegate

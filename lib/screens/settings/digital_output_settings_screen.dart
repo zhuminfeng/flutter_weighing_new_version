@@ -34,13 +34,11 @@ class _DigitalOutputSettingsScreenState
     final l = AppLocalizations.of(context)!;
     final r = await WeighingPlatform.instance.validateDigitalOutputMap(_cfg);
     if (!mounted) return;
+    final ok = r['ok'] == true;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          r['ok'] == true
-              ? l.validationPassed
-              : '${l.validationFailed}${r['error']}',
-        ),
+        content: Text(ok ? l.validationPassed : '${l.validationFailed}${r['error']}'),
+        backgroundColor: ok ? Colors.green : Colors.red,
       ),
     );
   }
@@ -52,7 +50,10 @@ class _DigitalOutputSettingsScreenState
     if (!mounted) return;
     setState(() => _saving = false);
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(ok ? l.saveSuccess : l.saveFailedMsg)),
+      SnackBar(
+        content: Text(ok ? l.saveSuccess : l.saveFailedMsg),
+        backgroundColor: ok ? Colors.green : Colors.red,
+      ),
     );
   }
 
@@ -86,6 +87,9 @@ class _DigitalOutputSettingsScreenState
               child: Text(l.cancel),
             ),
             TextButton(
+              style: TextButton.styleFrom(
+                foregroundColor: Theme.of(dialogContext).colorScheme.error,
+              ),
               onPressed: () => Navigator.of(dialogContext).pop(true),
               child: Text(l.delete),
             ),
@@ -113,6 +117,28 @@ class _DigitalOutputSettingsScreenState
     setState(() {
       _cfg = DigitalOutputMapConfig(version: _cfg.version, bindings: list);
     });
+    _editBinding(list.length - 1);
+  }
+
+  String _signalName(DigitalSignalType signal, AppLocalizations l) {
+    switch (signal) {
+      case DigitalSignalType.feedFast:
+        return l.sigFeedFast;
+      case DigitalSignalType.feedSlow:
+        return l.sigFeedSlow;
+      case DigitalSignalType.refillValve:
+        return l.sigRefillValve;
+      case DigitalSignalType.emptyingValve:
+        return l.sigEmptyingValve;
+      case DigitalSignalType.alarmOut:
+        return l.sigAlarmOut;
+      case DigitalSignalType.runningInd:
+        return l.sigRunningInd;
+      case DigitalSignalType.warningInd:
+        return l.sigWarningInd;
+      case DigitalSignalType.readyInd:
+        return l.sigReadyInd;
+    }
   }
 
   Future<void> _editBinding(int index) async {
@@ -147,42 +173,72 @@ class _DigitalOutputSettingsScreenState
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   TextField(
                     controller: subsystemController,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'subsystem_id',
+                    decoration: InputDecoration(
+                      labelText: l.doSubsystemId,
+                      border: const OutlineInputBorder(),
+                      isDense: true,
                     ),
                   ),
+                  const SizedBox(height: 12),
                   TextField(
                     controller: ioPosController,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'io_pos'),
+                    decoration: InputDecoration(
+                      labelText: l.doIoPos,
+                      border: const OutlineInputBorder(),
+                      isDense: true,
+                    ),
                   ),
+                  const SizedBox(height: 12),
                   TextField(
                     controller: channelController,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'channel'),
+                    decoration: InputDecoration(
+                      labelText: l.doChannel,
+                      border: const OutlineInputBorder(),
+                      isDense: true,
+                    ),
                   ),
+                  const SizedBox(height: 12),
                   TextField(
                     controller: bitIndexController,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'bit_index'),
+                    decoration: InputDecoration(
+                      labelText: l.doBitIndex,
+                      border: const OutlineInputBorder(),
+                      isDense: true,
+                    ),
                   ),
+                  const SizedBox(height: 12),
                   TextField(
                     controller: appScopeController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'app_scope'),
+                    keyboardType: TextInputType.numberWithOptions(signed: true),
+                    decoration: InputDecoration(
+                      labelText: l.doAppScope,
+                      helperText: l.doAppScopeHint,
+                      border: const OutlineInputBorder(),
+                      isDense: true,
+                    ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   DropdownButtonFormField<DigitalSignalType>(
                     value: signal,
-                    decoration: const InputDecoration(labelText: 'signal'),
+                    decoration: InputDecoration(
+                      labelText: l.doSignalType,
+                      border: const OutlineInputBorder(),
+                      isDense: true,
+                    ),
                     items: DigitalSignalType.values
                         .map(
-                          (e) =>
-                              DropdownMenuItem(value: e, child: Text(e.name)),
+                          (e) => DropdownMenuItem(
+                            value: e,
+                            child: Text(_signalName(e, l)),
+                          ),
                         )
                         .toList(),
                     onChanged: (v) {
@@ -193,13 +249,13 @@ class _DigitalOutputSettingsScreenState
                   ),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('active_high'),
+                    title: Text(l.doActiveHigh),
                     value: activeHigh,
                     onChanged: (v) => setDialogState(() => activeHigh = v),
                   ),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('enabled'),
+                    title: Text(l.enabled),
                     value: enabled,
                     onChanged: (v) => setDialogState(() => enabled = v),
                   ),
@@ -211,7 +267,7 @@ class _DigitalOutputSettingsScreenState
                 onPressed: () => Navigator.of(dialogContext).pop(),
                 child: Text(l.cancel),
               ),
-              TextButton(
+              FilledButton(
                 onPressed: () {
                   final subsystemId = int.tryParse(subsystemController.text);
                   final ioPos = int.tryParse(ioPosController.text);
@@ -263,46 +319,285 @@ class _DigitalOutputSettingsScreenState
     }
 
     final l = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(
         title: Text(l.digitalOutputMapping),
         actions: [
-          TextButton(onPressed: _addBinding, child: Text(l.add)),
-          TextButton(onPressed: _validate, child: Text(l.validate)),
-          TextButton(onPressed: _saving ? null : _save, child: Text(l.save)),
+          TextButton.icon(
+            icon: const Icon(Icons.add),
+            label: Text(l.add),
+            onPressed: _addBinding,
+          ),
+          TextButton.icon(
+            icon: const Icon(Icons.check_circle_outline),
+            label: Text(l.validate),
+            onPressed: _validate,
+          ),
+          TextButton.icon(
+            icon: _saving
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.save_outlined),
+            label: Text(l.save),
+            onPressed: _saving ? null : _save,
+          ),
         ],
       ),
       body: _cfg.bindings.isEmpty
-          ? Center(child: Text(l.noMappingsMsg))
+          ? Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.device_hub_outlined,
+                    size: 64,
+                    color: theme.colorScheme.outline,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    l.noMappingsMsg,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: theme.colorScheme.outline,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  FilledButton.icon(
+                    icon: const Icon(Icons.add),
+                    label: Text(l.add),
+                    onPressed: _addBinding,
+                  ),
+                ],
+              ),
+            )
           : ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
               itemCount: _cfg.bindings.length,
               itemBuilder: (_, i) {
                 final b = _cfg.bindings[i];
-                return ListTile(
-                  onTap: () => _editBinding(i),
-                  title: Text(
-                    'sub:${b.subsystemId} io:${b.ioPos} ch:${b.channel} bit:${b.bitIndex}',
-                  ),
-                  subtitle: Text(
-                    'signal:${b.signal.name} enabled:${b.enabled} scope:${b.appScope}',
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.edit_outlined),
-                        onPressed: () => _editBinding(i),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline),
-                        onPressed: () => _confirmRemoveBinding(i),
-                      ),
-                    ],
-                  ),
+                return _BindingCard(
+                  index: i,
+                  binding: b,
+                  signalName: _signalName(b.signal, l),
+                  subsystemIdLabel: l.doSubsystemId,
+                  ioPosLabel: l.doIoPos,
+                  channelLabel: l.doChannel,
+                  bitIndexLabel: l.doBitIndex,
+                  appScopeLabel: l.doAppScope,
+                  activeHighLabel: l.doActiveHigh,
+                  enabledLabel: l.enabled,
+                  disabledLabel: l.disabled,
+                  onEdit: () => _editBinding(i),
+                  onDelete: () => _confirmRemoveBinding(i),
                 );
               },
             ),
+    );
+  }
+}
+
+class _BindingCard extends StatelessWidget {
+  const _BindingCard({
+    required this.index,
+    required this.binding,
+    required this.signalName,
+    required this.subsystemIdLabel,
+    required this.ioPosLabel,
+    required this.channelLabel,
+    required this.bitIndexLabel,
+    required this.appScopeLabel,
+    required this.activeHighLabel,
+    required this.enabledLabel,
+    required this.disabledLabel,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  final int index;
+  final DigitalOutputBinding binding;
+  final String signalName;
+  final String subsystemIdLabel;
+  final String ioPosLabel;
+  final String channelLabel;
+  final String bitIndexLabel;
+  final String appScopeLabel;
+  final String activeHighLabel;
+  final String enabledLabel;
+  final String disabledLabel;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isEnabled = binding.enabled;
+
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      child: InkWell(
+        onTap: onEdit,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 14,
+                    backgroundColor: isEnabled
+                        ? colorScheme.primaryContainer
+                        : colorScheme.surfaceContainerHighest,
+                    child: Text(
+                      '${index + 1}',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: isEnabled
+                            ? colorScheme.onPrimaryContainer
+                            : colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      signalName,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: isEnabled ? null : colorScheme.outline,
+                      ),
+                    ),
+                  ),
+                  _StatusChip(
+                    enabled: isEnabled,
+                    enabledLabel: enabledLabel,
+                    disabledLabel: disabledLabel,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined),
+                    visualDensity: VisualDensity.compact,
+                    onPressed: onEdit,
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      Icons.delete_outline,
+                      color: colorScheme.error,
+                    ),
+                    visualDensity: VisualDensity.compact,
+                    onPressed: onDelete,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 16,
+                runSpacing: 4,
+                children: [
+                  _FieldLabel(
+                    label: subsystemIdLabel,
+                    value: '${binding.subsystemId}',
+                  ),
+                  _FieldLabel(label: ioPosLabel, value: '${binding.ioPos}'),
+                  _FieldLabel(
+                    label: channelLabel,
+                    value: '${binding.channel}',
+                  ),
+                  _FieldLabel(
+                    label: bitIndexLabel,
+                    value: '${binding.bitIndex}',
+                  ),
+                  _FieldLabel(
+                    label: appScopeLabel,
+                    value: '${binding.appScope}',
+                  ),
+                  _FieldLabel(
+                    label: activeHighLabel,
+                    value: binding.activeHigh ? '✓' : '✗',
+                    valueColor: binding.activeHigh
+                        ? Colors.green
+                        : colorScheme.error,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({
+    required this.enabled,
+    required this.enabledLabel,
+    required this.disabledLabel,
+  });
+
+  final bool enabled;
+  final String enabledLabel;
+  final String disabledLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: enabled
+            ? colorScheme.primaryContainer
+            : colorScheme.errorContainer,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        enabled ? enabledLabel : disabledLabel,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: enabled
+              ? colorScheme.onPrimaryContainer
+              : colorScheme.onErrorContainer,
+        ),
+      ),
+    );
+  }
+}
+
+class _FieldLabel extends StatelessWidget {
+  const _FieldLabel({
+    required this.label,
+    required this.value,
+    this.valueColor,
+  });
+
+  final String label;
+  final String value;
+  final Color? valueColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return RichText(
+      text: TextSpan(
+        style: theme.textTheme.bodySmall,
+        children: [
+          TextSpan(
+            text: '$label: ',
+            style: TextStyle(color: theme.colorScheme.outline),
+          ),
+          TextSpan(
+            text: value,
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: valueColor ?? theme.colorScheme.onSurface,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

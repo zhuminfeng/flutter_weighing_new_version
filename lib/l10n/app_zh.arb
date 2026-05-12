@@ -288,5 +288,21 @@
   "exportSuccess": "成功导出至: ",
   "batchTargetWeight":"批次目标重量 (kg)",
   "currentBatchWeight":"当前批次重量 (kg)",
-  "eta":"ETA (hh:mm:ss)"
+  "eta":"ETA (hh:mm:ss)",
+  "doSubsystemId": "子系统 ID",
+  "doIoPos": "IO 位置",
+  "doChannel": "通道",
+  "doBitIndex": "位索引",
+  "doAppScope": "应用范围",
+  "doAppScopeHint": "-1 = 全部应用",
+  "doSignalType": "信号类型",
+  "doActiveHigh": "高电平有效",
+  "sigFeedFast": "快加料",
+  "sigFeedSlow": "细加料",
+  "sigRefillValve": "补料阀",
+  "sigEmptyingValve": "排空阀",
+  "sigAlarmOut": "报警输出",
+  "sigRunningInd": "运行指示",
+  "sigWarningInd": "警告指示",
+  "sigReadyInd": "就绪指示"
 }
