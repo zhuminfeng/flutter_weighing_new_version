@@ -833,4 +833,88 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get eta => 'ETA (hh:mm:ss)';
+
+  @override
+  String get subsystemId => '子系统ID';
+
+  @override
+  String get ioPosition => 'I/O位置';
+
+  @override
+  String get channel => '通道';
+
+  @override
+  String get bitIndex => '位索引';
+
+  @override
+  String get appScope => '应用范围';
+
+  @override
+  String get signal => '信号类型';
+
+  @override
+  String get activeHigh => '高电平有效';
+
+  @override
+  String get hardwareConfig => '硬件配置';
+
+  @override
+  String get signalConfig => '信号配置';
+
+  @override
+  String get scopeConfig => '范围配置';
+
+  @override
+  String get subsystemIdHint => '此输出所属的子系统标识符';
+
+  @override
+  String get ioPosHint => 'EtherCAT网络中物理I/O模块的位置';
+
+  @override
+  String get channelHint => '称重通道 (0 或 1)';
+
+  @override
+  String get bitIndexHint => '数字输出位编号 (0-15)';
+
+  @override
+  String get appScopeHint => '应用范围过滤器 (0 = 全部)';
+
+  @override
+  String get signalTypeHint => '此输出代表的控制信号';
+
+  @override
+  String get activeHighHint => '信号为高电平时输出有效';
+
+  @override
+  String get enabledStatus => '启用状态';
+
+  @override
+  String get mappingDetails => '映射详情';
+
+  @override
+  String get outputConfiguration => '数字输出配置';
+
+  @override
+  String get noMappingsHint => '尚未配置数字输出映射。点击 \'+\' 按钮创建您的第一个映射。';
+
+  @override
+  String get feedFast => '快速喂料';
+
+  @override
+  String get feedSlow => '慢速喂料 / 精细喂料';
+
+  @override
+  String get refillValve => '补料阀';
+
+  @override
+  String get emptyingValve => '排空阀';
+
+  @override
+  String get alarm => '报警信号';
+
+  @override
+  String get runningSignal => '运行指示';
+
+  @override
+  String get warningSignal => '警告指示';
 }

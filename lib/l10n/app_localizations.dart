@@ -1741,6 +1741,174 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'ETA (hh:mm:ss)'**
   String get eta;
+
+  /// No description provided for @subsystemId.
+  ///
+  /// In en, this message translates to:
+  /// **'Subsystem ID'**
+  String get subsystemId;
+
+  /// No description provided for @ioPosition.
+  ///
+  /// In en, this message translates to:
+  /// **'I/O Position'**
+  String get ioPosition;
+
+  /// No description provided for @channel.
+  ///
+  /// In en, this message translates to:
+  /// **'Channel'**
+  String get channel;
+
+  /// No description provided for @bitIndex.
+  ///
+  /// In en, this message translates to:
+  /// **'Bit Index'**
+  String get bitIndex;
+
+  /// No description provided for @appScope.
+  ///
+  /// In en, this message translates to:
+  /// **'Application Scope'**
+  String get appScope;
+
+  /// No description provided for @signal.
+  ///
+  /// In en, this message translates to:
+  /// **'Signal Type'**
+  String get signal;
+
+  /// No description provided for @activeHigh.
+  ///
+  /// In en, this message translates to:
+  /// **'Active High'**
+  String get activeHigh;
+
+  /// No description provided for @hardwareConfig.
+  ///
+  /// In en, this message translates to:
+  /// **'Hardware Configuration'**
+  String get hardwareConfig;
+
+  /// No description provided for @signalConfig.
+  ///
+  /// In en, this message translates to:
+  /// **'Signal Configuration'**
+  String get signalConfig;
+
+  /// No description provided for @scopeConfig.
+  ///
+  /// In en, this message translates to:
+  /// **'Scope Configuration'**
+  String get scopeConfig;
+
+  /// No description provided for @subsystemIdHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The subsystem identifier this output belongs to'**
+  String get subsystemIdHint;
+
+  /// No description provided for @ioPosHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Physical I/O module position in the EtherCAT network'**
+  String get ioPosHint;
+
+  /// No description provided for @channelHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Weighing channel (0 or 1)'**
+  String get channelHint;
+
+  /// No description provided for @bitIndexHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Digital output bit number (0-15)'**
+  String get bitIndexHint;
+
+  /// No description provided for @appScopeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Application scope filter (0 = all)'**
+  String get appScopeHint;
+
+  /// No description provided for @signalTypeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The control signal this output represents'**
+  String get signalTypeHint;
+
+  /// No description provided for @activeHighHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Output is active when signal is HIGH'**
+  String get activeHighHint;
+
+  /// No description provided for @enabledStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Enabled Status'**
+  String get enabledStatus;
+
+  /// No description provided for @mappingDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Mapping Details'**
+  String get mappingDetails;
+
+  /// No description provided for @outputConfiguration.
+  ///
+  /// In en, this message translates to:
+  /// **'Digital Output Configuration'**
+  String get outputConfiguration;
+
+  /// No description provided for @noMappingsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'No digital output mappings configured yet. Tap the \'+\' button to create your first mapping.'**
+  String get noMappingsHint;
+
+  /// No description provided for @feedFast.
+  ///
+  /// In en, this message translates to:
+  /// **'Fast Feed'**
+  String get feedFast;
+
+  /// No description provided for @feedSlow.
+  ///
+  /// In en, this message translates to:
+  /// **'Slow Feed / Fine Feed'**
+  String get feedSlow;
+
+  /// No description provided for @refillValve.
+  ///
+  /// In en, this message translates to:
+  /// **'Refill Valve'**
+  String get refillValve;
+
+  /// No description provided for @emptyingValve.
+  ///
+  /// In en, this message translates to:
+  /// **'Emptying Valve'**
+  String get emptyingValve;
+
+  /// No description provided for @alarm.
+  ///
+  /// In en, this message translates to:
+  /// **'Alarm Signal'**
+  String get alarm;
+
+  /// No description provided for @runningSignal.
+  ///
+  /// In en, this message translates to:
+  /// **'Running Indicator'**
+  String get runningSignal;
+
+  /// No description provided for @warningSignal.
+  ///
+  /// In en, this message translates to:
+  /// **'Warning Indicator'**
+  String get warningSignal;
 }
 
 class _AppLocalizationsDelegate

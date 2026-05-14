@@ -836,4 +836,91 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get eta => 'ETA (hh:mm:ss)';
+
+  @override
+  String get subsystemId => 'Subsystem ID';
+
+  @override
+  String get ioPosition => 'I/O Position';
+
+  @override
+  String get channel => 'Channel';
+
+  @override
+  String get bitIndex => 'Bit Index';
+
+  @override
+  String get appScope => 'Application Scope';
+
+  @override
+  String get signal => 'Signal Type';
+
+  @override
+  String get activeHigh => 'Active High';
+
+  @override
+  String get hardwareConfig => 'Hardware Configuration';
+
+  @override
+  String get signalConfig => 'Signal Configuration';
+
+  @override
+  String get scopeConfig => 'Scope Configuration';
+
+  @override
+  String get subsystemIdHint =>
+      'The subsystem identifier this output belongs to';
+
+  @override
+  String get ioPosHint =>
+      'Physical I/O module position in the EtherCAT network';
+
+  @override
+  String get channelHint => 'Weighing channel (0 or 1)';
+
+  @override
+  String get bitIndexHint => 'Digital output bit number (0-15)';
+
+  @override
+  String get appScopeHint => 'Application scope filter (0 = all)';
+
+  @override
+  String get signalTypeHint => 'The control signal this output represents';
+
+  @override
+  String get activeHighHint => 'Output is active when signal is HIGH';
+
+  @override
+  String get enabledStatus => 'Enabled Status';
+
+  @override
+  String get mappingDetails => 'Mapping Details';
+
+  @override
+  String get outputConfiguration => 'Digital Output Configuration';
+
+  @override
+  String get noMappingsHint =>
+      'No digital output mappings configured yet. Tap the \'+\' button to create your first mapping.';
+
+  @override
+  String get feedFast => 'Fast Feed';
+
+  @override
+  String get feedSlow => 'Slow Feed / Fine Feed';
+
+  @override
+  String get refillValve => 'Refill Valve';
+
+  @override
+  String get emptyingValve => 'Emptying Valve';
+
+  @override
+  String get alarm => 'Alarm Signal';
+
+  @override
+  String get runningSignal => 'Running Indicator';
+
+  @override
+  String get warningSignal => 'Warning Indicator';
 }
