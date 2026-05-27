@@ -9,6 +9,7 @@
 #include "../storage/database_manager.h"
 #include "../storage/config_store.h"
 #include "../storage/calibration_store.h"
+#include "../central/central_controller.h"
 
 #include <fstream>
 #include <cstdio>
@@ -87,6 +88,29 @@ namespace weighing
 		printf("[10/11] Initializing Subsystems...\n");
 		if (!InitSubsystems(db_path))
 			return false;
+
+		// ===== 初始化中央控制器 =====
+		printf("SystemInitializer: Initializing CentralController...\n");
+
+		if (!CentralController::Instance().Initialize())
+		{
+			fprintf(stderr, "SystemInitializer: Failed to initialize CentralController\n");
+			return false;
+		}
+
+		// 注册所有子系统到中央控制器
+		for (auto &[id, sub] : SubsystemManager::Instance().GetAllSubsystems())
+		{
+			// 只注册失重秤应用到中央控制器
+			if (sub->GetLiwApp())
+			{
+				CentralController::Instance().RegisterSubsystem(id);
+				printf("SystemInitializer: Registered subsystem %u to CentralController\n", id);
+			}
+		}
+
+		// 启动中央控制器
+		CentralController::Instance().Start();
 
 		// Step 11: 启动 RT 线程
 		printf("[11/11] Starting EtherCAT RT thread (%u us)...\n", cycle_time_us_);

@@ -304,6 +304,50 @@ namespace weighing
             is_stable INTEGER,
             record_type TEXT DEFAULT 'print'
         );
+
+		-- 配方表
+		CREATE TABLE IF NOT EXISTS recipe (
+			recipe_id INTEGER PRIMARY KEY,
+			name TEXT NOT NULL,
+			total_target_flow REAL DEFAULT 0.0,
+			enable_stagger_refill INTEGER DEFAULT 1,
+			refill_interval_min REAL DEFAULT 10.0,
+			created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+			updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+		);
+
+		-- 配方明细表
+		CREATE TABLE IF NOT EXISTS recipe_detail (
+			recipe_id INTEGER NOT NULL,
+			subsystem_id INTEGER NOT NULL,
+			flow_ratio REAL NOT NULL,
+			PRIMARY KEY (recipe_id, subsystem_id),
+			FOREIGN KEY (recipe_id) REFERENCES recipe(recipe_id) ON DELETE CASCADE
+		);
+
+		-- 批次追溯表
+		CREATE TABLE IF NOT EXISTS batch_trace (
+			batch_id INTEGER PRIMARY KEY AUTOINCREMENT,
+			recipe_id INTEGER NOT NULL,
+			start_time TEXT NOT NULL,
+			end_time TEXT,
+			total_weight REAL DEFAULT 0.0,
+			status TEXT DEFAULT 'running',
+			operator_name TEXT,
+			notes TEXT
+		);
+
+		-- 批次明细表
+		CREATE TABLE IF NOT EXISTS batch_detail (
+			batch_id INTEGER NOT NULL,
+			subsystem_id INTEGER NOT NULL,
+			target_flow REAL,
+			actual_flow_avg REAL,
+			accumulated_weight REAL,
+			refill_count INTEGER DEFAULT 0,
+			PRIMARY KEY (batch_id, subsystem_id),
+			FOREIGN KEY (batch_id) REFERENCES batch_trace(batch_id) ON DELETE CASCADE
+		);
     )SQL";
 
 		return Execute(schema);

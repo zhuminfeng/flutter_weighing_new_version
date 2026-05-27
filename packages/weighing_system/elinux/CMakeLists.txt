@@ -57,6 +57,7 @@ set(CXX_SOURCES
   "storage/config_store.cc"
   "storage/calibration_store.cc"
   "storage/weight_record_store.cc"
+  "central/central_controller.cc"
 )
 
 add_library(${PLUGIN_NAME} SHARED
@@ -81,6 +82,7 @@ target_include_directories(${PLUGIN_NAME} PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}/subsystem"
   "${CMAKE_CURRENT_SOURCE_DIR}/system"
   "${CMAKE_CURRENT_SOURCE_DIR}/storage"
+  "${CMAKE_CURRENT_SOURCE_DIR}/central"
   "/home/tronlong/RK3562/EtherCAT/_install/include"  # <- 新增：IgH EtherCAT Include
 )
 add_library(ext_ethercat SHARED IMPORTED)

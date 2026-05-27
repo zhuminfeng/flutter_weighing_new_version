@@ -134,4 +134,18 @@ abstract class WeighingPlatform extends PlatformInterface {
   Future<bool> stopApp(int subsystemId);
   Future<bool> setManualControlRate(int subsystemId, double ratePct);
   Future<AppStatusData> getAppStatus(int subsystemId);
+
+  // CentralController API
+  Future<bool> loadRecipe(int recipeId);
+  Future<bool> saveRecipe(Map<String, dynamic> recipe);
+  Future<List<Map<String, dynamic>>> getAllRecipes();
+  Future<bool> deleteRecipe(int recipeId);
+  Future<bool> setMasterFlow(double flow);
+  Future<double> getMasterFlow();
+  Future<double> getTotalActualFlow();
+  Future<Map<String, dynamic>?> getSubsystemStatus(int subsystemId);
+  Future<Map<int, Map<String, dynamic>>> getAllSubsystemStatuses();
+  Future<int> startBatch(String operatorName);
+  Future<bool> endBatch();
+  Future<int> getCurrentBatchId();
 }

@@ -7,6 +7,7 @@ import 'filter_screen.dart';
 import 'app_settings_screen.dart';
 import 'digital_output_settings_screen.dart'; // 新增
 import 'signal_analyzer_screen.dart';
+import '../central/central_controller_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -65,6 +66,19 @@ class SettingsScreen extends StatelessWidget {
               context,
               MaterialPageRoute(
                 builder: (_) => const DigitalOutputSettingsScreen(),
+              ),
+            ),
+          ),
+
+          //中央控制器
+          _SettingsTile(
+            icon: Icons.dashboard,
+            title: '中央控制器',
+            subtitle: '多机联动 / 配方管理',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const CentralControllerScreen(),
               ),
             ),
           ),

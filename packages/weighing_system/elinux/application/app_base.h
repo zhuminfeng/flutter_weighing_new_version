@@ -68,6 +68,13 @@ namespace weighing
 		// Weight update from scale
 		virtual void OnWeightUpdate(const WeightData &data) = 0;
 
+		/// 多秤台模式：指定通道的重量更新
+		virtual void OnChannelWeightUpdate(uint16_t channel, const WeightData &data)
+		{
+			// 默认行为：调用单秤台接口 (兼容性)
+			OnWeightUpdate(data);
+		}
+
 		// Basic operations
 		virtual void DoZero();
 		virtual void DoTare();

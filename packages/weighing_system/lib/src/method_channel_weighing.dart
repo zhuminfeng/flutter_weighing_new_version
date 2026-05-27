@@ -464,4 +464,167 @@ class ELinuxWeighingSystem extends WeighingPlatform {
     );
     return (m?['ok'] == true);
   }
+
+  // ===== CentralController API =====
+
+  /// 加载配方
+  @override
+  Future<bool> loadRecipe(int recipeId) async {
+    try {
+      final result = await _channel.invokeMethod('loadRecipe', {
+        'recipeId': recipeId,
+      });
+      return result == true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// 保存配方
+  @override
+  Future<bool> saveRecipe(Map<String, dynamic> recipe) async {
+    try {
+      final result = await _channel.invokeMethod('saveRecipe', {
+        'recipe': recipe,
+      });
+      return result == true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// 获取所有配方
+  @override
+  Future<List<Map<String, dynamic>>> getAllRecipes() async {
+    try {
+      final result = await _channel.invokeMethod('getAllRecipes');
+      if (result is List) {
+        return result.cast<Map<dynamic, dynamic>>().map((e) {
+          return Map<String, dynamic>.from(e);
+        }).toList();
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  /// 删除配方
+  @override
+  Future<bool> deleteRecipe(int recipeId) async {
+    try {
+      final result = await _channel.invokeMethod('deleteRecipe', {
+        'recipeId': recipeId,
+      });
+      return result == true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// 设置主流量
+  @override
+  Future<bool> setMasterFlow(double flow) async {
+    try {
+      final result = await _channel.invokeMethod('setMasterFlow', {
+        'flow': flow,
+      });
+      return result == true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// 获取主流量
+  @override
+  Future<double> getMasterFlow() async {
+    try {
+      final result = await _channel.invokeMethod('getMasterFlow');
+      return (result as num?)?.toDouble() ?? 0.0;
+    } catch (e) {
+      return 0.0;
+    }
+  }
+
+  /// 获取总实际流量
+  @override
+  Future<double> getTotalActualFlow() async {
+    try {
+      final result = await _channel.invokeMethod('getTotalActualFlow');
+      return (result as num?)?.toDouble() ?? 0.0;
+    } catch (e) {
+      return 0.0;
+    }
+  }
+
+  /// 获取子系统状态
+  @override
+  Future<Map<String, dynamic>?> getSubsystemStatus(int subsystemId) async {
+    try {
+      final result = await _channel.invokeMethod('getSubsystemStatus', {
+        'subsystemId': subsystemId,
+      });
+      if (result is Map) {
+        return Map<String, dynamic>.from(result);
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// 获取所有子系统状态
+  @override
+  Future<Map<int, Map<String, dynamic>>> getAllSubsystemStatuses() async {
+    try {
+      final result = await _channel.invokeMethod('getAllSubsystemStatuses');
+      if (result is Map) {
+        final Map<int, Map<String, dynamic>> statuses = {};
+        result.forEach((key, value) {
+          if (key is int && value is Map) {
+            statuses[key] = Map<String, dynamic>.from(value);
+          }
+        });
+        return statuses;
+      }
+      return {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  /// 开始批次
+  @override
+  Future<int> startBatch(String operatorName) async {
+    try {
+      final result = await _channel.invokeMethod('startBatch', {
+        'operatorName': operatorName,
+      });
+      return (result as int?) ?? 0;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  /// 结束批次
+  @override
+  Future<bool> endBatch() async {
+    try {
+      final result = await _channel.invokeMethod('endBatch');
+      return result == true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// 获取当前批次ID
+  @override
+  Future<int> getCurrentBatchId() async {
+    try {
+      final result = await _channel.invokeMethod('getCurrentBatchId');
+      return (result as int?) ?? 0;
+    } catch (e) {
+      return 0;
+    }
+  }
 }

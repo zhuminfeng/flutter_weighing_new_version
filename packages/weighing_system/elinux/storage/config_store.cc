@@ -562,4 +562,263 @@ namespace weighing
 		return type;
 	}
 
+	// 配方管理
+	// ============================================================================
+
+	bool ConfigStore::SaveRecipe(const Recipe &recipe)
+	{
+		auto &db = DatabaseManager::Instance();
+
+		// 保存主配方
+		std::ostringstream sql;
+		sql << "INSERT OR REPLACE INTO recipe "
+			<< "(recipe_id, name, total_target_flow, enable_stagger_refill, refill_interval_min) "
+			<< "VALUES (" << recipe.recipe_id << ", '" << recipe.name << "', "
+			<< recipe.total_target_flow << ", " << (recipe.enable_stagger_refill ? 1 : 0) << ", "
+			<< recipe.refill_interval_min << ")";
+
+		if (!db.Execute(sql.str()))
+		{
+			fprintf(stderr, "ConfigStore: Failed to save recipe %u\n", recipe.recipe_id);
+			return false;
+		}
+
+		// 删除旧的明细
+		std::string del_sql = "DELETE FROM recipe_detail WHERE recipe_id = " +
+							  std::to_string(recipe.recipe_id);
+		db.Execute(del_sql);
+
+		// 保存明细
+		for (const auto &[sub_id, ratio] : recipe.subsystem_ratios)
+		{
+			std::ostringstream detail_sql;
+			detail_sql << "INSERT INTO recipe_detail (recipe_id, subsystem_id, flow_ratio) "
+					   << "VALUES (" << recipe.recipe_id << ", " << sub_id << ", " << ratio << ")";
+
+			if (!db.Execute(detail_sql.str()))
+			{
+				fprintf(stderr, "ConfigStore: Failed to save recipe detail for subsystem %u\n", sub_id);
+				return false;
+			}
+		}
+
+		printf("ConfigStore: Saved recipe %u (%s)\n", recipe.recipe_id, recipe.name.c_str());
+		return true;
+	}
+
+	Recipe ConfigStore::LoadRecipe(uint32_t recipe_id)
+	{
+		auto &db = DatabaseManager::Instance();
+		Recipe recipe;
+		bool found = false;
+
+		// 加载主配方
+		std::string sql = "SELECT * FROM recipe WHERE recipe_id = " + std::to_string(recipe_id);
+
+		db.Query(sql, [&](const std::map<std::string, std::string> &row)
+				 {
+            found = true;
+            recipe.recipe_id = recipe_id;
+            
+            auto it = row.find("name");
+            if (it != row.end()) recipe.name = it->second;
+            
+            it = row.find("total_target_flow");
+            if (it != row.end() && !it->second.empty())
+                recipe.total_target_flow = std::stod(it->second);
+            
+            it = row.find("enable_stagger_refill");
+            if (it != row.end() && !it->second.empty())
+                recipe.enable_stagger_refill = (std::stoi(it->second) != 0);
+            
+            it = row.find("refill_interval_min");
+            if (it != row.end() && !it->second.empty())
+                recipe.refill_interval_min = std::stod(it->second);
+            
+            it = row.find("created_at");
+            if (it != row.end()) recipe.created_at = it->second;
+            
+            it = row.find("updated_at");
+            if (it != row.end()) recipe.updated_at = it->second; });
+
+		if (!found)
+			return recipe;
+
+		// 加载明细
+		std::string detail_sql = "SELECT * FROM recipe_detail WHERE recipe_id = " +
+								 std::to_string(recipe_id);
+
+		db.Query(detail_sql, [&](const std::map<std::string, std::string> &row)
+				 {
+            uint32_t sub_id = 0;
+            double ratio = 0.0;
+            
+            auto it = row.find("subsystem_id");
+            if (it != row.end() && !it->second.empty())
+                sub_id = std::stoul(it->second);
+            
+            it = row.find("flow_ratio");
+            if (it != row.end() && !it->second.empty())
+                ratio = std::stod(it->second);
+            
+            if (sub_id > 0)
+                recipe.subsystem_ratios[sub_id] = ratio; });
+
+		return recipe;
+	}
+
+	std::vector<Recipe> ConfigStore::LoadAllRecipes()
+	{
+		std::vector<Recipe> recipes;
+		auto &db = DatabaseManager::Instance();
+
+		db.Query("SELECT recipe_id FROM recipe ORDER BY recipe_id",
+				 [&](const std::map<std::string, std::string> &row)
+				 {
+					 auto it = row.find("recipe_id");
+					 if (it != row.end() && !it->second.empty())
+					 {
+						 uint32_t id = std::stoul(it->second);
+						 recipes.push_back(LoadRecipe(id));
+					 }
+				 });
+
+		return recipes;
+	}
+
+	bool ConfigStore::DeleteRecipe(uint32_t recipe_id)
+	{
+		auto &db = DatabaseManager::Instance();
+
+		// 删除明细（外键级联会自动删除）
+		std::string del_detail = "DELETE FROM recipe_detail WHERE recipe_id = " +
+								 std::to_string(recipe_id);
+		db.Execute(del_detail);
+
+		// 删除主配方
+		std::string del_recipe = "DELETE FROM recipe WHERE recipe_id = " +
+								 std::to_string(recipe_id);
+		bool ok = db.Execute(del_recipe);
+
+		if (ok)
+			printf("ConfigStore: Deleted recipe %u\n", recipe_id);
+		else
+			fprintf(stderr, "ConfigStore: Failed to delete recipe %u\n", recipe_id);
+
+		return ok;
+	}
+
+	// ============================================================================
+	// 批次追溯
+	// ============================================================================
+
+	uint32_t ConfigStore::StartBatch(uint32_t recipe_id, const std::string &operator_name)
+	{
+		auto &db = DatabaseManager::Instance();
+
+		std::ostringstream sql;
+		sql << "INSERT INTO batch_trace (recipe_id, start_time, operator_name, status) "
+			<< "VALUES (" << recipe_id << ", datetime('now'), '" << operator_name << "', 'running')";
+
+		if (!db.Execute(sql.str()))
+		{
+			fprintf(stderr, "ConfigStore: Failed to start batch\n");
+			return 0;
+		}
+
+		// 获取插入的 batch_id
+		uint32_t batch_id = 0;
+		db.Query("SELECT last_insert_rowid() as id",
+				 [&](const std::map<std::string, std::string> &row)
+				 {
+					 auto it = row.find("id");
+					 if (it != row.end() && !it->second.empty())
+						 batch_id = std::stoul(it->second);
+				 });
+
+		printf("ConfigStore: Started batch %u (recipe %u)\n", batch_id, recipe_id);
+		return batch_id;
+	}
+
+	bool ConfigStore::EndBatch(uint32_t batch_id, double total_weight)
+	{
+		auto &db = DatabaseManager::Instance();
+
+		std::ostringstream sql;
+		sql << "UPDATE batch_trace SET end_time = datetime('now'), "
+			<< "total_weight = " << total_weight << ", status = 'completed' "
+			<< "WHERE batch_id = " << batch_id;
+
+		bool ok = db.Execute(sql.str());
+
+		if (ok)
+			printf("ConfigStore: Ended batch %u (total: %.2f kg)\n", batch_id, total_weight);
+		else
+			fprintf(stderr, "ConfigStore: Failed to end batch %u\n", batch_id);
+
+		return ok;
+	}
+
+	bool ConfigStore::UpdateBatchDetail(uint32_t batch_id, uint32_t subsystem_id,
+										double target_flow, double actual_flow_avg,
+										double accumulated_weight, int refill_count)
+	{
+		auto &db = DatabaseManager::Instance();
+
+		std::ostringstream sql;
+		sql << "INSERT OR REPLACE INTO batch_detail "
+			<< "(batch_id, subsystem_id, target_flow, actual_flow_avg, accumulated_weight, refill_count) "
+			<< "VALUES (" << batch_id << ", " << subsystem_id << ", "
+			<< target_flow << ", " << actual_flow_avg << ", "
+			<< accumulated_weight << ", " << refill_count << ")";
+
+		return db.Execute(sql.str());
+	}
+
+	std::vector<BatchTrace> ConfigStore::QueryBatches(const std::string &start_date,
+													  const std::string &end_date)
+	{
+		std::vector<BatchTrace> batches;
+		auto &db = DatabaseManager::Instance();
+
+		std::ostringstream sql;
+		sql << "SELECT * FROM batch_trace WHERE start_time >= '" << start_date
+			<< "' AND start_time <= '" << end_date << "' ORDER BY batch_id DESC";
+
+		db.Query(sql.str(), [&](const std::map<std::string, std::string> &row)
+				 {
+            BatchTrace batch;
+            
+            auto it = row.find("batch_id");
+            if (it != row.end() && !it->second.empty())
+                batch.batch_id = std::stoul(it->second);
+            
+            it = row.find("recipe_id");
+            if (it != row.end() && !it->second.empty())
+                batch.recipe_id = std::stoul(it->second);
+            
+            it = row.find("start_time");
+            if (it != row.end()) batch.start_time = it->second;
+            
+            it = row.find("end_time");
+            if (it != row.end()) batch.end_time = it->second;
+            
+            it = row.find("total_weight");
+            if (it != row.end() && !it->second.empty())
+                batch.total_weight = std::stod(it->second);
+            
+            it = row.find("status");
+            if (it != row.end()) batch.status = it->second;
+            
+            it = row.find("operator_name");
+            if (it != row.end()) batch.operator_name = it->second;
+            
+            it = row.find("notes");
+            if (it != row.end()) batch.notes = it->second;
+            
+            batches.push_back(batch); });
+
+		return batches;
+	}
+
 } // namespace weighing

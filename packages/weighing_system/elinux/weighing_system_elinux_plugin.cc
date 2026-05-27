@@ -20,6 +20,8 @@
 #include "storage/calibration_store.h"
 #include "storage/weight_record_store.h"
 #include "system/system_initializer.h"
+#include "central/central_controller.h"
+#include "central/recipe.h"
 
 using namespace weighing;
 
@@ -251,6 +253,67 @@ namespace
 		return map;
 	}
 
+	flutter::EncodableMap RecipeToMap(const Recipe &recipe)
+	{
+		flutter::EncodableMap map;
+		map[flutter::EncodableValue("recipeId")] = flutter::EncodableValue(static_cast<int>(recipe.recipe_id));
+		map[flutter::EncodableValue("name")] = flutter::EncodableValue(recipe.name);
+		map[flutter::EncodableValue("totalTargetFlow")] = flutter::EncodableValue(recipe.total_target_flow);
+		map[flutter::EncodableValue("enableStaggerRefill")] = flutter::EncodableValue(recipe.enable_stagger_refill);
+		map[flutter::EncodableValue("refillIntervalMin")] = flutter::EncodableValue(recipe.refill_interval_min);
+
+		flutter::EncodableMap ratios;
+		for (const auto &[sub_id, ratio] : recipe.subsystem_ratios)
+		{
+			ratios[flutter::EncodableValue(static_cast<int>(sub_id))] = flutter::EncodableValue(ratio);
+		}
+		map[flutter::EncodableValue("subsystemRatios")] = flutter::EncodableValue(ratios);
+
+		return map;
+	}
+
+	Recipe MapToRecipe(const flutter::EncodableMap &map)
+	{
+		Recipe recipe;
+		recipe.recipe_id = GetInt(map, "recipeId");
+		recipe.name = GetString(map, "name", "");
+		recipe.total_target_flow = GetDouble(map, "totalTargetFlow");
+		recipe.enable_stagger_refill = GetBool(map, "enableStaggerRefill", true);
+		recipe.refill_interval_min = GetDouble(map, "refillIntervalMin", 10.0);
+
+		auto it = map.find(flutter::EncodableValue("subsystemRatios"));
+		if (it != map.end() && std::holds_alternative<flutter::EncodableMap>(it->second))
+		{
+			const auto *ratios_map = std::get_if<flutter::EncodableMap>(&it->second);
+			for (const auto &[key, value] : *ratios_map)
+			{
+				if (std::holds_alternative<int>(key) && std::holds_alternative<double>(value))
+				{
+					uint32_t sub_id = std::get<int>(key);
+					double ratio = std::get<double>(value);
+					recipe.subsystem_ratios[sub_id] = ratio;
+				}
+			}
+		}
+
+		return recipe;
+	}
+
+	flutter::EncodableMap SubsystemStatusToMap(const SubsystemStatus &status)
+	{
+		flutter::EncodableMap map;
+		map[flutter::EncodableValue("subsystemId")] = flutter::EncodableValue(static_cast<int>(status.subsystem_id));
+		map[flutter::EncodableValue("actualFlow")] = flutter::EncodableValue(status.actual_flow);
+		map[flutter::EncodableValue("targetFlow")] = flutter::EncodableValue(status.target_flow);
+		map[flutter::EncodableValue("controlRate")] = flutter::EncodableValue(status.control_rate);
+		map[flutter::EncodableValue("remainingWeight")] = flutter::EncodableValue(status.remaining_weight);
+		map[flutter::EncodableValue("accumulatedWeight")] = flutter::EncodableValue(status.accumulated_weight);
+		map[flutter::EncodableValue("isRefilling")] = flutter::EncodableValue(status.is_refilling);
+		map[flutter::EncodableValue("isFault")] = flutter::EncodableValue(status.is_fault);
+		map[flutter::EncodableValue("refillCount")] = flutter::EncodableValue(status.refill_count);
+		return map;
+	}
+
 	class WeighingSystemPlugin : public flutter::Plugin
 	{
 	public:
@@ -434,6 +497,35 @@ namespace
 												  std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 		void HandleGetDigitalOutputMapConfig(const flutter::EncodableMap &args,
 											 std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+
+		// ===== CentralController Methods =====
+		void HandleLoadRecipe(const flutter::EncodableMap &args,
+							  std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+		void HandleSaveRecipe(const flutter::EncodableMap &args,
+							  std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+		void HandleGetAllRecipes(const flutter::EncodableMap &args,
+								 std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+		void HandleDeleteRecipe(const flutter::EncodableMap &args,
+								std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+
+		void HandleSetMasterFlow(const flutter::EncodableMap &args,
+								 std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+		void HandleGetMasterFlow(const flutter::EncodableMap &args,
+								 std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+		void HandleGetTotalActualFlow(const flutter::EncodableMap &args,
+									  std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+
+		void HandleGetSubsystemStatus(const flutter::EncodableMap &args,
+									  std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+		void HandleGetAllSubsystemStatuses(const flutter::EncodableMap &args,
+										   std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+
+		void HandleStartBatch(const flutter::EncodableMap &args,
+							  std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+		void HandleEndBatch(const flutter::EncodableMap &args,
+							std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+		void HandleGetCurrentBatchId(const flutter::EncodableMap &args,
+									 std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 
 		// flutter::PluginRegistrar *registrar_;
 		std::unique_ptr<InputSource> input_source_;
@@ -868,6 +960,54 @@ namespace
 		else if (method == "updateDigitalOutputMap")
 		{
 			HandleUpdateDigitalOutputMapConfig(args, std::move(result));
+		}
+		else if (method == "loadRecipe")
+		{
+			HandleLoadRecipe(args, std::move(result));
+		}
+		else if (method == "saveRecipe")
+		{
+			HandleSaveRecipe(args, std::move(result));
+		}
+		else if (method == "getAllRecipes")
+		{
+			HandleGetAllRecipes(args, std::move(result));
+		}
+		else if (method == "deleteRecipe")
+		{
+			HandleDeleteRecipe(args, std::move(result));
+		}
+		else if (method == "setMasterFlow")
+		{
+			HandleSetMasterFlow(args, std::move(result));
+		}
+		else if (method == "getMasterFlow")
+		{
+			HandleGetMasterFlow(args, std::move(result));
+		}
+		else if (method == "getTotalActualFlow")
+		{
+			HandleGetTotalActualFlow(args, std::move(result));
+		}
+		else if (method == "getSubsystemStatus")
+		{
+			HandleGetSubsystemStatus(args, std::move(result));
+		}
+		else if (method == "getAllSubsystemStatuses")
+		{
+			HandleGetAllSubsystemStatuses(args, std::move(result));
+		}
+		else if (method == "startBatch")
+		{
+			HandleStartBatch(args, std::move(result));
+		}
+		else if (method == "endBatch")
+		{
+			HandleEndBatch(args, std::move(result));
+		}
+		else if (method == "getCurrentBatchId")
+		{
+			HandleGetCurrentBatchId(args, std::move(result));
 		}
 		else
 		{
@@ -2509,6 +2649,153 @@ namespace
 
 		result->Success(flutter::EncodableValue(BuildMapResult(true, "")));
 		return;
+	}
+
+	// ============================================================================
+	// 配方管理实现
+	// ============================================================================
+
+	void WeighingSystemPlugin::HandleLoadRecipe(
+		const flutter::EncodableMap &args,
+		std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		int recipe_id = GetInt(args, "recipeId");
+
+		bool ok = CentralController::Instance().LoadRecipe(recipe_id);
+		result->Success(flutter::EncodableValue(ok));
+	}
+
+	void WeighingSystemPlugin::HandleSaveRecipe(
+		const flutter::EncodableMap &args,
+		std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		auto it = args.find(flutter::EncodableValue("recipe"));
+		if (it == args.end() || !std::holds_alternative<flutter::EncodableMap>(it->second))
+		{
+			result->Error("INVALID_ARGUMENT", "recipe map required");
+			return;
+		}
+
+		const auto *recipe_map = std::get_if<flutter::EncodableMap>(&it->second);
+		Recipe recipe = MapToRecipe(*recipe_map);
+
+		bool ok = CentralController::Instance().SaveRecipe(recipe);
+		result->Success(flutter::EncodableValue(ok));
+	}
+
+	void WeighingSystemPlugin::HandleGetAllRecipes(
+		const flutter::EncodableMap &args,
+		std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		auto recipes = CentralController::Instance().GetAllRecipes();
+
+		flutter::EncodableList list;
+		for (const auto &recipe : recipes)
+		{
+			list.push_back(flutter::EncodableValue(RecipeToMap(recipe)));
+		}
+
+		result->Success(flutter::EncodableValue(list));
+	}
+
+	void WeighingSystemPlugin::HandleDeleteRecipe(
+		const flutter::EncodableMap &args,
+		std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		int recipe_id = GetInt(args, "recipeId");
+
+		bool ok = CentralController::Instance().DeleteRecipe(recipe_id);
+		result->Success(flutter::EncodableValue(ok));
+	}
+
+	// ============================================================================
+	// 流量控制实现
+	// ============================================================================
+
+	void WeighingSystemPlugin::HandleSetMasterFlow(
+		const flutter::EncodableMap &args,
+		std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		double flow = GetDouble(args, "flow");
+
+		CentralController::Instance().SetMasterFlow(flow);
+		result->Success(flutter::EncodableValue(true));
+	}
+
+	void WeighingSystemPlugin::HandleGetMasterFlow(
+		const flutter::EncodableMap &args,
+		std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		double flow = CentralController::Instance().GetMasterFlow();
+		result->Success(flutter::EncodableValue(flow));
+	}
+
+	void WeighingSystemPlugin::HandleGetTotalActualFlow(
+		const flutter::EncodableMap &args,
+		std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		double flow = CentralController::Instance().GetTotalActualFlow();
+		result->Success(flutter::EncodableValue(flow));
+	}
+
+	// ============================================================================
+	// 状态查询实现
+	// ============================================================================
+
+	void WeighingSystemPlugin::HandleGetSubsystemStatus(
+		const flutter::EncodableMap &args,
+		std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		int subsystem_id = GetInt(args, "subsystemId");
+
+		auto status = CentralController::Instance().GetSubsystemStatus(subsystem_id);
+		result->Success(flutter::EncodableValue(SubsystemStatusToMap(status)));
+	}
+
+	void WeighingSystemPlugin::HandleGetAllSubsystemStatuses(
+		const flutter::EncodableMap &args,
+		std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		auto statuses = CentralController::Instance().GetAllStatuses();
+
+		flutter::EncodableMap map;
+		for (const auto &[sub_id, status] : statuses)
+		{
+			map[flutter::EncodableValue(static_cast<int>(sub_id))] =
+				flutter::EncodableValue(SubsystemStatusToMap(status));
+		}
+
+		result->Success(flutter::EncodableValue(map));
+	}
+
+	// ============================================================================
+	// 批次管理实现
+	// ============================================================================
+
+	void WeighingSystemPlugin::HandleStartBatch(
+		const flutter::EncodableMap &args,
+		std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		std::string operator_name = GetString(args, "operatorName", "");
+
+		uint32_t batch_id = CentralController::Instance().StartBatch(operator_name);
+		result->Success(flutter::EncodableValue(static_cast<int>(batch_id)));
+	}
+
+	void WeighingSystemPlugin::HandleEndBatch(
+		const flutter::EncodableMap &args,
+		std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		bool ok = CentralController::Instance().EndBatch();
+		result->Success(flutter::EncodableValue(ok));
+	}
+
+	void WeighingSystemPlugin::HandleGetCurrentBatchId(
+		const flutter::EncodableMap &args,
+		std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		uint32_t batch_id = CentralController::Instance().GetCurrentBatchId();
+		result->Success(flutter::EncodableValue(static_cast<int>(batch_id)));
 	}
 
 	// Weight event stream management
