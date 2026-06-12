@@ -85,7 +85,12 @@ class _EthercatDeviceSettingsScreenState
               onPressed: () {
                 final text = subsystemController.text.trim();
                 final subsystemId = text.isEmpty ? -1 : int.tryParse(text);
-                if (subsystemId == null) return;
+                if (subsystemId == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('子系统ID必须是整数')),
+                  );
+                  return;
+                }
                 Navigator.of(dialogContext).pop(
                   current.copyWith(
                     deviceAlias: aliasController.text.trim(),

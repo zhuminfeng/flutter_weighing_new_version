@@ -35,7 +35,7 @@ class EthercatDeviceConfig {
     );
   }
 
-  factory EthercatDeviceConfig.fromMap(Map m) {
+  factory EthercatDeviceConfig.fromMap(Map<String, dynamic> m) {
     return EthercatDeviceConfig(
       isInput: m['is_input'] ?? false,
       alias: m['alias'] ?? 0,

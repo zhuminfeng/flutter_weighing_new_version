@@ -157,7 +157,7 @@ namespace weighing
 	{
 		try
 		{
-			parsed_ = ParsedConfig{};
+			ParsedConfig parsed_tmp;
 
 			std::ifstream f(config_path);
 			if (!f.is_open())
@@ -188,7 +188,7 @@ namespace weighing
 					e.description = s.value("description", "");
 					e.device_alias = s.value("device_alias", "");
 					e.subsystem_id = s.value("subsystem_id", -1);
-					parsed_.output_slaves.push_back(e);
+					parsed_tmp.output_slaves.push_back(e);
 				}
 			}
 
@@ -207,7 +207,7 @@ namespace weighing
 					e.description = s.value("description", "");
 					e.device_alias = s.value("device_alias", "");
 					e.subsystem_id = s.value("subsystem_id", -1);
-					parsed_.input_slaves.push_back(e);
+					parsed_tmp.input_slaves.push_back(e);
 				}
 			}
 
@@ -215,9 +215,9 @@ namespace weighing
 			if (j.contains("input_source") && j["input_source"].contains("shmem"))
 			{
 				auto &shm = j["input_source"]["shmem"];
-				parsed_.shm_path = shm.value("shm_path", "/dev/shm/adc_data");
-				parsed_.shm_channels = shm.value("channels", 2);
-				parsed_.shm_poll_us = shm.value("poll_interval_us", 500);
+				parsed_tmp.shm_path = shm.value("shm_path", "/dev/shm/adc_data");
+				parsed_tmp.shm_channels = shm.value("channels", 2);
+				parsed_tmp.shm_poll_us = shm.value("poll_interval_us", 500);
 			}
 
 			// 子系统映射
@@ -227,22 +227,22 @@ namespace weighing
 				{
 					ParsedConfig::SubMapping m;
 					m.sub_id = std::stoul(key);
-					m.servo_position = val.value("servo_position", (uint16_t)0);
-					m.io_position = val.value("io_position", (uint16_t)0);
-					m.io_channel = val.value("io_channel", (uint16_t)0);
+					m.servo_position = val.value("servo_position", static_cast<uint16_t>(0));
+					m.io_position = val.value("io_position", static_cast<uint16_t>(0));
+					m.io_channel = val.value("io_channel", static_cast<uint16_t>(0));
 					m.scale_id = val.value("scale_id", 0u);
 					m.description = val.value("description", "Subsystem " + key);
-					parsed_.subsystem_mappings.push_back(m);
+					parsed_tmp.subsystem_mappings.push_back(m);
 				}
 			}
 
 			// ===== 解析 digital_output_map（直接在这里做）=====
-			parsed_.has_dio_map_cfg = false;
-			parsed_.dio_map_cfg = DigitalOutputMapConfig{};
+			parsed_tmp.has_dio_map_cfg = false;
+			parsed_tmp.dio_map_cfg = DigitalOutputMapConfig{};
 			if (j.contains("digital_output_map") && j["digital_output_map"].is_object())
 			{
 				const auto &dm = j["digital_output_map"];
-				parsed_.dio_map_cfg.version = dm.value("version", 1);
+				parsed_tmp.dio_map_cfg.version = dm.value("version", 1);
 
 				if (dm.contains("bindings") && dm["bindings"].is_array())
 				{
@@ -257,17 +257,17 @@ namespace weighing
 						b.active_high = it.value("active_high", true);
 						b.enabled = it.value("enabled", true);
 						b.app_scope = it.value("app_scope", -1);
-						parsed_.dio_map_cfg.bindings.push_back(b);
+						parsed_tmp.dio_map_cfg.bindings.push_back(b);
 					}
-					parsed_.has_dio_map_cfg = true;
+					parsed_tmp.has_dio_map_cfg = true;
 				}
 			}
 
-			for (auto &s : parsed_.output_slaves)
+			for (auto &s : parsed_tmp.output_slaves)
 			{
 				if (s.subsystem_id >= 0)
 					continue;
-				for (const auto &m : parsed_.subsystem_mappings)
+				for (const auto &m : parsed_tmp.subsystem_mappings)
 				{
 					if (m.servo_position == s.position || m.io_position == s.position)
 					{
@@ -276,6 +276,22 @@ namespace weighing
 					}
 				}
 			}
+
+			for (auto &s : parsed_tmp.input_slaves)
+			{
+				if (s.subsystem_id >= 0)
+					continue;
+				for (const auto &m : parsed_tmp.subsystem_mappings)
+				{
+					if (m.io_position == s.position)
+					{
+						s.subsystem_id = static_cast<int32_t>(m.sub_id);
+						break;
+					}
+				}
+			}
+
+			parsed_ = std::move(parsed_tmp);
 		}
 		catch (const std::exception &e)
 		{
@@ -743,7 +759,7 @@ namespace weighing
 				auto &target = d.is_input ? j["input_source"]["ethercat"]["slaves"] : j["output"]["slaves"];
 				for (auto &item : target)
 				{
-					if ((uint16_t)item.value("position", 0) != d.position)
+					if (static_cast<uint16_t>(item.value("position", 0)) != d.position)
 						continue;
 					item["device_alias"] = d.device_alias;
 					item["subsystem_id"] = d.subsystem_id;
