@@ -10,6 +10,7 @@ import 'models/liw_config.dart';
 import 'models/filling_config.dart';
 import 'models/system_status.dart';
 import 'models/digital_output_map.dart';
+import 'models/ethercat_device.dart';
 
 class ELinuxWeighingSystem extends WeighingPlatform {
   static const MethodChannel _channel =
@@ -463,6 +464,24 @@ class ELinuxWeighingSystem extends WeighingPlatform {
       config.toMap(),
     );
     return (m?['ok'] == true);
+  }
+
+  @override
+  Future<List<EthercatDeviceConfig>> getEthercatDevices() async {
+    final list = await _channel.invokeListMethod('getEthercatDevices');
+    if (list == null) return [];
+    return list
+        .map((e) => EthercatDeviceConfig.fromMap(Map<String, dynamic>.from(e)))
+        .toList();
+  }
+
+  @override
+  Future<bool> updateEthercatDevices(List<EthercatDeviceConfig> devices) async {
+    final m = await _channel.invokeMapMethod<String, dynamic>(
+      'updateEthercatDevices',
+      {'devices': devices.map((e) => e.toMap()).toList()},
+    );
+    return m?['ok'] == true;
   }
 
   // ===== CentralController API =====

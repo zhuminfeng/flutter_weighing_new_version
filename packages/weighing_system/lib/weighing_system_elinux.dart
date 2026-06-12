@@ -12,3 +12,4 @@ export 'src/models/liw_config.dart';
 export 'src/models/filling_config.dart';
 export 'src/models/system_status.dart';
 export 'src/models/digital_output_map.dart';
+export 'src/models/ethercat_device.dart';

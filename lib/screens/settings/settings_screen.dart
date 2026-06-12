@@ -6,6 +6,7 @@ import 'calibration_screen.dart';
 import 'filter_screen.dart';
 import 'app_settings_screen.dart';
 import 'digital_output_settings_screen.dart'; // 新增
+import 'ethercat_device_settings_screen.dart';
 import 'signal_analyzer_screen.dart';
 import '../central/central_controller_screen.dart';
 
@@ -66,6 +67,17 @@ class SettingsScreen extends StatelessWidget {
               context,
               MaterialPageRoute(
                 builder: (_) => const DigitalOutputSettingsScreen(),
+              ),
+            ),
+          ),
+          _SettingsTile(
+            icon: Icons.device_hub,
+            title: 'EtherCAT设备配置',
+            subtitle: '自动识别设备并分配子系统',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const EthercatDeviceSettingsScreen(),
               ),
             ),
           ),

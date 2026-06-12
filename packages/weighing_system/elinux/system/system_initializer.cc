@@ -157,6 +157,8 @@ namespace weighing
 	{
 		try
 		{
+			parsed_ = ParsedConfig{};
+
 			std::ifstream f(config_path);
 			if (!f.is_open())
 			{
@@ -184,6 +186,8 @@ namespace weighing
 					e.product_code = static_cast<uint32_t>(
 						std::stoul(s.value("product_code", "0x0"), nullptr, 16));
 					e.description = s.value("description", "");
+					e.device_alias = s.value("device_alias", "");
+					e.subsystem_id = s.value("subsystem_id", -1);
 					parsed_.output_slaves.push_back(e);
 				}
 			}
@@ -201,6 +205,8 @@ namespace weighing
 					e.product_code = static_cast<uint32_t>(
 						std::stoul(s.value("product_code", "0x0"), nullptr, 16));
 					e.description = s.value("description", "");
+					e.device_alias = s.value("device_alias", "");
+					e.subsystem_id = s.value("subsystem_id", -1);
 					parsed_.input_slaves.push_back(e);
 				}
 			}
@@ -254,6 +260,20 @@ namespace weighing
 						parsed_.dio_map_cfg.bindings.push_back(b);
 					}
 					parsed_.has_dio_map_cfg = true;
+				}
+			}
+
+			for (auto &s : parsed_.output_slaves)
+			{
+				if (s.subsystem_id >= 0)
+					continue;
+				for (const auto &m : parsed_.subsystem_mappings)
+				{
+					if (m.servo_position == s.position || m.io_position == s.position)
+					{
+						s.subsystem_id = static_cast<int32_t>(m.sub_id);
+						break;
+					}
 				}
 			}
 		}
@@ -643,6 +663,105 @@ namespace weighing
 			parsed_.dio_map_cfg = cfg;
 			parsed_.has_dio_map_cfg = true;
 			return true;
+		}
+		catch (const std::exception &e)
+		{
+			if (err)
+				*err = e.what();
+			return false;
+		}
+	}
+
+	std::vector<SystemInitializer::EthercatDeviceConfig> SystemInitializer::GetEthercatDevices() const
+	{
+		std::vector<EthercatDeviceConfig> out;
+		out.reserve(parsed_.output_slaves.size() + parsed_.input_slaves.size());
+
+		for (const auto &s : parsed_.output_slaves)
+		{
+			EthercatDeviceConfig d;
+			d.is_input = false;
+			d.alias = s.alias;
+			d.position = s.position;
+			d.vendor_id = s.vendor_id;
+			d.product_code = s.product_code;
+			d.description = s.description;
+			d.device_alias = s.device_alias;
+			d.subsystem_id = s.subsystem_id;
+			out.push_back(std::move(d));
+		}
+
+		for (const auto &s : parsed_.input_slaves)
+		{
+			EthercatDeviceConfig d;
+			d.is_input = true;
+			d.alias = s.alias;
+			d.position = s.position;
+			d.vendor_id = s.vendor_id;
+			d.product_code = s.product_code;
+			d.description = s.description;
+			d.device_alias = s.device_alias;
+			d.subsystem_id = s.subsystem_id;
+			out.push_back(std::move(d));
+		}
+
+		return out;
+	}
+
+	bool SystemInitializer::SaveEthercatDevicesToConfig(const std::vector<EthercatDeviceConfig> &devices, std::string *err)
+	{
+		try
+		{
+			std::ifstream ifs(config_path_);
+			if (!ifs.is_open())
+			{
+				if (err)
+					*err = "open config failed";
+				return false;
+			}
+
+			nlohmann::json j;
+			ifs >> j;
+			ifs.close();
+
+			if (!j.contains("output") || !j["output"].contains("slaves") || !j["output"]["slaves"].is_array())
+			{
+				if (err)
+					*err = "output.slaves missing";
+				return false;
+			}
+			if (!j.contains("input_source") || !j["input_source"].contains("ethercat") ||
+				!j["input_source"]["ethercat"].contains("slaves") || !j["input_source"]["ethercat"]["slaves"].is_array())
+			{
+				if (err)
+					*err = "input_source.ethercat.slaves missing";
+				return false;
+			}
+
+			for (const auto &d : devices)
+			{
+				auto &target = d.is_input ? j["input_source"]["ethercat"]["slaves"] : j["output"]["slaves"];
+				for (auto &item : target)
+				{
+					if ((uint16_t)item.value("position", 0) != d.position)
+						continue;
+					item["device_alias"] = d.device_alias;
+					item["subsystem_id"] = d.subsystem_id;
+					break;
+				}
+			}
+
+			std::ofstream ofs(config_path_, std::ios::trunc);
+			if (!ofs.is_open())
+			{
+				if (err)
+					*err = "write config failed";
+				return false;
+			}
+			ofs << j.dump(2);
+			ofs.close();
+
+			return LoadConfig(config_path_);
 		}
 		catch (const std::exception &e)
 		{

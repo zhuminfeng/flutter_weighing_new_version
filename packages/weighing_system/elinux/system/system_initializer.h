@@ -25,6 +25,18 @@ namespace weighing
 	class SystemInitializer
 	{
 	public:
+		struct EthercatDeviceConfig
+		{
+			bool is_input = false;
+			uint16_t alias = 0;
+			uint16_t position = 0;
+			uint32_t vendor_id = 0;
+			uint32_t product_code = 0;
+			std::string description;
+			std::string device_alias;
+			int32_t subsystem_id = -1;
+		};
+
 		static SystemInitializer &Instance();
 
 		bool Initialize(const std::string &config_path, const std::string &db_path);
@@ -34,6 +46,8 @@ namespace weighing
 		const std::string &GetInputMode() const { return input_mode_; }
 
 		bool SaveDigitalOutputMapToConfig(const DigitalOutputMapConfig &cfg, std::string *err);
+		std::vector<EthercatDeviceConfig> GetEthercatDevices() const;
+		bool SaveEthercatDevicesToConfig(const std::vector<EthercatDeviceConfig> &devices, std::string *err);
 
 	private:
 		SystemInitializer() = default;
@@ -63,6 +77,8 @@ namespace weighing
 				uint16_t alias, position;
 				uint32_t vendor_id, product_code;
 				std::string description;
+				std::string device_alias;
+				int32_t subsystem_id = -1;
 			};
 
 			std::vector<SlaveEntry> output_slaves;

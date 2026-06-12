@@ -497,6 +497,10 @@ namespace
 												  std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 		void HandleGetDigitalOutputMapConfig(const flutter::EncodableMap &args,
 											 std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+		void HandleGetEthercatDevices(const flutter::EncodableMap &args,
+									  std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+		void HandleUpdateEthercatDevices(const flutter::EncodableMap &args,
+										 std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 
 		// ===== CentralController Methods =====
 		void HandleLoadRecipe(const flutter::EncodableMap &args,
@@ -960,6 +964,14 @@ namespace
 		else if (method == "updateDigitalOutputMap")
 		{
 			HandleUpdateDigitalOutputMapConfig(args, std::move(result));
+		}
+		else if (method == "getEthercatDevices")
+		{
+			HandleGetEthercatDevices(args, std::move(result));
+		}
+		else if (method == "updateEthercatDevices")
+		{
+			HandleUpdateEthercatDevices(args, std::move(result));
 		}
 		else if (method == "loadRecipe")
 		{
@@ -2649,6 +2661,73 @@ namespace
 
 		result->Success(flutter::EncodableValue(BuildMapResult(true, "")));
 		return;
+	}
+
+	void WeighingSystemPlugin::HandleGetEthercatDevices(const flutter::EncodableMap &args,
+														std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		auto devices = SystemInitializer::Instance().GetEthercatDevices();
+		flutter::EncodableList list;
+		for (const auto &d : devices)
+		{
+			flutter::EncodableMap item;
+			item[flutter::EncodableValue("is_input")] = flutter::EncodableValue(d.is_input);
+			item[flutter::EncodableValue("alias")] = flutter::EncodableValue((int)d.alias);
+			item[flutter::EncodableValue("position")] = flutter::EncodableValue((int)d.position);
+			item[flutter::EncodableValue("vendor_id")] = flutter::EncodableValue((int)d.vendor_id);
+			item[flutter::EncodableValue("product_code")] = flutter::EncodableValue((int)d.product_code);
+			item[flutter::EncodableValue("description")] = flutter::EncodableValue(d.description);
+			item[flutter::EncodableValue("device_alias")] = flutter::EncodableValue(d.device_alias);
+			item[flutter::EncodableValue("subsystem_id")] = flutter::EncodableValue((int)d.subsystem_id);
+			list.emplace_back(item);
+		}
+
+		result->Success(flutter::EncodableValue(list));
+	}
+
+	void WeighingSystemPlugin::HandleUpdateEthercatDevices(const flutter::EncodableMap &args,
+														   std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		auto it = args.find(flutter::EncodableValue("devices"));
+		if (it == args.end() || !std::holds_alternative<flutter::EncodableList>(it->second))
+		{
+			result->Success(flutter::EncodableValue(BuildMapResult(false, "devices must be list")));
+			return;
+		}
+
+		std::vector<SystemInitializer::EthercatDeviceConfig> devices;
+		const auto &list = std::get<flutter::EncodableList>(it->second);
+		devices.reserve(list.size());
+
+		for (size_t i = 0; i < list.size(); ++i)
+		{
+			if (!std::holds_alternative<flutter::EncodableMap>(list[i]))
+			{
+				result->Success(flutter::EncodableValue(BuildMapResult(false, "device item must be map")));
+				return;
+			}
+
+			const auto &item = std::get<flutter::EncodableMap>(list[i]);
+			SystemInitializer::EthercatDeviceConfig d;
+			d.is_input = GetBool(item, "is_input", false);
+			d.alias = static_cast<uint16_t>(GetInt(item, "alias", 0));
+			d.position = static_cast<uint16_t>(GetInt(item, "position", 0));
+			d.vendor_id = static_cast<uint32_t>(GetInt(item, "vendor_id", 0));
+			d.product_code = static_cast<uint32_t>(GetInt(item, "product_code", 0));
+			d.description = GetString(item, "description", "");
+			d.device_alias = GetString(item, "device_alias", "");
+			d.subsystem_id = static_cast<int32_t>(GetInt(item, "subsystem_id", -1));
+			devices.push_back(std::move(d));
+		}
+
+		std::string err;
+		if (!SystemInitializer::Instance().SaveEthercatDevicesToConfig(devices, &err))
+		{
+			result->Success(flutter::EncodableValue(BuildMapResult(false, err)));
+			return;
+		}
+
+		result->Success(flutter::EncodableValue(BuildMapResult(true, "")));
 	}
 
 	// ============================================================================

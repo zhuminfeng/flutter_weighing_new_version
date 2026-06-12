@@ -8,6 +8,7 @@ import 'models/liw_config.dart';
 import 'models/filling_config.dart';
 import 'models/system_status.dart';
 import 'models/digital_output_map.dart';
+import 'models/ethercat_device.dart';
 
 abstract class WeighingPlatform extends PlatformInterface {
   WeighingPlatform() : super(token: _token);
@@ -128,6 +129,8 @@ abstract class WeighingPlatform extends PlatformInterface {
   Future<DigitalOutputMapConfig> getDigitalOutputMap();
   Future<Map<String, dynamic>> validateDigitalOutputMap(
       DigitalOutputMapConfig config);
+  Future<List<EthercatDeviceConfig>> getEthercatDevices();
+  Future<bool> updateEthercatDevices(List<EthercatDeviceConfig> devices);
 
   // App control
   Future<bool> startApp(int subsystemId);
