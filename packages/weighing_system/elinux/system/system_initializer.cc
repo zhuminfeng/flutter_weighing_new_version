@@ -1,5 +1,6 @@
 #include "system_initializer.h"
 #include "../ethercat/ethercat_master.h"
+#include "../ethercat/ethercat_slave_config.h"
 #include "../input/input_factory.h"
 #include "../input/ethercat_input.h"
 #include "../input/shmem_input.h"
@@ -718,6 +719,48 @@ namespace weighing
 			d.description = s.description;
 			d.device_alias = s.device_alias;
 			d.subsystem_id = s.subsystem_id;
+			out.push_back(std::move(d));
+		}
+
+		return out;
+	}
+
+	// ============================================================================
+	// 通过 IgH EtherCAT 库扫描当前总线上接入的从站
+	// ============================================================================
+	std::vector<SystemInitializer::EthercatDeviceConfig> SystemInitializer::ScanEthercatSlaves() const
+	{
+		std::vector<EthercatDeviceConfig> out;
+
+		const auto scanned = EtherCATMaster::Instance().ScanConnectedSlaves(master_index_);
+		out.reserve(scanned.size());
+
+		for (const auto &s : scanned)
+		{
+			EthercatDeviceConfig d;
+			d.alias = s.alias;
+			d.position = s.position;
+			d.vendor_id = s.vendor_id;
+			d.product_code = s.product_code;
+
+			if (s.name.empty())
+			{
+				char buf[48];
+				snprintf(buf, sizeof(buf), "VID=0x%08x PID=0x%08x", s.vendor_id, s.product_code);
+				d.description = buf;
+			}
+			else
+			{
+				d.description = s.name;
+			}
+
+			d.device_alias = "";
+			d.subsystem_id = -1;
+
+			// 根据 VID/PID 判断是否为已知输入从站
+			const SlaveRole role = IdentifySlave(s.vendor_id, s.product_code);
+			d.is_input = (role == SlaveRole::kWeighingInput);
+
 			out.push_back(std::move(d));
 		}
 

@@ -51,6 +51,11 @@ namespace weighing
 		const SlaveRuntime *GetSlaveRuntime(uint16_t position) const;
 		std::vector<const SlaveRuntime *> GetSlavesByRole(SlaveRole role) const;
 
+		// ===== 在线扫描（无需预先配置，直接读取总线上的从站信息） =====
+		/// 通过 IgH 库扫描当前接入的所有 EtherCAT 从站。
+		/// 若主站尚未初始化，会临时请求并在扫描结束后释放。
+		std::vector<ScannedSlave> ScanConnectedSlaves(unsigned int master_index = 0);
+
 		bool IsOperational() const { return operational_.load(); }
 		uint8_t *GetDomainData() { return domain_data_; }
 

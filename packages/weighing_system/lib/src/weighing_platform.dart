@@ -132,6 +132,9 @@ abstract class WeighingPlatform extends PlatformInterface {
   Future<List<EthercatDeviceConfig>> getEthercatDevices();
   Future<bool> updateEthercatDevices(List<EthercatDeviceConfig> devices);
 
+  /// 通过 IgH EtherCAT 库扫描当前总线上接入的从站（不依赖配置文件）
+  Future<List<EthercatDeviceConfig>> scanEthercatSlaves();
+
   // App control
   Future<bool> startApp(int subsystemId);
   Future<bool> stopApp(int subsystemId);

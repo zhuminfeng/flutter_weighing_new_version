@@ -49,6 +49,9 @@ namespace weighing
 		std::vector<EthercatDeviceConfig> GetEthercatDevices() const;
 		bool SaveEthercatDevicesToConfig(const std::vector<EthercatDeviceConfig> &devices, std::string *err);
 
+		/// 通过 IgH EtherCAT 库自动扫描当前总线上的从站，不依赖配置文件
+		std::vector<EthercatDeviceConfig> ScanEthercatSlaves() const;
+
 	private:
 		SystemInitializer() = default;
 

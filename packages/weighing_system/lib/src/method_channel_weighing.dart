@@ -484,6 +484,15 @@ class ELinuxWeighingSystem extends WeighingPlatform {
     return m?['ok'] == true;
   }
 
+  @override
+  Future<List<EthercatDeviceConfig>> scanEthercatSlaves() async {
+    final list = await _channel.invokeListMethod('scanEthercatSlaves');
+    if (list == null) return [];
+    return list
+        .map((e) => EthercatDeviceConfig.fromMap(Map<String, dynamic>.from(e)))
+        .toList();
+  }
+
   // ===== CentralController API =====
 
   /// 加载配方

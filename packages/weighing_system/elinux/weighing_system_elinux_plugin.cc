@@ -501,6 +501,8 @@ namespace
 									  std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 		void HandleUpdateEthercatDevices(const flutter::EncodableMap &args,
 										 std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+		void HandleScanEthercatSlaves(const flutter::EncodableMap &args,
+									  std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 
 		// ===== CentralController Methods =====
 		void HandleLoadRecipe(const flutter::EncodableMap &args,
@@ -972,6 +974,10 @@ namespace
 		else if (method == "updateEthercatDevices")
 		{
 			HandleUpdateEthercatDevices(args, std::move(result));
+		}
+		else if (method == "scanEthercatSlaves")
+		{
+			HandleScanEthercatSlaves(args, std::move(result));
 		}
 		else if (method == "loadRecipe")
 		{
@@ -2733,6 +2739,27 @@ namespace
 	// ============================================================================
 	// 配方管理实现
 	// ============================================================================
+
+	void WeighingSystemPlugin::HandleScanEthercatSlaves(const flutter::EncodableMap &args,
+														std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		auto devices = SystemInitializer::Instance().ScanEthercatSlaves();
+		flutter::EncodableList list;
+		for (const auto &d : devices)
+		{
+			flutter::EncodableMap item;
+			item[flutter::EncodableValue("is_input")] = flutter::EncodableValue(d.is_input);
+			item[flutter::EncodableValue("alias")] = flutter::EncodableValue((int)d.alias);
+			item[flutter::EncodableValue("position")] = flutter::EncodableValue((int)d.position);
+			item[flutter::EncodableValue("vendor_id")] = flutter::EncodableValue((int)d.vendor_id);
+			item[flutter::EncodableValue("product_code")] = flutter::EncodableValue((int)d.product_code);
+			item[flutter::EncodableValue("description")] = flutter::EncodableValue(d.description);
+			item[flutter::EncodableValue("device_alias")] = flutter::EncodableValue(d.device_alias);
+			item[flutter::EncodableValue("subsystem_id")] = flutter::EncodableValue((int)d.subsystem_id);
+			list.emplace_back(item);
+		}
+		result->Success(flutter::EncodableValue(list));
+	}
 
 	void WeighingSystemPlugin::HandleLoadRecipe(
 		const flutter::EncodableMap &args,

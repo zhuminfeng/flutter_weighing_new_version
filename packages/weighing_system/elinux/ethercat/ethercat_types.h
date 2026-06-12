@@ -90,6 +90,19 @@ namespace weighing
 		bool configured = false;
 	};
 
+	// ============================================================================
+	// 扫描到的从站原始信息（来自 IgH 库，未经配置文件解析）
+	// ============================================================================
+	struct ScannedSlave
+	{
+		uint16_t position = 0;
+		uint16_t alias = 0;
+		uint32_t vendor_id = 0;
+		uint32_t product_code = 0;
+		uint32_t revision_number = 0;
+		std::string name; // 设备名称，来自 ec_slave_info_t.name
+	};
+
 } // namespace weighing
 
 #endif // ETHERCAT_TYPES_H

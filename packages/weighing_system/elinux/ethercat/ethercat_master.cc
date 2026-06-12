@@ -461,4 +461,69 @@ namespace weighing
 		return result;
 	}
 
+	// ============================================================================
+	// 在线扫描
+	// ============================================================================
+	std::vector<ScannedSlave> EtherCATMaster::ScanConnectedSlaves(unsigned int master_index)
+	{
+		std::vector<ScannedSlave> result;
+
+		// 如果主站已经初始化则直接复用，否则临时请求一个
+		ec_master_t *scan_master = master_;
+		bool temp_master = false;
+
+		if (!scan_master)
+		{
+			scan_master = ecrt_request_master(master_index);
+			if (!scan_master)
+			{
+				fprintf(stderr, "ECMaster: ScanConnectedSlaves: failed to request master %u\n", master_index);
+				return result;
+			}
+			temp_master = true;
+		}
+
+		// 获取主站信息（含从站数量）
+		ec_master_info_t info;
+		memset(&info, 0, sizeof(info));
+		if (ecrt_master(scan_master, &info) != 0)
+		{
+			fprintf(stderr, "ECMaster: ScanConnectedSlaves: ecrt_master() failed\n");
+			if (temp_master)
+				ecrt_release_master(scan_master);
+			return result;
+		}
+
+		printf("ECMaster: ScanConnectedSlaves: found %u slave(s)\n", info.slave_count);
+
+		for (uint16_t i = 0; i < static_cast<uint16_t>(info.slave_count); ++i)
+		{
+			ec_slave_info_t si;
+			memset(&si, 0, sizeof(si));
+			if (ecrt_master_get_slave(scan_master, i, &si) != 0)
+			{
+				fprintf(stderr, "ECMaster: ScanConnectedSlaves: ecrt_master_get_slave(%u) failed\n", i);
+				continue;
+			}
+
+			ScannedSlave s;
+			s.position = si.position;
+			s.alias = si.alias;
+			s.vendor_id = si.vendor_id;
+			s.product_code = si.product_code;
+			s.revision_number = si.revision_number;
+			s.name = si.name; // EC_MAX_STRING_LENGTH chars, null-terminated
+
+			printf("ECMaster: ScanConnectedSlaves: pos=%u alias=%u vid=0x%08x pid=0x%08x name='%s'\n",
+				   s.position, s.alias, s.vendor_id, s.product_code, s.name.c_str());
+
+			result.push_back(std::move(s));
+		}
+
+		if (temp_master)
+			ecrt_release_master(scan_master);
+
+		return result;
+	}
+
 } // namespace weighing
