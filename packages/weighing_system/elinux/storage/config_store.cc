@@ -432,10 +432,17 @@ namespace weighing
 		}
 
 		std::ostringstream sql;
-		sql << "INSERT OR REPLACE INTO subsystem_config (subsystem_id, name, app_type, scale_ids, slave_ids) VALUES ("
+		sql << "INSERT OR REPLACE INTO subsystem_config "
+			<< "(subsystem_id, name, app_type, scale_ids, slave_ids, "
+			<< "digital_io_pos, servo_pos, material_name, material_code, "
+			<< "priority, enabled, register_to_central) VALUES ("
 			<< config.id << ",'" << config.name << "',"
 			<< static_cast<int>(config.app_type) << ",'"
-			<< scale_ids_str.str() << "','" << slave_ids_str.str() << "')";
+			<< scale_ids_str.str() << "','" << slave_ids_str.str() << "',"
+			<< config.digital_io_pos << "," << config.servo_pos << ",'"
+			<< config.material_name << "','" << config.material_code << "',"
+			<< config.priority << "," << (config.enabled ? 1 : 0) << ","
+			<< (config.register_to_central ? 1 : 0) << ")";
 
 		return db.Execute(sql.str());
 	}
@@ -474,7 +481,36 @@ namespace weighing
             while (std::getline(ss, token, ',')) {
                 if (!token.empty()) config.ethercat_slave_ids.push_back(std::stoul(token));
             }
-        } });
+        }
+
+		// 新增字段
+		it = row.find("digital_io_pos");
+		if (it != row.end() && !it->second.empty())
+			config.digital_io_pos = std::stoul(it->second);
+
+		it = row.find("servo_pos");
+		if (it != row.end() && !it->second.empty())
+			config.servo_pos = std::stoul(it->second);
+
+		it = row.find("material_name");
+		if (it != row.end())
+			config.material_name = it->second;
+
+		it = row.find("material_code");
+		if (it != row.end())
+			config.material_code = it->second;
+
+		it = row.find("priority");
+		if (it != row.end() && !it->second.empty())
+			config.priority = std::stoi(it->second);
+
+		it = row.find("enabled");
+		if (it != row.end() && !it->second.empty())
+			config.enabled = (std::stoi(it->second) != 0);
+
+		it = row.find("register_to_central");
+		if (it != row.end() && !it->second.empty())
+			config.register_to_central = (std::stoi(it->second) != 0); });
 
 		return found;
 	}
@@ -513,6 +549,35 @@ namespace weighing
                 if (!token.empty()) cfg.ethercat_slave_ids.push_back(std::stoul(token));
             }
         }
+
+		// 新增字段
+		it = row.find("digital_io_pos");
+		if (it != row.end() && !it->second.empty())
+			cfg.digital_io_pos = std::stoul(it->second);
+
+		it = row.find("servo_pos");
+		if (it != row.end() && !it->second.empty())
+			cfg.servo_pos = std::stoul(it->second);
+
+		it = row.find("material_name");
+		if (it != row.end())
+			cfg.material_name = it->second;
+
+		it = row.find("material_code");
+		if (it != row.end())
+			cfg.material_code = it->second;
+
+		it = row.find("priority");
+		if (it != row.end() && !it->second.empty())
+			cfg.priority = std::stoi(it->second);
+
+		it = row.find("enabled");
+		if (it != row.end() && !it->second.empty())
+			cfg.enabled = (std::stoi(it->second) != 0);
+
+		it = row.find("register_to_central");
+		if (it != row.end() && !it->second.empty())
+			cfg.register_to_central = (std::stoi(it->second) != 0);
 
         configs.push_back(cfg); });
 

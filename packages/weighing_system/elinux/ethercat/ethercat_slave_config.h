@@ -124,6 +124,30 @@ namespace weighing
 	} // namespace inosv630n
 
 	// ============================================================================
+	// AUTODA AD2020EB 称重测力仪表 (EtherCAT)
+	// Vendor ID: 0x00001071, Product code: 0x00000001
+	// ============================================================================
+	namespace ad2020eb
+	{
+		constexpr uint32_t VENDOR_ID = 0x00001071;
+		constexpr uint32_t PRODUCT_CODE = 0x00000001;
+		constexpr uint32_t REVISION = 0x00000001;
+
+		// 基于说明书和 XML 配置的 PDO 字典索引
+		namespace PdoIndex
+		{
+			// TxPDO (从站 -> 主站 输入数据)
+			constexpr uint16_t CH1_FORCE_GROSS = 0x6000; // SubIndex 0x01 (DINT, 32bit) 总重
+			constexpr uint16_t CH1_NET_WEIGHT = 0x9020;	 // SubIndex 0x01 (DINT, 32bit) 净重
+			constexpr uint16_t CH1_AD_CODE = 0x9020;	 // SubIndex 0x04 (DINT, 32bit) AD内码
+			constexpr uint16_t CH1_STATUS = 0x9020;		 // SubIndex 0x05 (UINT, 16bit) 状态字
+
+			// RxPDO (主站 -> 从站 输出指令)
+			constexpr uint16_t PDO_COMMAND = 0x7000; // SubIndex 0x00~0x05，用于置零、去皮、标定等
+		}
+	} // namespace ad2020eb
+
+	// ============================================================================
 	// 从站自动识别
 	// ============================================================================
 	inline SlaveRole IdentifySlave(uint32_t vendor, uint32_t product)
@@ -132,7 +156,8 @@ namespace weighing
 			return SlaveRole::kDigitalIO;
 		if (vendor == inosv630n::VENDOR_ID && product == inosv630n::PRODUCT_CODE)
 			return SlaveRole::kServo;
-		// 称重从站 vendor/product 根据实际硬件配置
+		if (vendor == ad2020eb::VENDOR_ID && product == ad2020eb::PRODUCT_CODE)
+			return SlaveRole::kWeighingInput;
 		return SlaveRole::kUnknown;
 	}
 

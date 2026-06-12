@@ -329,7 +329,12 @@ namespace weighing
 		req.subsystem_id = subsystem_id;
 		req.predicted_time = time_to_empty;
 		req.remaining_material = status.remaining_weight;
-		req.priority = 0; // 可根据物料重要性调整优先级
+		// 从子系统配置中获取优先级
+		auto *sub = SubsystemManager::Instance().GetSubsystem(subsystem_id);
+		if (sub)
+		{
+			req.priority = sub->GetPriority();
+		}
 		req.request_time = std::chrono::steady_clock::now();
 
 		refill_queue_.push_back(req);

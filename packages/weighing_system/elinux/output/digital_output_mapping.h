@@ -22,6 +22,7 @@ namespace weighing
 		kRunningInd = 5,
 		kWarningInd = 6,
 		kReadyInd = 7,
+		kBagClamp = 8, // 新增：夹松袋（支持全电动伺服夹爪/气动夹爪）
 	};
 
 	struct DigitalOutputBinding
@@ -36,10 +37,21 @@ namespace weighing
 		int app_scope = -1; // -1 both, 0 LIW, 1 Filling
 	};
 
+	// === 新增：伺服电机设备功能绑定结构体 ===
+	struct ServoOutputBinding
+	{
+		uint32_t subsystem_id = 0;
+		uint16_t servo_pos = 0;									 // EtherCAT 从站物理位置(position)
+		DigitalSignalType signal = DigitalSignalType::kFeedFast; // 赋予该电机的工艺角色
+		bool enabled = true;
+		int app_scope = -1; // -1:通用, 0:失重, 1:灌装
+	};
+
 	struct DigitalOutputMapConfig
 	{
 		int version = 1;
-		std::vector<DigitalOutputBinding> bindings;
+		std::vector<DigitalOutputBinding> bindings;		// 数字量绑定列表
+		std::vector<ServoOutputBinding> servo_bindings; // 新增：伺服设备绑定列表
 	};
 
 	class DigitalOutputMap

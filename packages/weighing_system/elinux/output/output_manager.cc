@@ -103,24 +103,77 @@ namespace weighing
 		}
 	}
 
-	void OutputManager::MapSubsystemServo(uint32_t sub_id, uint16_t servo_pos)
-	{
-		subsystem_servo_map_[sub_id] = servo_pos;
-	}
+	// void OutputManager::MapSubsystemServo(uint32_t sub_id, uint16_t channel, uint16_t servo_pos)
+	// {
+	// 	subsystem_servo_map_[sub_id][channel] = servo_pos;
+	// }
 
 	void OutputManager::MapSubsystemIO(uint32_t sub_id, uint16_t io_pos)
 	{
 		subsystem_io_map_[sub_id] = io_pos;
 	}
 
-	void OutputManager::SetControlRate(uint32_t sub_id, float rate)
+	// 根据功能信号，下发速度百分比 (适用于：快加料、慢加料、补料、卸料等 CSV速度控制场景)
+	void OutputManager::SetServoRateBySignal(uint32_t subsystem_id, DigitalSignalType signal, float rate_pct)
 	{
-		auto it = subsystem_servo_map_.find(sub_id);
-		if (it != subsystem_servo_map_.end())
+		auto sub_it = subsystem_servo_route_.find(subsystem_id);
+		if (sub_it == subsystem_servo_route_.end())
+			return;
+
+		auto sig_it = sub_it->second.find(signal);
+		if (sig_it == sub_it->second.end())
+			return;
+
+		// 动态遍历所有绑定至此信号的伺服电机，逐一刷新目标速度
+		for (uint16_t pos : sig_it->second)
 		{
-			auto sit = servos_.find(it->second);
+			auto sit = servos_.find(pos);
 			if (sit != servos_.end())
-				sit->second->SetControlRate(rate);
+			{
+				sit->second->SetControlRate(rate_pct);
+			}
+		}
+	}
+
+	// 根据功能信号，下发目标绝对编码器坐标 (适用于：伺服电动夹袋器的精准开合)
+	void OutputManager::SetServoPositionBySignal(uint32_t subsystem_id, DigitalSignalType signal, int32_t position)
+	{
+		auto sub_it = subsystem_servo_route_.find(subsystem_id);
+		if (sub_it == subsystem_servo_route_.end())
+			return;
+
+		auto sig_it = sub_it->second.find(signal);
+		if (sig_it == sub_it->second.end())
+			return;
+
+		// 动态遍历所有绑定至此信号的位置控制伺服，统一下发目标坐标值
+		for (uint16_t pos : sig_it->second)
+		{
+			auto sit = servos_.find(pos);
+			if (sit != servos_.end())
+			{
+				sit->second->SetTargetPosition(position);
+			}
+		}
+	}
+
+	// 针对特定子系统一键关断其名下的所有自定义电机输出 (核心防抖与急停保护)
+	void OutputManager::StopAllServos(uint32_t subsystem_id)
+	{
+		auto sub_it = subsystem_servo_route_.find(subsystem_id);
+		if (sub_it == subsystem_servo_route_.end())
+			return;
+
+		for (const auto &[signal, pos_vec] : sub_it->second)
+		{
+			for (uint16_t pos : pos_vec)
+			{
+				auto sit = servos_.find(pos);
+				if (sit != servos_.end())
+				{
+					sit->second->SetControlRate(0.0f);
+				}
+			}
 		}
 	}
 
@@ -174,9 +227,29 @@ namespace weighing
 		return it != digital_ios_.end() ? it->second.get() : nullptr;
 	}
 
+	// === 重写配置更新逻辑：完成绑定的统一和路由表的动态构建 ===
 	bool OutputManager::UpdateDigitalOutputMap(const DigitalOutputMapConfig &cfg, std::string *err)
 	{
-		return dio_map_.SetConfig(cfg, err);
+		// 1. 将配置提交给 Map 管理类完成合法性检测
+		if (!dio_map_.SetConfig(cfg, err))
+			return false;
+
+		// 2. 彻底清空运行期旧路由表
+		subsystem_servo_route_.clear();
+
+		// 3. 动态解析配置，建立信号至物理电机的多通路映射
+		for (const auto &b : cfg.servo_bindings)
+		{
+			if (!b.enabled)
+				continue;
+
+			// 将当前物理从站位置推入该子系统、该信号类型的执行队列中
+			subsystem_servo_route_[b.subsystem_id][b.signal].push_back(b.servo_pos);
+
+			printf("OutputManager Route Map: Subsystem %u, Signal %d -> Bound to Servo Pos %u\n",
+				   b.subsystem_id, static_cast<int>(b.signal), b.servo_pos);
+		}
+		return true;
 	}
 
 	DigitalOutputMapConfig OutputManager::GetDigitalOutputMapConfig() const

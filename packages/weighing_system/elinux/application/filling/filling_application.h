@@ -16,10 +16,18 @@ namespace weighing
 		PowerFailStartDelay start_delay = PowerFailStartDelay::kDisabled;
 	};
 
+	// === 新增：输出类型枚举 ===
+	enum class OutputType : int
+	{
+		kParallel = 0,	 // 并行输出
+		kIndependent = 1 // 独立输出
+	};
+
 	struct FillingSystemConfig
 	{
 		FillingWorkMode work_mode = FillingWorkMode::kFill;
 		FeedSpeed feed_speed = FeedSpeed::kDualSpeed;
+		OutputType output_type = OutputType::kParallel; // 补全：输出类型，默认按并行处理
 	};
 
 	struct FillingTargetConfig
@@ -200,6 +208,9 @@ namespace weighing
 		void HandleEmptying(float dt);
 		void HandleFeedComplete();
 		bool CheckMaterialSufficient();
+
+		// void ClampBag();
+		// void ReleaseBag();
 
 		// 补料阀门控制（通过 OutputManager）
 		void SetRefillValve(bool open);

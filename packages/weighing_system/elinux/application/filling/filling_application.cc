@@ -111,21 +111,38 @@ namespace weighing
 	{
 		// 关闭所有进料阀门 + 伺服停止
 		SetValveOutputs(0, false, false, false, false);
-		SetControlRate(0.0f);
+		StopAllServos();
 	}
 
 	void FillingApplication::StartFastFeed()
 	{
-		// fast=true, slow=false
-		SetValveOutputs(0, true, false, false, false);
-		SetControlRate(static_cast<float>(advanced_config_.fast_feed_speed));
+		// 判断是否为并行输出：如果是并行，则在快加料阶段也同时打开细加料(slow)阀门
+		bool is_parallel = (system_config_.output_type == OutputType::kParallel);
+
+		// fast = true, slow = is_parallel
+		SetValveOutputs(0, true, is_parallel, false, false);
+		SetServoRate(DigitalSignalType::kFeedFast, static_cast<float>(advanced_config_.fast_feed_speed));
+		if (is_parallel)
+		{
+			// 并行模式：快、慢两个电机同时以各自的目标速度运转
+			SetServoRate(DigitalSignalType::kFeedSlow, static_cast<float>(advanced_config_.fine_feed_speed));
+		}
+		else
+		{
+			// 独立模式：快加料阶段慢加料电机必须停转
+			SetServoRate(DigitalSignalType::kFeedSlow, 0.0f);
+		}
 	}
 
 	void FillingApplication::StartFineFeed()
 	{
-		// fast=false, slow=true
+		// 无论是并行还是独立输出，在细加料(FineFeed)阶段，只有慢阀(slow)开启
+		// fast = false, slow = true (此函数保持不变)
 		SetValveOutputs(0, false, true, false, false);
-		SetControlRate(static_cast<float>(advanced_config_.fine_feed_speed));
+
+		// 快加料电机停转，慢加料电机运行
+		SetServoRate(DigitalSignalType::kFeedFast, 0.0f);
+		SetServoRate(DigitalSignalType::kFeedSlow, static_cast<float>(advanced_config_.fine_feed_speed));
 	}
 
 	bool FillingApplication::CheckMaterialSufficient()
@@ -138,6 +155,19 @@ namespace weighing
 		}
 		return true;
 	}
+
+	// // === 新增：全电动伺服夹松袋动作控制 ===
+	// void FillingApplication::ClampBag()
+	// {
+	// 	// 控制夹袋伺服机构运动到绝对位置编码器值（位置控制模式）
+	// 	SetServoPosition(DigitalSignalType::kBagClamp, advanced_config_.bag_clamp_close_pos);
+	// }
+
+	// void FillingApplication::ReleaseBag()
+	// {
+	// 	// 控制夹袋伺服机构恢复到零位/松开位
+	// 	SetServoPosition(DigitalSignalType::kBagClamp, advanced_config_.bag_clamp_open_pos);
+	// }
 
 	// ======== Spill & Cutoff Optimization ========
 

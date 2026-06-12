@@ -101,11 +101,14 @@ namespace weighing
 		// 注册所有子系统到中央控制器
 		for (auto &[id, sub] : SubsystemManager::Instance().GetAllSubsystems())
 		{
-			// 只注册失重秤应用到中央控制器
-			if (sub->GetLiwApp())
+			auto cfg = sub->GetConfig();
+
+			// 检查是否启用且需要注册到中央控制器
+			if (cfg.enabled && cfg.register_to_central && sub->GetLiwApp())
 			{
 				CentralController::Instance().RegisterSubsystem(id);
-				printf("SystemInitializer: Registered subsystem %u to CentralController\n", id);
+				printf("SystemInitializer: Registered subsystem %u '%s' (priority: %d)\n",
+					   id, cfg.name.c_str(), cfg.priority);
 			}
 		}
 

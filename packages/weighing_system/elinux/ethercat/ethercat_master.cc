@@ -219,38 +219,61 @@ namespace weighing
 	// ============================================================================
 	bool EtherCATMaster::ConfigureWeighing(ec_slave_config_t *sc, SlaveRuntime &rt)
 	{
-		// 称重从站的 PDO 配置取决于具体型号
-		// 这里给出通用框架，实际使用时按从站手册填写
+		if (!sc)
+			return false;
 
-		static ec_pdo_entry_info_t entries[] = {
-			{0x6000, 0x01, 32}, // 原始重量/ADC值 (示例)
-			{0x6000, 0x02, 16}, // 状态字 (示例)
+		printf("ECMaster: Configuring Weighing Slave (AD2020EB) at position %u\n", rt.descriptor.position);
+
+		// 1. 根据 AUTODA XML 描述定义 TxPDO (0x1A00) 的数据字典条目
+		// 包含：净重(32bit)、毛重(32bit)、AD内码(32bit)、状态字(16bit)
+		static ec_pdo_entry_info_t ad2020eb_pdo_entries[] = {
+			{0x9020, 0x01, 32}, // 净重 Net Weight (DINT)
+			{0x9020, 0x02, 32}, // 毛重 Gross Weight (DINT)
+			{0x9020, 0x04, 32}, // AD内码 AD Code / Raw Value (DINT)
+			{0x9020, 0x05, 16}, // 状态字 Status Word (UINT)
 		};
 
-		static ec_pdo_info_t pdos[] = {
-			{0x1a00, 2, entries + 0},
+		// 2. 定义 TxPDO 属性
+		static ec_pdo_info_t ad2020eb_pdos[] = {
+			{0x1a00, 4, ad2020eb_pdo_entries}};
+
+		// 3. 配置 Sync Manager 3 (称重模块的 Inputs 映射在 SM3)
+		ec_sync_info_t ad2020eb_syncs[] = {
+			{3, EC_DIR_INPUT, 1, ad2020eb_pdos, EC_WD_DISABLE},
+			{0xff} // 终结符
 		};
 
-		static ec_sync_info_t syncs[] = {
-			{0, EC_DIR_OUTPUT, 0, NULL, EC_WD_DISABLE},
-			{1, EC_DIR_INPUT, 0, NULL, EC_WD_DISABLE},
-			{2, EC_DIR_OUTPUT, 0, NULL, EC_WD_DISABLE},
-			{3, EC_DIR_INPUT, 1, pdos + 0, EC_WD_DISABLE},
-			{0xff}};
-
-		if (ecrt_slave_config_pdos(sc, EC_END, syncs))
+		// 4. 将 PDO 拓扑下发给 IgH 从站配置描述符
+		if (ecrt_slave_config_pdos(sc, ad2020eb_syncs) != 0)
 		{
-			fprintf(stderr, "ECMaster: PDO config failed for weighing slave\n");
+			fprintf(stderr, "ECMaster: Failed to configure PDOs for Weighing Slave at pos %u\n", rt.descriptor.position);
 			return false;
 		}
 
-		uint16_t pos = rt.descriptor.position;
-		uint32_t vid = rt.descriptor.vendor_id;
-		uint32_t pid = rt.descriptor.product_code;
+		// 5. 动态注册 PDO Entry 到全局 Domain 列表中，用于自动获取运行时内存偏移量
+		// 注册 0x9020:04 (AD原始内码) -> 映射至 off_weight_raw
+		ec_pdo_entry_reg_t reg_raw = {
+			rt.descriptor.alias,
+			rt.descriptor.position,
+			rt.descriptor.vendor_id,
+			rt.descriptor.product_code,
+			0x9020,
+			0x04,
+			&rt.offsets.weighing.off_weight_raw};
+		domain_regs_.push_back(reg_raw); // 扔进全局注册向量
 
-		pdo_regs_.push_back({0, pos, vid, pid, 0x6000, 0x01, &rt.offsets.weighing.off_weight_raw});
-		pdo_regs_.push_back({0, pos, vid, pid, 0x6000, 0x02, &rt.offsets.weighing.off_status});
+		// 注册 0x9020:05 (状态字) -> 映射至 off_status
+		ec_pdo_entry_reg_t reg_status = {
+			rt.descriptor.alias,
+			rt.descriptor.position,
+			rt.descriptor.vendor_id,
+			rt.descriptor.product_code,
+			0x9020,
+			0x05,
+			&rt.offsets.weighing.off_status};
+		domain_regs_.push_back(reg_status);
 
+		rt.configured = true;
 		return true;
 	}
 

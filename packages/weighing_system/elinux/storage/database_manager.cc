@@ -194,7 +194,16 @@ namespace weighing
             name TEXT DEFAULT '',
             app_type INTEGER DEFAULT 0,
             scale_ids TEXT DEFAULT '',
-            slave_ids TEXT DEFAULT ''
+            slave_ids TEXT DEFAULT '',
+
+			-- 新增字段
+			digital_io_pos INTEGER DEFAULT 0,   -- 数字 IO 模块位置
+			servo_pos INTEGER DEFAULT 0,        -- 伺服驱动器位置
+			material_name TEXT,                 -- 物料名称
+			material_code TEXT,                 -- 物料编号
+			priority INTEGER DEFAULT 0,         -- 优先级
+			enabled INTEGER DEFAULT 1,          -- 是否启用
+			register_to_central INTEGER DEFAULT 1  -- 是否注册到中央控制器
         );
 
         CREATE TABLE IF NOT EXISTS liw_config (

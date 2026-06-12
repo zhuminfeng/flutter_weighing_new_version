@@ -96,10 +96,23 @@ namespace weighing
 		void EmitWarning(const std::string &msg);
 		void ClearWarning();
 
-		// === 通过 OutputManager 统一控制物理输出 ===
-		void SetControlRate(float rate_pct)
+		// === 新增：统一的信号驱动型伺服控制接口 ===
+		// 1. 设置指定工艺电机的速度百分比 (CSV模式)
+		void SetServoRate(DigitalSignalType signal, float rate_pct)
 		{
-			OutputManager::Instance().SetControlRate(subsystem_id_, rate_pct);
+			OutputManager::Instance().SetServoRateBySignal(subsystem_id_, signal, rate_pct);
+		}
+
+		// 2. 设置指定工艺电机的位置目标值 (CSP/PP模式，如夹袋)
+		void SetServoPosition(DigitalSignalType signal, int32_t position)
+		{
+			OutputManager::Instance().SetServoPositionBySignal(subsystem_id_, signal, position);
+		}
+
+		// 3. 一键安全关断本子系统名下的所有伺服电机
+		void StopAllServos()
+		{
+			OutputManager::Instance().StopAllServos(subsystem_id_);
 		}
 
 		void SetValveOutputs(uint16_t channel, bool fast, bool slow, bool refill, bool emptying)

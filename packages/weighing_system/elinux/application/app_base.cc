@@ -50,7 +50,7 @@ namespace weighing
 		}
 
 		// 停止所有输出
-		SetControlRate(0.0f);
+		StopAllServos();
 		SetValveOutputs(0, false, false, false, false);
 		SetRunningOutput(false);
 		SetAlarmOutput(false);

@@ -54,6 +54,9 @@ namespace weighing
 		RefillControlMode control_mode = RefillControlMode::kLastFrequency;
 		float control_setpoint = 10.0f; // % (when fixed output)
 		float stabilize_time = 10.0f;	// seconds
+
+		// === 新增：补料比例因子 (默认 100%) ===
+		float refill_scale_factor = 100.0f;
 	};
 
 	struct LiwTargetValuesConfig
@@ -183,7 +186,14 @@ namespace weighing
 		void CheckRefill();
 		void StartRefill();
 		void EndRefill();
+		void StartStabilization();
 		bool IsRefilling() const { return is_refilling_.load(); }
+
+		// Pre-refill management
+		void StartPreRefill();
+		void EndPreRefill();
+		bool IsPreRefilling() const { return is_pre_refilling_.load(); }
+		bool IsWaitingForManualPreRefill() const { return waiting_for_manual_pre_refill_.load(); }
 
 		// Warning checks
 		void CheckWarnings();
@@ -226,16 +236,28 @@ namespace weighing
 		std::atomic<bool> is_emptying_{false};
 		std::atomic<bool> is_in_startup_{false};
 
+		// 新增：预补料状态标记
+		std::atomic<bool> is_pre_refilling_{false};
+		std::atomic<bool> waiting_for_manual_pre_refill_{false};
+
+		std::atomic<bool> is_stabilizing_{false};			 // 新增：稳定期状态
+		std::atomic<bool> waiting_for_manual_refill_{false}; // 新增：待补料指示
+
 		// Flow calculation
 		double prev_weight_ = 0.0;
 		double current_flow_ = 0.0;
 		double refill_last_control_rate_ = 0.0;
+
+		// === 新增：用于智能适应的平滑基准频率 ===
+		double refill_smart_base_rate_ = 0.0;
 
 		// Timing
 		std::chrono::steady_clock::time_point last_time_;
 		std::chrono::steady_clock::time_point startup_start_;
 		std::chrono::steady_clock::time_point refill_start_;
 		std::chrono::steady_clock::time_point sample_start_;
+
+		std::chrono::steady_clock::time_point stabilize_start_;
 
 		// Statistics
 		LiwStatistics stats_;
