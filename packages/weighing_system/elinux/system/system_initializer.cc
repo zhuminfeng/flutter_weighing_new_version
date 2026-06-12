@@ -227,9 +227,9 @@ namespace weighing
 				{
 					ParsedConfig::SubMapping m;
 					m.sub_id = std::stoul(key);
-					m.servo_position = val.value("servo_position", static_cast<uint16_t>(0));
-					m.io_position = val.value("io_position", static_cast<uint16_t>(0));
-					m.io_channel = val.value("io_channel", static_cast<uint16_t>(0));
+					m.servo_position = val.value("servo_position", 0);
+					m.io_position = val.value("io_position", 0);
+					m.io_channel = val.value("io_channel", 0);
 					m.scale_id = val.value("scale_id", 0u);
 					m.description = val.value("description", "Subsystem " + key);
 					parsed_tmp.subsystem_mappings.push_back(m);
@@ -759,7 +759,10 @@ namespace weighing
 				auto &target = d.is_input ? j["input_source"]["ethercat"]["slaves"] : j["output"]["slaves"];
 				for (auto &item : target)
 				{
-					if (static_cast<uint16_t>(item.value("position", 0)) != d.position)
+					const int pos = item.value("position", -1);
+					if (pos < 0 || pos > 0xFFFF)
+						continue;
+					if (static_cast<uint16_t>(pos) != d.position)
 						continue;
 					item["device_alias"] = d.device_alias;
 					item["subsystem_id"] = d.subsystem_id;

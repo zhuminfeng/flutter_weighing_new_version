@@ -45,6 +45,7 @@ class _EthercatDeviceSettingsScreenState
 
   Future<void> _editDevice(int index) async {
     final current = _devices[index];
+    final messenger = ScaffoldMessenger.of(context);
     final aliasController = TextEditingController(text: current.deviceAlias);
     final subsystemController = TextEditingController(
       text: current.subsystemId >= 0 ? current.subsystemId.toString() : '',
@@ -86,7 +87,7 @@ class _EthercatDeviceSettingsScreenState
                 final text = subsystemController.text.trim();
                 final subsystemId = text.isEmpty ? -1 : int.tryParse(text);
                 if (subsystemId == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  messenger.showSnackBar(
                     const SnackBar(content: Text('子系统ID必须是整数')),
                   );
                   return;
@@ -111,7 +112,8 @@ class _EthercatDeviceSettingsScreenState
     setState(() => _devices = list);
   }
 
-  String _hex(int value) => '0x${value.toRadixString(16).padLeft(8, '0')}';
+  String _hex(int value, {int width = 8}) =>
+      '0x${value.toRadixString(16).padLeft(width, '0')}';
 
   @override
   Widget build(BuildContext context) {
