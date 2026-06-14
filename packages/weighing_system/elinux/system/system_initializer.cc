@@ -684,6 +684,132 @@ namespace weighing
 	}
 
 	// ============================================================================
+	// 更新子系统秤台映射并持久化
+	// ============================================================================
+	bool SystemInitializer::SaveSubsystemMappingToConfig(uint32_t subsystem_id, uint32_t scale_id, std::string *err)
+	{
+		try
+		{
+			std::ifstream ifs(config_path_);
+			if (!ifs.is_open())
+			{
+				if (err)
+					*err = "open config failed";
+				return false;
+			}
+			nlohmann::json j;
+			ifs >> j;
+			ifs.close();
+
+			std::string key = std::to_string(subsystem_id);
+			if (!j.contains("subsystem_mapping") || !j["subsystem_mapping"].contains(key))
+			{
+				if (err)
+					*err = "subsystem_id not found in config";
+				return false;
+			}
+			j["subsystem_mapping"][key]["scale_id"] = scale_id;
+
+			std::ofstream ofs(config_path_, std::ios::trunc);
+			if (!ofs.is_open())
+			{
+				if (err)
+					*err = "write config failed";
+				return false;
+			}
+			ofs << j.dump(2);
+			ofs.close();
+
+			// 更新内存缓存
+			for (auto &m : parsed_.subsystem_mappings)
+			{
+				if (m.sub_id == subsystem_id)
+				{
+					m.scale_id = scale_id;
+					break;
+				}
+			}
+			return true;
+		}
+		catch (const std::exception &e)
+		{
+			if (err)
+				*err = e.what();
+			return false;
+		}
+	}
+
+	// ============================================================================
+	// 更新从站用户别名并持久化
+	// ============================================================================
+	bool SystemInitializer::SaveSlaveAliasToConfig(uint16_t position, const std::string &alias, std::string *err)
+	{
+		try
+		{
+			std::ifstream ifs(config_path_);
+			if (!ifs.is_open())
+			{
+				if (err)
+					*err = "open config failed";
+				return false;
+			}
+			nlohmann::json j;
+			ifs >> j;
+			ifs.close();
+
+			bool found = false;
+			// 搜索 ethercat 输入从站
+			if (j.contains("input_source") && j["input_source"].contains("ethercat"))
+			{
+				for (auto &s : j["input_source"]["ethercat"]["slaves"])
+				{
+					if (s.value("position", -1) == position)
+					{
+						s["user_alias"] = alias;
+						found = true;
+						break;
+					}
+				}
+			}
+			// 搜索输出从站
+			if (!found && j.contains("output") && j["output"].contains("slaves"))
+			{
+				for (auto &s : j["output"]["slaves"])
+				{
+					if (s.value("position", -1) == position)
+					{
+						s["user_alias"] = alias;
+						found = true;
+						break;
+					}
+				}
+			}
+			if (!found)
+			{
+				// 从站不在已注册列表中也没关系，写入一个 user_aliases 附加表
+				j["user_aliases"][std::to_string(position)] = alias;
+			}
+
+			std::ofstream ofs(config_path_, std::ios::trunc);
+			if (!ofs.is_open())
+			{
+				if (err)
+					*err = "write config failed";
+				return false;
+			}
+			ofs << j.dump(2);
+			ofs.close();
+			return true;
+		}
+		catch (const std::exception &e)
+		{
+			if (err)
+				*err = e.what();
+			return false;
+		}
+	}
+
+	// ============================================================================
 	// Step 11: 启动 RT 线程
 	// ============================================================================
 	bool SystemInitializer::StartRTThread()

@@ -613,6 +613,18 @@ namespace
 		void HandleGetCurrentBatchId(const flutter::EncodableMap &args,
 									 std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 
+		// === HMI Config ===
+		void HandleScanEthercatSlaves(const flutter::EncodableMap &args,
+									  std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+		void HandleGetInputMode(const flutter::EncodableMap &args,
+								std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+		void HandleGetSubsystemMappings(const flutter::EncodableMap &args,
+										std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+		void HandleUpdateSubsystemMapping(const flutter::EncodableMap &args,
+										  std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+		void HandleUpdateSlaveAlias(const flutter::EncodableMap &args,
+									std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+
 		// flutter::PluginRegistrar *registrar_;
 		std::unique_ptr<InputSource> input_source_;
 		std::unique_ptr<flutter::EventSink<flutter::EncodableValue>> weight_event_sink_;
@@ -1094,6 +1106,27 @@ namespace
 		else if (method == "getCurrentBatchId")
 		{
 			HandleGetCurrentBatchId(args, std::move(result));
+		}
+		// === HMI Config ===
+		else if (method == "scanEthercatSlaves")
+		{
+			HandleScanEthercatSlaves(args, std::move(result));
+		}
+		else if (method == "getInputMode")
+		{
+			HandleGetInputMode(args, std::move(result));
+		}
+		else if (method == "getSubsystemMappings")
+		{
+			HandleGetSubsystemMappings(args, std::move(result));
+		}
+		else if (method == "updateSubsystemMapping")
+		{
+			HandleUpdateSubsystemMapping(args, std::move(result));
+		}
+		else if (method == "updateSlaveAlias")
+		{
+			HandleUpdateSlaveAlias(args, std::move(result));
 		}
 		else
 		{
@@ -3047,6 +3080,86 @@ namespace
 			mock_thread_->join();
 		}
 		mock_thread_.reset();
+	}
+
+	// ============================================================================
+	// HMI 配置 — 新增处理器实现
+	// ============================================================================
+
+	void WeighingSystemPlugin::HandleScanEthercatSlaves(
+		const flutter::EncodableMap & /*args*/,
+		std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		auto slaves = EtherCATMaster::Instance().ScanSlaves();
+
+		flutter::EncodableList list;
+		for (const auto &s : slaves)
+		{
+			flutter::EncodableMap item;
+			item[EV("position")] = EV(static_cast<int32_t>(s.position));
+			item[EV("alias")] = EV(static_cast<int32_t>(s.alias));
+			item[EV("vendorId")] = EV(static_cast<int64_t>(s.vendor_id));
+			item[EV("productCode")] = EV(static_cast<int64_t>(s.product_code));
+			item[EV("description")] = EV(s.description);
+			item[EV("userAlias")] = EV(s.user_alias);
+			list.push_back(EV(item));
+		}
+		result->Success(EV(list));
+	}
+
+	void WeighingSystemPlugin::HandleGetInputMode(
+		const flutter::EncodableMap & /*args*/,
+		std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		result->Success(EV(SystemInitializer::Instance().GetInputMode()));
+	}
+
+	void WeighingSystemPlugin::HandleGetSubsystemMappings(
+		const flutter::EncodableMap & /*args*/,
+		std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		const auto &mappings = SystemInitializer::Instance().GetSubsystemMappings();
+		flutter::EncodableList list;
+		for (const auto &m : mappings)
+		{
+			flutter::EncodableMap item;
+			item[EV("subsystemId")] = EV(static_cast<int32_t>(m.sub_id));
+			item[EV("scaleId")] = EV(static_cast<int32_t>(m.scale_id));
+			item[EV("ioPosition")] = EV(static_cast<int32_t>(m.io_position));
+			item[EV("description")] = EV(m.description);
+			list.push_back(EV(item));
+		}
+		result->Success(EV(list));
+	}
+
+	void WeighingSystemPlugin::HandleUpdateSubsystemMapping(
+		const flutter::EncodableMap &args,
+		std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		int subsystem_id = GetInt(args, "subsystemId");
+		int scale_id = GetInt(args, "scaleId");
+
+		std::string err;
+		bool ok = SystemInitializer::Instance().SaveSubsystemMappingToConfig(
+			static_cast<uint32_t>(subsystem_id),
+			static_cast<uint32_t>(scale_id),
+			&err);
+
+		result->Success(EV(BuildMapResult(ok, err)));
+	}
+
+	void WeighingSystemPlugin::HandleUpdateSlaveAlias(
+		const flutter::EncodableMap &args,
+		std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		int position = GetInt(args, "position");
+		std::string alias = GetString(args, "alias");
+
+		std::string err;
+		bool ok = SystemInitializer::Instance().SaveSlaveAliasToConfig(
+			static_cast<uint16_t>(position), alias, &err);
+
+		result->Success(EV(BuildMapResult(ok, err)));
 	}
 
 } // namespace

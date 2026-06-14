@@ -70,6 +70,19 @@ namespace weighing
 		unsigned int off_status = 0;	 // 从站状态
 	};
 
+	// ============================================================================
+	// EtherCAT 总线扫描结果（由 ScanSlaves() 返回）
+	// ============================================================================
+	struct ScannedSlaveInfo
+	{
+		uint16_t position = 0;
+		uint16_t alias = 0;
+		uint32_t vendor_id = 0;
+		uint32_t product_code = 0;
+		std::string description; // 来自 EC 从站名称
+		std::string user_alias;	 // 用户自定义别名（保存在配置文件中）
+	};
+
 	// 统一的从站运行时数据
 	struct SlaveRuntime
 	{

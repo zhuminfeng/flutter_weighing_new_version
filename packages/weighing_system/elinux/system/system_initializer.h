@@ -35,6 +35,18 @@ namespace weighing
 
 		bool SaveDigitalOutputMapToConfig(const DigitalOutputMapConfig &cfg, std::string *err);
 
+		/// 更新指定子系统的秤台映射（scale_id/channel），并持久化到配置文件
+		bool SaveSubsystemMappingToConfig(uint32_t subsystem_id, uint32_t scale_id, std::string *err);
+
+		/// 更新从站用户自定义别名，并持久化到配置文件
+		bool SaveSlaveAliasToConfig(uint16_t position, const std::string &alias, std::string *err);
+
+		/// 返回已解析的子系统映射列表（id, scale_id, description）
+		const std::vector<ParsedConfig::SubMapping> &GetSubsystemMappings() const
+		{
+			return parsed_.subsystem_mappings;
+		}
+
 	private:
 		SystemInitializer() = default;
 
