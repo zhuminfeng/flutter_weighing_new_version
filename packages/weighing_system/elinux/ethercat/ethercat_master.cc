@@ -472,6 +472,8 @@ namespace weighing
 		if (!master_)
 			return results;
 
+		// ecrt_master() fills ec_master_info_t (slave_count etc.); not to be
+		// confused with ecrt_request_master() which returns the master handle.
 		ec_master_info_t master_info;
 		if (ecrt_master(master_, &master_info) != 0)
 		{

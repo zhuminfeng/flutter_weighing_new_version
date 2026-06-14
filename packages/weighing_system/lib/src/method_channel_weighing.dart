@@ -10,6 +10,8 @@ import 'models/liw_config.dart';
 import 'models/filling_config.dart';
 import 'models/system_status.dart';
 import 'models/digital_output_map.dart';
+import 'models/ethercat_slave_info.dart';
+import 'models/subsystem_mapping_info.dart';
 
 class ELinuxWeighingSystem extends WeighingPlatform {
   static const MethodChannel _channel =
@@ -625,6 +627,77 @@ class ELinuxWeighingSystem extends WeighingPlatform {
       return (result as int?) ?? 0;
     } catch (e) {
       return 0;
+    }
+  }
+
+  // ============ HMI Config ============
+
+  @override
+  Future<List<EthercatSlaveInfo>> scanEthercatSlaves() async {
+    try {
+      final result = await _channel.invokeMethod('scanEthercatSlaves');
+      if (result is List) {
+        return result
+            .cast<Map<dynamic, dynamic>>()
+            .map((e) => EthercatSlaveInfo.fromMap(Map<String, dynamic>.from(e)))
+            .toList();
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  @override
+  Future<String> getInputMode() async {
+    try {
+      final result = await _channel.invokeMethod('getInputMode');
+      return (result as String?) ?? 'shmem';
+    } catch (e) {
+      return 'shmem';
+    }
+  }
+
+  @override
+  Future<List<SubsystemMappingInfo>> getSubsystemMappings() async {
+    try {
+      final result = await _channel.invokeMethod('getSubsystemMappings');
+      if (result is List) {
+        return result
+            .cast<Map<dynamic, dynamic>>()
+            .map((e) =>
+                SubsystemMappingInfo.fromMap(Map<String, dynamic>.from(e)))
+            .toList();
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  @override
+  Future<bool> updateSubsystemMapping(int subsystemId, int scaleId) async {
+    try {
+      final result = await _channel.invokeMapMethod<String, dynamic>(
+        'updateSubsystemMapping',
+        {'subsystemId': subsystemId, 'scaleId': scaleId},
+      );
+      return result?['ok'] == true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> updateSlaveAlias(int position, String alias) async {
+    try {
+      final result = await _channel.invokeMapMethod<String, dynamic>(
+        'updateSlaveAlias',
+        {'position': position, 'alias': alias},
+      );
+      return result?['ok'] == true;
+    } catch (e) {
+      return false;
     }
   }
 }

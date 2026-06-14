@@ -974,4 +974,97 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get slavePositionPrefix => 'Slave Pos';
+
+  @override
+  String get hmiConfig => 'HMI Config';
+
+  @override
+  String get hmiConfigSubtitle => 'Device Discovery / Subsystem Scale Binding';
+
+  @override
+  String get ethercatDevices => 'EtherCAT Devices';
+
+  @override
+  String get scanDevices => 'Scan';
+
+  @override
+  String get scanning => 'Scanning...';
+
+  @override
+  String get noDevicesFound => 'No devices found';
+
+  @override
+  String get deviceAlias => 'Device Alias';
+
+  @override
+  String get deviceAliasHint => 'Enter custom alias';
+
+  @override
+  String get assignToSubsystem => 'Assign Subsystem';
+
+  @override
+  String get shmemMode => 'Shared Memory Mode (shmem)';
+
+  @override
+  String get ethercatMode => 'EtherCAT Mode';
+
+  @override
+  String get inputModeLabel => 'Input Mode';
+
+  @override
+  String get channelSelect => 'Channel Select';
+
+  @override
+  String get noDeviceAssigned => 'Not configured';
+
+  @override
+  String deviceDiscovered(int count) => '$count device(s) discovered';
+
+  @override
+  String get subsystemScaleBinding => 'Subsystem Scale Binding';
+
+  @override
+  String get selectWeighingDevice => 'Select Weighing Device';
+
+  @override
+  String get vendorId => 'Vendor ID';
+
+  @override
+  String get productCode => 'Product Code';
+
+  @override
+  String get position => 'Position';
+
+  @override
+  String get slaveRoleWeighing => 'Weighing';
+
+  @override
+  String get slaveRoleDigitalIO => 'Digital IO';
+
+  @override
+  String get slaveRoleServo => 'Servo';
+
+  @override
+  String get slaveRoleUnknown => 'Unknown';
+
+  @override
+  String get saveAlias => 'Save Alias';
+
+  @override
+  String get aliasUpdated => 'Alias updated';
+
+  @override
+  String get aliasFailed => 'Alias update failed';
+
+  @override
+  String get mappingUpdated => 'Mapping updated';
+
+  @override
+  String get mappingFailed => 'Mapping update failed';
+
+  @override
+  String get channel0 => 'Channel 0';
+
+  @override
+  String get channel1 => 'Channel 1';
 }

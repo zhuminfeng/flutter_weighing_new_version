@@ -7,6 +7,8 @@ import 'models/filter_stability_config.dart';
 import 'models/liw_config.dart';
 import 'models/filling_config.dart';
 import 'models/system_status.dart';
+import 'models/ethercat_slave_info.dart';
+import 'models/subsystem_mapping_info.dart';
 import 'models/digital_output_map.dart';
 
 abstract class WeighingPlatform extends PlatformInterface {
@@ -148,4 +150,11 @@ abstract class WeighingPlatform extends PlatformInterface {
   Future<int> startBatch(String operatorName);
   Future<bool> endBatch();
   Future<int> getCurrentBatchId();
+
+  // HMI config
+  Future<List<EthercatSlaveInfo>> scanEthercatSlaves();
+  Future<String> getInputMode();
+  Future<List<SubsystemMappingInfo>> getSubsystemMappings();
+  Future<bool> updateSubsystemMapping(int subsystemId, int scaleId);
+  Future<bool> updateSlaveAlias(int position, String alias);
 }

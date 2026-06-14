@@ -965,4 +965,97 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get slavePositionPrefix => '从站位置';
+
+  @override
+  String get hmiConfig => 'HMI配置';
+
+  @override
+  String get hmiConfigSubtitle => '设备发现 / 子系统秤台绑定';
+
+  @override
+  String get ethercatDevices => 'EtherCAT 设备';
+
+  @override
+  String get scanDevices => '扫描';
+
+  @override
+  String get scanning => '扫描中...';
+
+  @override
+  String get noDevicesFound => '未发现设备';
+
+  @override
+  String get deviceAlias => '设备别名';
+
+  @override
+  String get deviceAliasHint => '输入自定义别名';
+
+  @override
+  String get assignToSubsystem => '分配子系统';
+
+  @override
+  String get shmemMode => '共享内存模式 (shmem)';
+
+  @override
+  String get ethercatMode => 'EtherCAT 模式';
+
+  @override
+  String get inputModeLabel => '输入模式';
+
+  @override
+  String get channelSelect => '通道选择';
+
+  @override
+  String get noDeviceAssigned => '未配置';
+
+  @override
+  String deviceDiscovered(int count) => '已发现 $count 台设备';
+
+  @override
+  String get subsystemScaleBinding => '子系统秤台绑定';
+
+  @override
+  String get selectWeighingDevice => '选择称重设备';
+
+  @override
+  String get vendorId => '厂商 ID';
+
+  @override
+  String get productCode => '产品代码';
+
+  @override
+  String get position => '位置';
+
+  @override
+  String get slaveRoleWeighing => '称重';
+
+  @override
+  String get slaveRoleDigitalIO => '数字 IO';
+
+  @override
+  String get slaveRoleServo => '伺服';
+
+  @override
+  String get slaveRoleUnknown => '未知';
+
+  @override
+  String get saveAlias => '保存别名';
+
+  @override
+  String get aliasUpdated => '别名已更新';
+
+  @override
+  String get aliasFailed => '别名更新失败';
+
+  @override
+  String get mappingUpdated => '映射已更新';
+
+  @override
+  String get mappingFailed => '映射更新失败';
+
+  @override
+  String get channel0 => '通道 0';
+
+  @override
+  String get channel1 => '通道 1';
 }

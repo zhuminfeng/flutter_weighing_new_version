@@ -2005,6 +2005,99 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Slave Pos'**
   String get slavePositionPrefix;
+
+  /// No description provided for @hmiConfig.
+  String get hmiConfig;
+
+  /// No description provided for @hmiConfigSubtitle.
+  String get hmiConfigSubtitle;
+
+  /// No description provided for @ethercatDevices.
+  String get ethercatDevices;
+
+  /// No description provided for @scanDevices.
+  String get scanDevices;
+
+  /// No description provided for @scanning.
+  String get scanning;
+
+  /// No description provided for @noDevicesFound.
+  String get noDevicesFound;
+
+  /// No description provided for @deviceAlias.
+  String get deviceAlias;
+
+  /// No description provided for @deviceAliasHint.
+  String get deviceAliasHint;
+
+  /// No description provided for @assignToSubsystem.
+  String get assignToSubsystem;
+
+  /// No description provided for @shmemMode.
+  String get shmemMode;
+
+  /// No description provided for @ethercatMode.
+  String get ethercatMode;
+
+  /// No description provided for @inputModeLabel.
+  String get inputModeLabel;
+
+  /// No description provided for @channelSelect.
+  String get channelSelect;
+
+  /// No description provided for @noDeviceAssigned.
+  String get noDeviceAssigned;
+
+  /// {count} device(s) discovered
+  String deviceDiscovered(int count);
+
+  /// No description provided for @subsystemScaleBinding.
+  String get subsystemScaleBinding;
+
+  /// No description provided for @selectWeighingDevice.
+  String get selectWeighingDevice;
+
+  /// No description provided for @vendorId.
+  String get vendorId;
+
+  /// No description provided for @productCode.
+  String get productCode;
+
+  /// No description provided for @position.
+  String get position;
+
+  /// No description provided for @slaveRoleWeighing.
+  String get slaveRoleWeighing;
+
+  /// No description provided for @slaveRoleDigitalIO.
+  String get slaveRoleDigitalIO;
+
+  /// No description provided for @slaveRoleServo.
+  String get slaveRoleServo;
+
+  /// No description provided for @slaveRoleUnknown.
+  String get slaveRoleUnknown;
+
+  /// No description provided for @saveAlias.
+  String get saveAlias;
+
+  /// No description provided for @aliasUpdated.
+  String get aliasUpdated;
+
+  /// No description provided for @aliasFailed.
+  String get aliasFailed;
+
+  /// No description provided for @mappingUpdated.
+  String get mappingUpdated;
+
+  /// No description provided for @mappingFailed.
+  String get mappingFailed;
+
+  /// No description provided for @channel0.
+  String get channel0;
+
+  /// No description provided for @channel1.
+  String get channel1;
 }
 
 class _AppLocalizationsDelegate

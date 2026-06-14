@@ -332,5 +332,43 @@
   "scopeBoth": "通用",
   "scopeLiwOnly": "仅失重",
   "scopeFillingOnly": "仅灌装",
-  "slavePositionPrefix": "从站位置"
+  "slavePositionPrefix": "从站位置",
+  "hmiConfig": "HMI配置",
+  "hmiConfigSubtitle": "设备发现 / 子系统秤台绑定",
+  "ethercatDevices": "EtherCAT 设备",
+  "scanDevices": "扫描",
+  "scanning": "扫描中...",
+  "noDevicesFound": "未发现设备",
+  "deviceAlias": "设备别名",
+  "deviceAliasHint": "输入自定义别名",
+  "assignToSubsystem": "分配子系统",
+  "shmemMode": "共享内存模式 (shmem)",
+  "ethercatMode": "EtherCAT 模式",
+  "inputModeLabel": "输入模式",
+  "channelSelect": "通道选择",
+  "noDeviceAssigned": "未配置",
+  "deviceDiscovered": "已发现 {count} 台设备",
+  "@deviceDiscovered": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "subsystemScaleBinding": "子系统秤台绑定",
+  "selectWeighingDevice": "选择称重设备",
+  "vendorId": "厂商 ID",
+  "productCode": "产品代码",
+  "position": "位置",
+  "slaveRoleWeighing": "称重",
+  "slaveRoleDigitalIO": "数字 IO",
+  "slaveRoleServo": "伺服",
+  "slaveRoleUnknown": "未知",
+  "saveAlias": "保存别名",
+  "aliasUpdated": "别名已更新",
+  "aliasFailed": "别名更新失败",
+  "mappingUpdated": "映射已更新",
+  "mappingFailed": "映射更新失败",
+  "channel0": "通道 0",
+  "channel1": "通道 1"
 }

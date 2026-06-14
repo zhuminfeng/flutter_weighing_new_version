@@ -7,6 +7,7 @@ import 'filter_screen.dart';
 import 'app_settings_screen.dart';
 import 'digital_output_settings_screen.dart'; // 新增
 import 'signal_analyzer_screen.dart';
+import 'hmi_config_screen.dart';
 import '../central/central_controller_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -80,6 +81,17 @@ class SettingsScreen extends StatelessWidget {
               MaterialPageRoute(
                 builder: (_) => const CentralControllerScreen(),
               ),
+            ),
+          ),
+
+          // HMI 配置 — 设备发现 / 子系统秤台绑定
+          _SettingsTile(
+            icon: Icons.developer_board,
+            title: l.hmiConfig,
+            subtitle: l.hmiConfigSubtitle,
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const HmiConfigScreen()),
             ),
           ),
 
