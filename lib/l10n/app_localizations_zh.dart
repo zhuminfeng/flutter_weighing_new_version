@@ -917,4 +917,52 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get warningSignal => '警告指示';
+
+  @override
+  String get confirmDeleteServoMsg => '确定要删除这条伺服电机映射配置吗？';
+
+  @override
+  String get bagClamp => '夹/松袋';
+
+  @override
+  String get editServoMapping => '编辑伺服电机映射';
+
+  @override
+  String get servoPosition => '伺服从站物理位置';
+
+  @override
+  String get servoPositionHint => '对应 EtherCAT 网络中伺服驱动器的位置索引';
+
+  @override
+  String get channelServoHint => '用于区分同一子系统下的多台相同功能的伺服电机';
+
+  @override
+  String get addDigitalIo => '添加数字量 IO';
+
+  @override
+  String get addServoMotor => '添加伺服电机';
+
+  @override
+  String get digitalIoMappingSection => '数字量输出映射 (Digital IO)';
+
+  @override
+  String get noDigitalIoConfig => '暂无数字量配置';
+
+  @override
+  String get servoRoutingSection => '伺服电机工艺角色 (Servo Routing)';
+
+  @override
+  String get noServoConfig => '暂无伺服电机绑定配置';
+
+  @override
+  String get scopeBoth => '通用';
+
+  @override
+  String get scopeLiwOnly => '仅失重';
+
+  @override
+  String get scopeFillingOnly => '仅灌装';
+
+  @override
+  String get slavePositionPrefix => '从站位置';
 }

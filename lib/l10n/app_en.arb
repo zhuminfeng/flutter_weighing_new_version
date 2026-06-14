@@ -316,5 +316,21 @@
   "emptyingValve": "Emptying Valve",
   "alarm": "Alarm Signal",
   "runningSignal": "Running Indicator",
-  "warningSignal": "Warning Indicator"
+  "warningSignal": "Warning Indicator",
+  "confirmDeleteServoMsg": "Are you sure you want to delete this Servo Motor mapping?",
+  "bagClamp": "Bag Clamp / Release",
+  "editServoMapping": "Edit Servo Mapping",
+  "servoPosition": "Servo Physical Position",
+  "servoPositionHint": "Position index of the servo drive in the EtherCAT network",
+  "channelServoHint": "Used to distinguish multiple servo motors with the same function",
+  "addDigitalIo": "Add Digital I/O",
+  "addServoMotor": "Add Servo Motor",
+  "digitalIoMappingSection": "Digital IO Mapping",
+  "noDigitalIoConfig": "No digital IO configuration",
+  "servoRoutingSection": "Servo Motor Routing",
+  "noServoConfig": "No servo motor configuration",
+  "scopeBoth": "Both (General)",
+  "scopeLiwOnly": "LIW Only",
+  "scopeFillingOnly": "Filling Only",
+  "slavePositionPrefix": "Slave Pos"
 }

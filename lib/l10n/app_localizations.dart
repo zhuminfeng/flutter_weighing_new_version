@@ -1909,6 +1909,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Warning Indicator'**
   String get warningSignal;
+
+  /// No description provided for @confirmDeleteServoMsg.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete this Servo Motor mapping?'**
+  String get confirmDeleteServoMsg;
+
+  /// No description provided for @bagClamp.
+  ///
+  /// In en, this message translates to:
+  /// **'Bag Clamp / Release'**
+  String get bagClamp;
+
+  /// No description provided for @editServoMapping.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Servo Mapping'**
+  String get editServoMapping;
+
+  /// No description provided for @servoPosition.
+  ///
+  /// In en, this message translates to:
+  /// **'Servo Physical Position'**
+  String get servoPosition;
+
+  /// No description provided for @servoPositionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Position index of the servo drive in the EtherCAT network'**
+  String get servoPositionHint;
+
+  /// No description provided for @channelServoHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Used to distinguish multiple servo motors with the same function'**
+  String get channelServoHint;
+
+  /// No description provided for @addDigitalIo.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Digital I/O'**
+  String get addDigitalIo;
+
+  /// No description provided for @addServoMotor.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Servo Motor'**
+  String get addServoMotor;
+
+  /// No description provided for @digitalIoMappingSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Digital IO Mapping'**
+  String get digitalIoMappingSection;
+
+  /// No description provided for @noDigitalIoConfig.
+  ///
+  /// In en, this message translates to:
+  /// **'No digital IO configuration'**
+  String get noDigitalIoConfig;
+
+  /// No description provided for @servoRoutingSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Servo Motor Routing'**
+  String get servoRoutingSection;
+
+  /// No description provided for @noServoConfig.
+  ///
+  /// In en, this message translates to:
+  /// **'No servo motor configuration'**
+  String get noServoConfig;
+
+  /// No description provided for @scopeBoth.
+  ///
+  /// In en, this message translates to:
+  /// **'Both (General)'**
+  String get scopeBoth;
+
+  /// No description provided for @scopeLiwOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'LIW Only'**
+  String get scopeLiwOnly;
+
+  /// No description provided for @scopeFillingOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Filling Only'**
+  String get scopeFillingOnly;
+
+  /// No description provided for @slavePositionPrefix.
+  ///
+  /// In en, this message translates to:
+  /// **'Slave Pos'**
+  String get slavePositionPrefix;
 }
 
 class _AppLocalizationsDelegate

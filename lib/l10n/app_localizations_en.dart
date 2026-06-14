@@ -923,4 +923,55 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get warningSignal => 'Warning Indicator';
+
+  @override
+  String get confirmDeleteServoMsg =>
+      'Are you sure you want to delete this Servo Motor mapping?';
+
+  @override
+  String get bagClamp => 'Bag Clamp / Release';
+
+  @override
+  String get editServoMapping => 'Edit Servo Mapping';
+
+  @override
+  String get servoPosition => 'Servo Physical Position';
+
+  @override
+  String get servoPositionHint =>
+      'Position index of the servo drive in the EtherCAT network';
+
+  @override
+  String get channelServoHint =>
+      'Used to distinguish multiple servo motors with the same function';
+
+  @override
+  String get addDigitalIo => 'Add Digital I/O';
+
+  @override
+  String get addServoMotor => 'Add Servo Motor';
+
+  @override
+  String get digitalIoMappingSection => 'Digital IO Mapping';
+
+  @override
+  String get noDigitalIoConfig => 'No digital IO configuration';
+
+  @override
+  String get servoRoutingSection => 'Servo Motor Routing';
+
+  @override
+  String get noServoConfig => 'No servo motor configuration';
+
+  @override
+  String get scopeBoth => 'Both (General)';
+
+  @override
+  String get scopeLiwOnly => 'LIW Only';
+
+  @override
+  String get scopeFillingOnly => 'Filling Only';
+
+  @override
+  String get slavePositionPrefix => 'Slave Pos';
 }

@@ -316,5 +316,21 @@
   "emptyingValve": "排空阀",
   "alarm": "报警信号",
   "runningSignal": "运行指示",
-  "warningSignal": "警告指示"
+  "warningSignal": "警告指示",
+  "confirmDeleteServoMsg": "确定要删除这条伺服电机映射配置吗？",
+  "bagClamp": "夹/松袋",
+  "editServoMapping": "编辑伺服电机映射",
+  "servoPosition": "伺服从站物理位置",
+  "servoPositionHint": "对应 EtherCAT 网络中伺服驱动器的位置索引",
+  "channelServoHint": "用于区分同一子系统下的多台相同功能的伺服电机",
+  "addDigitalIo": "添加数字量 IO",
+  "addServoMotor": "添加伺服电机",
+  "digitalIoMappingSection": "数字量输出映射 (Digital IO)",
+  "noDigitalIoConfig": "暂无数字量配置",
+  "servoRoutingSection": "伺服电机工艺角色 (Servo Routing)",
+  "noServoConfig": "暂无伺服电机绑定配置",
+  "scopeBoth": "通用",
+  "scopeLiwOnly": "仅失重",
+  "scopeFillingOnly": "仅灌装",
+  "slavePositionPrefix": "从站位置"
 }

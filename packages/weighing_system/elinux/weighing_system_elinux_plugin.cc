@@ -162,7 +162,8 @@ namespace
 		(void)GetBoolField(item, "enabled", &enabled);
 		(void)GetIntField(item, "app_scope", &app_scope);
 
-		if (signal < 0 || signal > static_cast<int>(weighing::DigitalSignalType::kReadyInd))
+		// 【修改】：校验范围扩展至 kBagClamp，兼容全伺服功能
+		if (signal < 0 || signal > static_cast<int>(weighing::DigitalSignalType::kBagClamp))
 		{
 			if (err)
 				*err = "binding signal out of range";
@@ -180,6 +181,52 @@ namespace
 		return true;
 	}
 
+	// === 【新增】：解析伺服映射绑定的独立函数 ===
+	bool ParseServoBinding(const EMap &item,
+						   weighing::ServoOutputBinding *out,
+						   std::string *err)
+	{
+		int subsystem_id = 0, servo_pos = 0, channel = 0, signal = 0, app_scope = -1;
+		bool enabled = true;
+
+		if (!GetIntField(item, "subsystem_id", &subsystem_id))
+		{
+			if (err)
+				*err = "servo_binding missing subsystem_id";
+			return false;
+		}
+		if (!GetIntField(item, "servo_pos", &servo_pos))
+		{
+			if (err)
+				*err = "servo_binding missing servo_pos";
+			return false;
+		}
+		if (!GetIntField(item, "signal", &signal))
+		{
+			if (err)
+				*err = "servo_binding missing signal";
+			return false;
+		}
+
+		// 可选字段
+		(void)GetBoolField(item, "enabled", &enabled);
+		(void)GetIntField(item, "app_scope", &app_scope);
+
+		if (signal < 0 || signal > static_cast<int>(weighing::DigitalSignalType::kBagClamp))
+		{
+			if (err)
+				*err = "servo_binding signal out of range";
+			return false;
+		}
+
+		out->subsystem_id = static_cast<uint32_t>(subsystem_id);
+		out->servo_pos = static_cast<uint16_t>(servo_pos);
+		out->signal = static_cast<weighing::DigitalSignalType>(signal);
+		out->enabled = enabled;
+		out->app_scope = app_scope;
+		return true;
+	}
+
 	bool ParseDigitalOutputMapConfig(const EMap &args,
 									 weighing::DigitalOutputMapConfig *cfg,
 									 std::string *err)
@@ -188,7 +235,11 @@ namespace
 		(void)GetIntField(args, "version", &version);
 		cfg->version = version;
 		cfg->bindings.clear();
+		cfg->servo_bindings.clear(); // 确保初始化时清空
 
+		// ==========================================
+		// 1. 解析传统的数字量 IO 绑定 (保持不变)
+		// ==========================================
 		auto it = args.find(EV("bindings"));
 		if (it == args.end())
 		{
@@ -223,6 +274,41 @@ namespace
 				return false;
 			}
 			cfg->bindings.push_back(b);
+		}
+
+		// ==========================================
+		// 2. 【新增】：解析伺服电机功能绑定
+		// ==========================================
+		auto it_servo = args.find(EV("servo_bindings"));
+		if (it_servo != args.end())
+		{
+			const auto *servo_list = std::get_if<EList>(&it_servo->second);
+			if (!servo_list)
+			{
+				if (err)
+					*err = "servo_bindings must be list";
+				return false;
+			}
+
+			for (size_t i = 0; i < servo_list->size(); ++i)
+			{
+				const auto *item_map = std::get_if<EMap>(&(*servo_list)[i]);
+				if (!item_map)
+				{
+					if (err)
+						*err = "servo_bindings[" + std::to_string(i) + "] must be map";
+					return false;
+				}
+				weighing::ServoOutputBinding sb;
+				std::string item_err;
+				if (!ParseServoBinding(*item_map, &sb, &item_err))
+				{
+					if (err)
+						*err = "servo_bindings[" + std::to_string(i) + "]: " + item_err;
+					return false;
+				}
+				cfg->servo_bindings.push_back(sb);
+			}
 		}
 
 		return true;
@@ -2591,9 +2677,23 @@ namespace
 			bindings.emplace_back(item);
 		}
 
+		// === 新增：序列化 servo_bindings ===
+		flutter::EncodableList servo_bindings_list;
+		for (const auto &b : cfg.servo_bindings)
+		{
+			flutter::EncodableMap sb_map;
+			sb_map[flutter::EncodableValue("subsystem_id")] = flutter::EncodableValue(static_cast<int32_t>(b.subsystem_id));
+			sb_map[flutter::EncodableValue("servo_pos")] = flutter::EncodableValue(static_cast<int32_t>(b.servo_pos));
+			sb_map[flutter::EncodableValue("signal")] = flutter::EncodableValue(static_cast<int32_t>(b.signal));
+			sb_map[flutter::EncodableValue("enabled")] = flutter::EncodableValue(b.enabled);
+			sb_map[flutter::EncodableValue("app_scope")] = flutter::EncodableValue(b.app_scope);
+			servo_bindings_list.push_back(flutter::EncodableValue(sb_map));
+		}
+
 		flutter::EncodableMap out;
 		out[flutter::EncodableValue("version")] = flutter::EncodableValue(cfg.version);
 		out[flutter::EncodableValue("bindings")] = flutter::EncodableValue(bindings);
+		out[flutter::EncodableValue("servo_bindings")] = flutter::EncodableValue(servo_bindings_list);
 		result->Success(flutter::EncodableValue(out));
 		return;
 	}

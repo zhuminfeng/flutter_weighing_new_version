@@ -60,11 +60,18 @@ class _DigitalOutputSettingsScreenState
     );
   }
 
+  // ==========================================
+  // 数字量输出映射 (Digital IO) 的 CRUD 操作
+  // ==========================================
   void _replaceBinding(int index, DigitalOutputBinding updated) {
     final list = List<DigitalOutputBinding>.from(_cfg.bindings);
     list[index] = updated;
     setState(() {
-      _cfg = DigitalOutputMapConfig(version: _cfg.version, bindings: list);
+      _cfg = DigitalOutputMapConfig(
+        version: _cfg.version,
+        bindings: list,
+        servoBindings: _cfg.servoBindings,
+      );
     });
   }
 
@@ -72,7 +79,11 @@ class _DigitalOutputSettingsScreenState
     final list = List<DigitalOutputBinding>.from(_cfg.bindings);
     list.removeAt(index);
     setState(() {
-      _cfg = DigitalOutputMapConfig(version: _cfg.version, bindings: list);
+      _cfg = DigitalOutputMapConfig(
+        version: _cfg.version,
+        bindings: list,
+        servoBindings: _cfg.servoBindings,
+      );
     });
   }
 
@@ -116,10 +127,91 @@ class _DigitalOutputSettingsScreenState
       ),
     );
     setState(() {
-      _cfg = DigitalOutputMapConfig(version: _cfg.version, bindings: list);
+      _cfg = DigitalOutputMapConfig(
+        version: _cfg.version,
+        bindings: list,
+        servoBindings: _cfg.servoBindings,
+      );
     });
   }
 
+  // ==========================================
+  // 伺服电机映射 (Servo Routing) 的 CRUD 操作
+  // ==========================================
+  void _replaceServoBinding(int index, ServoOutputBinding updated) {
+    final list = List<ServoOutputBinding>.from(_cfg.servoBindings);
+    list[index] = updated;
+    setState(() {
+      _cfg = DigitalOutputMapConfig(
+        version: _cfg.version,
+        bindings: _cfg.bindings,
+        servoBindings: list,
+      );
+    });
+  }
+
+  void _removeServoBinding(int index) {
+    final list = List<ServoOutputBinding>.from(_cfg.servoBindings);
+    list.removeAt(index);
+    setState(() {
+      _cfg = DigitalOutputMapConfig(
+        version: _cfg.version,
+        bindings: _cfg.bindings,
+        servoBindings: list,
+      );
+    });
+  }
+
+  Future<void> _confirmRemoveServoBinding(int index) async {
+    final l = AppLocalizations.of(context)!;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(l.confirmDelete),
+          content: Text(l.confirmDeleteServoMsg), // 使用新的国际化字段
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(l.cancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              child: Text(l.delete),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      _removeServoBinding(index);
+    }
+  }
+
+  void _addServoBinding() {
+    final list = List<ServoOutputBinding>.from(_cfg.servoBindings);
+    list.add(
+      const ServoOutputBinding(
+        subsystemId: 0,
+        servoPos: 0,
+        channel: 0,
+        signal: DigitalSignalType.feedFast,
+      ),
+    );
+    setState(() {
+      _cfg = DigitalOutputMapConfig(
+        version: _cfg.version,
+        bindings: _cfg.bindings,
+        servoBindings: list,
+      );
+    });
+  }
+
+  // ==========================================
+  // 辅助方法
+  // ==========================================
   String _getSignalTypeName(BuildContext context, DigitalSignalType signal) {
     final l = AppLocalizations.of(context)!;
     switch (signal) {
@@ -137,11 +229,16 @@ class _DigitalOutputSettingsScreenState
         return l.runningSignal;
       case DigitalSignalType.warningInd:
         return l.warningSignal;
+      case DigitalSignalType.bagClamp:
+        return l.bagClamp; // 使用新的国际化字段
       default:
         return signal.name;
     }
   }
 
+  // ==========================================
+  // 编辑对话框：数字量 IO
+  // ==========================================
   Future<void> _editBinding(int index) async {
     final l = AppLocalizations.of(context)!;
     final current = _cfg.bindings[index];
@@ -176,7 +273,6 @@ class _DigitalOutputSettingsScreenState
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Hardware Configuration Section
                   Text(
                     l.hardwareConfig,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
@@ -191,7 +287,6 @@ class _DigitalOutputSettingsScreenState
                     decoration: InputDecoration(
                       labelText: l.subsystemId,
                       helperText: l.subsystemIdHint,
-                      helperMaxLines: 2,
                       border: const OutlineInputBorder(),
                       isDense: true,
                     ),
@@ -203,7 +298,6 @@ class _DigitalOutputSettingsScreenState
                     decoration: InputDecoration(
                       labelText: l.ioPosition,
                       helperText: l.ioPosHint,
-                      helperMaxLines: 2,
                       border: const OutlineInputBorder(),
                       isDense: true,
                     ),
@@ -215,7 +309,6 @@ class _DigitalOutputSettingsScreenState
                     decoration: InputDecoration(
                       labelText: l.channel,
                       helperText: l.channelHint,
-                      helperMaxLines: 2,
                       border: const OutlineInputBorder(),
                       isDense: true,
                     ),
@@ -227,14 +320,12 @@ class _DigitalOutputSettingsScreenState
                     decoration: InputDecoration(
                       labelText: l.bitIndex,
                       helperText: l.bitIndexHint,
-                      helperMaxLines: 2,
                       border: const OutlineInputBorder(),
                       isDense: true,
                     ),
                   ),
                   const SizedBox(height: 20),
 
-                  // Signal Configuration Section
                   Text(
                     l.signalConfig,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
@@ -248,7 +339,6 @@ class _DigitalOutputSettingsScreenState
                     decoration: InputDecoration(
                       labelText: l.signal,
                       helperText: l.signalTypeHint,
-                      helperMaxLines: 2,
                       border: const OutlineInputBorder(),
                       isDense: true,
                     ),
@@ -261,9 +351,7 @@ class _DigitalOutputSettingsScreenState
                         )
                         .toList(),
                     onChanged: (v) {
-                      if (v != null) {
-                        setDialogState(() => signal = v);
-                      }
+                      if (v != null) setDialogState(() => signal = v);
                     },
                   ),
                   const SizedBox(height: 12),
@@ -285,7 +373,6 @@ class _DigitalOutputSettingsScreenState
                   ),
                   const SizedBox(height: 20),
 
-                  // Scope Configuration Section
                   Text(
                     l.scopeConfig,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
@@ -300,7 +387,6 @@ class _DigitalOutputSettingsScreenState
                     decoration: InputDecoration(
                       labelText: l.appScope,
                       helperText: l.appScopeHint,
-                      helperMaxLines: 2,
                       border: const OutlineInputBorder(),
                       isDense: true,
                     ),
@@ -358,6 +444,188 @@ class _DigitalOutputSettingsScreenState
     }
   }
 
+  // ==========================================
+  // 编辑对话框：伺服电机
+  // ==========================================
+  Future<void> _editServoBinding(int index) async {
+    final l = AppLocalizations.of(context)!;
+    final current = _cfg.servoBindings[index];
+    final subsystemController = TextEditingController(
+      text: current.subsystemId.toString(),
+    );
+    final servoPosController = TextEditingController(
+      text: current.servoPos.toString(),
+    );
+    final channelController = TextEditingController(
+      text: current.channel.toString(),
+    );
+    final appScopeController = TextEditingController(
+      text: current.appScope.toString(),
+    );
+
+    var signal = current.signal;
+    var enabled = current.enabled;
+
+    final updated = await showDialog<ServoOutputBinding>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            title: Text(l.editServoMapping), // 使用新的国际化字段
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l.hardwareConfig,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: subsystemController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: l.subsystemId,
+                      helperText: l.subsystemIdHint,
+                      border: const OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: servoPosController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: l.servoPosition, // 使用新的国际化字段
+                      helperText: l.servoPositionHint, // 使用新的国际化字段
+                      border: const OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: channelController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: l.channel,
+                      helperText: l.channelServoHint, // 使用新的国际化字段
+                      border: const OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  Text(
+                    l.signalConfig,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<DigitalSignalType>(
+                    value: signal,
+                    decoration: InputDecoration(
+                      labelText: l.signal,
+                      helperText: l.signalTypeHint,
+                      border: const OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    items: DigitalSignalType.values
+                        .map(
+                          (e) => DropdownMenuItem(
+                            value: e,
+                            child: Text(_getSignalTypeName(context, e)),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (v) {
+                      if (v != null) setDialogState(() => signal = v);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(l.enabled),
+                    value: enabled,
+                    onChanged: (v) => setDialogState(() => enabled = v),
+                  ),
+                  const SizedBox(height: 20),
+
+                  Text(
+                    l.scopeConfig,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: appScopeController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: l.appScope,
+                      helperText: l.appScopeHint,
+                      border: const OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: Text(l.cancel),
+              ),
+              FilledButton(
+                onPressed: () {
+                  final subsystemId = int.tryParse(subsystemController.text);
+                  final servoPos = int.tryParse(servoPosController.text);
+                  final channel = int.tryParse(channelController.text);
+                  final appScope = int.tryParse(appScopeController.text);
+
+                  if (subsystemId == null ||
+                      servoPos == null ||
+                      channel == null ||
+                      appScope == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(l.enterValidInteger)),
+                    );
+                    return;
+                  }
+
+                  Navigator.of(dialogContext).pop(
+                    ServoOutputBinding(
+                      subsystemId: subsystemId,
+                      servoPos: servoPos,
+                      channel: channel,
+                      signal: signal,
+                      enabled: enabled,
+                      appScope: appScope,
+                    ),
+                  );
+                },
+                child: Text(l.confirm),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (updated != null) {
+      _replaceServoBinding(index, updated);
+    }
+  }
+
+  // ==========================================
+  // 构建UI组件
+  // ==========================================
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -365,15 +633,44 @@ class _DigitalOutputSettingsScreenState
     }
 
     final l = AppLocalizations.of(context)!;
+    final bool isEmpty = _cfg.bindings.isEmpty && _cfg.servoBindings.isEmpty;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(l.digitalOutputMapping),
         actions: [
-          IconButton(
+          PopupMenuButton<int>(
             icon: const Icon(Icons.add),
             tooltip: l.add,
-            onPressed: _addBinding,
+            onSelected: (value) {
+              if (value == 0) {
+                _addBinding();
+              } else if (value == 1) {
+                _addServoBinding();
+              }
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 0,
+                child: Row(
+                  children: [
+                    const Icon(Icons.settings_input_component, size: 20),
+                    const SizedBox(width: 8),
+                    Text(l.addDigitalIo), // 使用国际化字段
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 1,
+                child: Row(
+                  children: [
+                    const Icon(Icons.precision_manufacturing, size: 20),
+                    const SizedBox(width: 8),
+                    Text(l.addServoMotor), // 使用国际化字段
+                  ],
+                ),
+              ),
+            ],
           ),
           IconButton(
             icon: const Icon(Icons.check_circle_outline),
@@ -393,7 +690,7 @@ class _DigitalOutputSettingsScreenState
           ),
         ],
       ),
-      body: _cfg.bindings.isEmpty
+      body: isEmpty
           ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -421,113 +718,246 @@ class _DigitalOutputSettingsScreenState
                 ],
               ),
             )
-          : ListView.builder(
+          : ListView(
               padding: const EdgeInsets.all(16),
-              itemCount: _cfg.bindings.length,
-              itemBuilder: (_, i) {
-                final b = _cfg.bindings[i];
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  child: InkWell(
-                    onTap: () => _editBinding(i),
-                    borderRadius: BorderRadius.circular(12),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: b.enabled
-                                      ? Colors.green.withOpacity(0.1)
-                                      : Colors.grey.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(4),
-                                  border: Border.all(
-                                    color: b.enabled
-                                        ? Colors.green
-                                        : Colors.grey,
-                                  ),
-                                ),
-                                child: Text(
-                                  b.enabled ? l.enabled : l.disabled,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: b.enabled
-                                        ? Colors.green
-                                        : Colors.grey,
-                                  ),
-                                ),
-                              ),
-                              const Spacer(),
-                              IconButton(
-                                icon: const Icon(Icons.edit_outlined),
-                                tooltip: l.editMapping,
-                                onPressed: () => _editBinding(i),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.delete_outline),
-                                tooltip: l.delete,
-                                color: Colors.red,
-                                onPressed: () => _confirmRemoveBinding(i),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          _buildInfoRow(
-                            l.signal,
-                            _getSignalTypeName(context, b.signal),
-                            Icons.signal_cellular_alt,
-                          ),
-                          const SizedBox(height: 8),
-                          _buildInfoRow(
-                            l.hardwareConfig,
-                            '${l.subsystemId}: ${b.subsystemId} | ${l.ioPosition}: ${b.ioPos}',
-                            Icons.developer_board,
-                          ),
-                          const SizedBox(height: 8),
-                          _buildInfoRow(
-                            l.channel,
-                            'CH${b.channel} | ${l.bitIndex}: ${b.bitIndex} | ${l.appScope}: ${b.appScope}',
-                            Icons.tune,
-                          ),
-                          if (!b.activeHigh) ...[
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.swap_vert,
-                                  size: 16,
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurface.withOpacity(0.6),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  '${l.activeHigh}: ${l.disabled}',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.onSurface.withOpacity(0.6),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ],
+              children: [
+                // 1. 数字量 IO 映射区
+                Text(
+                  l.digitalIoMappingSection, // 使用国际化字段
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                if (_cfg.bindings.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Text(
+                      l.noDigitalIoConfig,
+                      style: TextStyle(color: Colors.grey.shade500),
+                    ), // 国际化
+                  )
+                else
+                  ..._cfg.bindings.asMap().entries.map(
+                    (e) => _buildBindingCard(e.value, e.key),
+                  ),
+
+                const SizedBox(height: 32),
+
+                // 2. 伺服电机映射区
+                Text(
+                  l.servoRoutingSection, // 使用国际化字段
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                if (_cfg.servoBindings.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Text(
+                      l.noServoConfig,
+                      style: TextStyle(color: Colors.grey.shade500),
+                    ), // 国际化
+                  )
+                else
+                  ..._cfg.servoBindings.asMap().entries.map(
+                    (e) => _buildServoBindingCard(e.value, e.key),
+                  ),
+              ],
+            ),
+    );
+  }
+
+  // 构建数字量 IO 绑定卡片
+  Widget _buildBindingCard(DigitalOutputBinding b, int index) {
+    final l = AppLocalizations.of(context)!;
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: InkWell(
+        onTap: () => _editBinding(index),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: b.enabled
+                          ? Colors.green.withOpacity(0.1)
+                          : Colors.grey.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(
+                        color: b.enabled ? Colors.green : Colors.grey,
+                      ),
+                    ),
+                    child: Text(
+                      b.enabled ? l.enabled : l.disabled,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: b.enabled ? Colors.green : Colors.grey,
                       ),
                     ),
                   ),
-                );
-              },
-            ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined),
+                    tooltip: l.editMapping,
+                    onPressed: () => _editBinding(index),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline),
+                    tooltip: l.delete,
+                    color: Colors.red,
+                    onPressed: () => _confirmRemoveBinding(index),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _buildInfoRow(
+                l.signal,
+                _getSignalTypeName(context, b.signal),
+                Icons.signal_cellular_alt,
+              ),
+              const SizedBox(height: 8),
+              _buildInfoRow(
+                l.hardwareConfig,
+                '${l.subsystemId}: ${b.subsystemId} | ${l.ioPosition}: ${b.ioPos}',
+                Icons.developer_board,
+              ),
+              const SizedBox(height: 8),
+              _buildInfoRow(
+                l.channel,
+                'CH${b.channel} | ${l.bitIndex}: ${b.bitIndex} | ${l.appScope}: ${b.appScope}',
+                Icons.tune,
+              ),
+              if (!b.activeHigh) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.swap_vert,
+                      size: 16,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withOpacity(0.6),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${l.activeHigh}: ${l.disabled}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withOpacity(0.6),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // 构建伺服电机绑定卡片
+  Widget _buildServoBindingCard(ServoOutputBinding b, int index) {
+    final l = AppLocalizations.of(context)!;
+    final scopeName = b.appScope == -1
+        ? l.scopeBoth
+        : (b.appScope == 0 ? l.scopeLiwOnly : l.scopeFillingOnly);
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: InkWell(
+        onTap: () => _editServoBinding(index),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: b.enabled
+                          ? Colors.green.withOpacity(0.1)
+                          : Colors.grey.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(
+                        color: b.enabled ? Colors.green : Colors.grey,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.precision_manufacturing,
+                          size: 14,
+                          color: b.enabled ? Colors.green : Colors.grey,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          b.enabled ? l.enabled : l.disabled,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: b.enabled ? Colors.green : Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined),
+                    tooltip: l.editMapping,
+                    onPressed: () => _editServoBinding(index),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline),
+                    tooltip: l.delete,
+                    color: Colors.red,
+                    onPressed: () => _confirmRemoveServoBinding(index),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _buildInfoRow(
+                l.signal,
+                _getSignalTypeName(context, b.signal),
+                Icons.settings_ethernet,
+              ),
+              const SizedBox(height: 8),
+              _buildInfoRow(
+                l.hardwareConfig,
+                '${l.subsystemId}: ${b.subsystemId} | ${l.slavePositionPrefix}: ${b.servoPos}',
+                Icons.developer_board,
+              ),
+              const SizedBox(height: 8),
+              _buildInfoRow(
+                l.channel,
+                '${l.channel} ${b.channel} | ${l.appScope}: $scopeName',
+                Icons.apps,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

@@ -71,7 +71,7 @@ namespace weighing
 			struct SubMapping
 			{
 				uint32_t sub_id;
-				uint16_t servo_position, io_position, io_channel;
+				uint16_t io_position;
 				uint32_t scale_id;
 				std::string description;
 			};

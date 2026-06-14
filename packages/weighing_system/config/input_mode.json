@@ -44,30 +44,44 @@
     "version": 1,
     "bindings": [
       {
-        "subsystem_id": 1,
-        "io_pos": 3,
+        "subsystem_id": 0,
+        "io_pos": 1,
         "channel": 0,
-        "signal": 0,
-        "bit_index": 0,
+        "signal": 4, 
+        "bit_index": 8,
         "active_high": true,
         "enabled": true,
         "app_scope": -1
+      }
+    ],
+    "servo_bindings": [
+      {
+        "subsystem_id": 0,
+        "servo_pos": 0,
+        "channel": 0,
+        "signal": 0, 
+        "enabled": true,
+        "app_scope": -1
+      },
+      {
+        "subsystem_id": 0,
+        "servo_pos": 3,
+        "channel": 0,
+        "signal": 8, 
+        "enabled": true,
+        "app_scope": 1 
       }
     ]
   },
 
   "subsystem_mapping": {
     "0": {
-      "servo_position": 0,
       "io_position": 1,
-      "io_channel": 0,
       "scale_id": 0,
       "description": "Subsystem 0: Feeder Line 1"
     },
     "1": {
-      "servo_position": 0,
       "io_position": 1,
-      "io_channel": 1,
       "scale_id": 1,
       "description": "Subsystem 1: Feeder Line 2"
     }

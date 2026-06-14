@@ -221,9 +221,7 @@ namespace weighing
 				{
 					ParsedConfig::SubMapping m;
 					m.sub_id = std::stoul(key);
-					m.servo_position = val.value("servo_position", (uint16_t)0);
 					m.io_position = val.value("io_position", (uint16_t)0);
-					m.io_channel = val.value("io_channel", (uint16_t)0);
 					m.scale_id = val.value("scale_id", 0u);
 					m.description = val.value("description", "Subsystem " + key);
 					parsed_.subsystem_mappings.push_back(m);
@@ -254,6 +252,21 @@ namespace weighing
 						parsed_.dio_map_cfg.bindings.push_back(b);
 					}
 					parsed_.has_dio_map_cfg = true;
+				}
+
+				// === 新增：解析伺服电机与工艺信号的绑定 ===
+				if (dm.contains("servo_bindings") && dm["servo_bindings"].is_array())
+				{
+					for (const auto &item : dm["servo_bindings"])
+					{
+						ServoOutputBinding sb;
+						sb.subsystem_id = item.value("subsystem_id", 0);
+						sb.servo_pos = item.value("servo_pos", 0);
+						sb.signal = static_cast<DigitalSignalType>(item.value("signal", 0));
+						sb.enabled = item.value("enabled", true);
+						sb.app_scope = item.value("app_scope", -1);
+						parsed_.dio_map_cfg.servo_bindings.push_back(sb);
+					}
 				}
 			}
 		}
@@ -354,10 +367,17 @@ namespace weighing
 		if (!om.Initialize())
 			return false;
 
+		// === 新增/修改：统一下发映射配置，建立动态路由表 ===
+		std::string err;
+		if (!om.UpdateDigitalOutputMap(parsed_.dio_map_cfg, &err))
+		{
+			printf("Failed to update output map: %s\n", err.c_str());
+			return false;
+		}
+
 		// 设置子系统映射
 		for (const auto &m : parsed_.subsystem_mappings)
 		{
-			om.MapSubsystemServo(m.sub_id, m.servo_position);
 			om.MapSubsystemIO(m.sub_id, m.io_position);
 		}
 
@@ -626,6 +646,17 @@ namespace weighing
 										  {"active_high", b.active_high},
 										  {"enabled", b.enabled},
 										  {"app_scope", b.app_scope}});
+			}
+
+			// === 新增：将伺服配置序列化回 JSON ===
+			dm["servo_bindings"] = nlohmann::json::array();
+			for (const auto &b : cfg.servo_bindings)
+			{
+				dm["servo_bindings"].push_back({{"subsystem_id", b.subsystem_id},
+												{"servo_pos", b.servo_pos},
+												{"signal", static_cast<int>(b.signal)},
+												{"enabled", b.enabled},
+												{"app_scope", b.app_scope}});
 			}
 			j["digital_output_map"] = dm;
 
