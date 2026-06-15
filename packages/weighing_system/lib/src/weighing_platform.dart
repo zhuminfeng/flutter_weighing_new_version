@@ -157,4 +157,7 @@ abstract class WeighingPlatform extends PlatformInterface {
   Future<List<SubsystemMappingInfo>> getSubsystemMappings();
   Future<bool> updateSubsystemMapping(int subsystemId, int scaleId);
   Future<bool> updateSlaveAlias(int position, String alias);
+  Future<bool> addSubsystemMapping(int subsystemId, String description,
+      {int scaleId = 0, int ioPosition = 0});
+  Future<bool> removeSubsystemMapping(int subsystemId);
 }

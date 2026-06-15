@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:weighing_system_elinux/weighing_system_elinux.dart';
 import '../../l10n/app_localizations.dart';
+import '../../providers/app_state.dart';
 
 // ---------------------------------------------------------------------------
 // Helper: detect slave role from vendor/product codes
@@ -77,6 +78,7 @@ class _HmiConfigScreenState extends State<HmiConfigScreen> {
 
   bool _loading = true;
   bool _scanning = false;
+  bool _applying = false;
   String _inputMode = 'shmem';
   List<EthercatSlaveInfo> _slaves = [];
   List<SubsystemMappingInfo> _mappings = [];
@@ -217,6 +219,144 @@ class _HmiConfigScreenState extends State<HmiConfigScreen> {
     }
   }
 
+  // Show dialog to add a new subsystem
+  Future<void> _addSubsystem() async {
+    final l = AppLocalizations.of(context)!;
+    final idController = TextEditingController();
+    final descController = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.addSubsystemTitle),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: idController,
+              decoration: InputDecoration(labelText: l.subsystemIdLabel),
+              keyboardType: TextInputType.number,
+              autofocus: true,
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: descController,
+              decoration: InputDecoration(
+                labelText: l.subsystemDescLabel,
+                hintText: l.subsystemDescHint,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l.addSubsystem),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) {
+      final idText = idController.text.trim();
+      final subsystemId = int.tryParse(idText);
+      if (subsystemId == null) return;
+      final description = descController.text.trim();
+      final ok = await _platform.addSubsystemMapping(subsystemId, description);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(ok ? l.addSuccess : l.addFailed)),
+        );
+        if (ok) {
+          await _loadInitialData();
+        }
+      }
+    }
+  }
+
+  // Remove a subsystem mapping
+  Future<void> _removeSubsystem(SubsystemMappingInfo mapping) async {
+    final l = AppLocalizations.of(context)!;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.removeSubsystem),
+        content: Text(l.confirmRemoveSubsystem(mapping.subsystemId)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l.confirm),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) {
+      final ok =
+          await _platform.removeSubsystemMapping(mapping.subsystemId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(ok ? l.removeSuccess : l.removeFailed)),
+        );
+        if (ok) {
+          setState(() {
+            _mappings =
+                _mappings.where((m) => m.subsystemId != mapping.subsystemId).toList();
+          });
+        }
+      }
+    }
+  }
+
+  // Apply config: reinitialize the system
+  Future<void> _applyConfig() async {
+    final l = AppLocalizations.of(context)!;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.applyConfig),
+        content: Text(l.applyConfigConfirm),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l.confirm),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _applying = true);
+    try {
+      final state = AppStateProvider.of(context);
+      await state.reinitialize();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l.applyConfigSuccess)),
+        );
+        // Reload mappings from the reinitialized system
+        await _loadInitialData();
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l.applyConfigFailed)),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _applying = false);
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // Build
   // ---------------------------------------------------------------------------
@@ -243,7 +383,25 @@ class _HmiConfigScreenState extends State<HmiConfigScreen> {
                     tooltip: l.scanDevices,
                     onPressed: _doScan,
                   ),
+          _applying
+              ? const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2.5)),
+                )
+              : IconButton(
+                  icon: const Icon(Icons.play_circle_outline),
+                  tooltip: l.applyConfig,
+                  onPressed: _applyConfig,
+                ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _addSubsystem,
+        tooltip: l.addSubsystem,
+        child: const Icon(Icons.add),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -310,14 +468,32 @@ class _HmiConfigScreenState extends State<HmiConfigScreen> {
                   _SectionHeader(
                     icon: Icons.widgets,
                     title: l.subsystemScaleBinding,
+                    trailing: TextButton.icon(
+                      icon: const Icon(Icons.add, size: 18),
+                      label: Text(l.addSubsystem),
+                      onPressed: _addSubsystem,
+                    ),
                   ),
                   if (_mappings.isEmpty)
                     Card(
                       child: Padding(
                         padding: const EdgeInsets.all(24),
                         child: Center(
-                          child: Text(l.noDevicesFound,
-                              style: TextStyle(color: cs.outline)),
+                          child: Column(
+                            children: [
+                              Icon(Icons.widgets_outlined,
+                                  size: 48, color: cs.outline),
+                              const SizedBox(height: 8),
+                              Text(l.noDevicesFound,
+                                  style: TextStyle(color: cs.outline)),
+                              const SizedBox(height: 12),
+                              FilledButton.icon(
+                                icon: const Icon(Icons.add),
+                                label: Text(l.addSubsystem),
+                                onPressed: _addSubsystem,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     )
@@ -329,6 +505,7 @@ class _HmiConfigScreenState extends State<HmiConfigScreen> {
                               slaves: _slaves,
                               onChannelChanged: (ch) =>
                                   _updateChannel(m, ch),
+                              onRemove: () => _removeSubsystem(m),
                               onSelectDevice: () async {
                                 // In ethercat mode: pick from weighing slaves
                                 final weighing = _slaves
@@ -369,6 +546,7 @@ class _HmiConfigScreenState extends State<HmiConfigScreen> {
                               },
                             ))
                         .toList(),
+                  const SizedBox(height: 80), // space for FAB
                 ],
               ),
             ),
@@ -580,6 +758,7 @@ class _SubsystemMappingCard extends StatelessWidget {
   final List<EthercatSlaveInfo> slaves;
   final ValueChanged<int> onChannelChanged;
   final VoidCallback onSelectDevice;
+  final VoidCallback onRemove;
 
   const _SubsystemMappingCard({
     required this.mapping,
@@ -587,6 +766,7 @@ class _SubsystemMappingCard extends StatelessWidget {
     required this.slaves,
     required this.onChannelChanged,
     required this.onSelectDevice,
+    required this.onRemove,
   });
 
   @override
@@ -662,6 +842,11 @@ class _SubsystemMappingCard extends StatelessWidget {
                     ),
                 ],
               ),
+            ),
+            IconButton(
+              icon: Icon(Icons.delete_outline, color: cs.error, size: 20),
+              tooltip: l.removeSubsystem,
+              onPressed: onRemove,
             ),
           ],
         ),

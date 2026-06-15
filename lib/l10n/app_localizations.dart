@@ -2098,6 +2098,57 @@ abstract class AppLocalizations {
 
   /// No description provided for @channel1.
   String get channel1;
+
+  /// No description provided for @addSubsystem.
+  String get addSubsystem;
+
+  /// No description provided for @addSubsystemTitle.
+  String get addSubsystemTitle;
+
+  /// No description provided for @removeSubsystem.
+  String get removeSubsystem;
+
+  /// No description provided for @confirmRemoveSubsystem.
+  String confirmRemoveSubsystem(int id);
+
+  /// No description provided for @subsystemIdLabel.
+  String get subsystemIdLabel;
+
+  /// No description provided for @subsystemDescLabel.
+  String get subsystemDescLabel;
+
+  /// No description provided for @subsystemDescHint.
+  String get subsystemDescHint;
+
+  /// No description provided for @addSuccess.
+  String get addSuccess;
+
+  /// No description provided for @addFailed.
+  String get addFailed;
+
+  /// No description provided for @removeFailed.
+  String get removeFailed;
+
+  /// No description provided for @removeSuccess.
+  String get removeSuccess;
+
+  /// No description provided for @applyConfig.
+  String get applyConfig;
+
+  /// No description provided for @applyConfigConfirm.
+  String get applyConfigConfirm;
+
+  /// No description provided for @applyConfigInProgress.
+  String get applyConfigInProgress;
+
+  /// No description provided for @applyConfigSuccess.
+  String get applyConfigSuccess;
+
+  /// No description provided for @applyConfigFailed.
+  String get applyConfigFailed;
+
+  /// No description provided for @confirm.
+  String get confirm;
 }
 
 class _AppLocalizationsDelegate

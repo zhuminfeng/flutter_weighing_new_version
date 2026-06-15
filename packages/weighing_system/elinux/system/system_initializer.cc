@@ -11,6 +11,7 @@
 #include "../storage/calibration_store.h"
 #include "../central/central_controller.h"
 
+#include <algorithm>
 #include <fstream>
 #include <cstdio>
 #include "../include/nlohmann/json.hpp"
@@ -684,7 +685,7 @@ namespace weighing
 	}
 
 	// ============================================================================
-	// 更新子系统秤台映射并持久化
+	// 更新子系统秤台映射并持久化（upsert：不存在则创建）
 	// ============================================================================
 	bool SystemInitializer::SaveSubsystemMappingToConfig(uint32_t subsystem_id, uint32_t scale_id, std::string *err)
 	{
@@ -702,13 +703,155 @@ namespace weighing
 			ifs.close();
 
 			std::string key = std::to_string(subsystem_id);
-			if (!j.contains("subsystem_mapping") || !j["subsystem_mapping"].contains(key))
+
+			// 如果 subsystem_mapping 段不存在，创建它
+			if (!j.contains("subsystem_mapping") || !j["subsystem_mapping"].is_object())
+			{
+				j["subsystem_mapping"] = nlohmann::json::object();
+			}
+
+			// 如果该子系统条目不存在，创建默认条目（upsert）
+			if (!j["subsystem_mapping"].contains(key))
+			{
+				j["subsystem_mapping"][key] = {
+					{"scale_id", scale_id},
+					{"io_position", 0},
+					{"description", "Subsystem " + key}};
+				// 同步更新内存缓存
+				ParsedConfig::SubMapping m;
+				m.sub_id = subsystem_id;
+				m.scale_id = scale_id;
+				m.io_position = 0;
+				m.description = "Subsystem " + key;
+				parsed_.subsystem_mappings.push_back(m);
+			}
+			else
+			{
+				j["subsystem_mapping"][key]["scale_id"] = scale_id;
+				// 更新内存缓存
+				for (auto &m : parsed_.subsystem_mappings)
+				{
+					if (m.sub_id == subsystem_id)
+					{
+						m.scale_id = scale_id;
+						break;
+					}
+				}
+			}
+
+			std::ofstream ofs(config_path_, std::ios::trunc);
+			if (!ofs.is_open())
 			{
 				if (err)
-					*err = "subsystem_id not found in config";
+					*err = "write config failed";
 				return false;
 			}
-			j["subsystem_mapping"][key]["scale_id"] = scale_id;
+			ofs << j.dump(2);
+			ofs.close();
+			return true;
+		}
+		catch (const std::exception &e)
+		{
+			if (err)
+				*err = e.what();
+			return false;
+		}
+	}
+
+	// ============================================================================
+	// 添加新的子系统条目并持久化
+	// ============================================================================
+	bool SystemInitializer::AddSubsystemToConfig(uint32_t sub_id, uint16_t io_position,
+												 uint32_t scale_id, const std::string &description,
+												 std::string *err)
+	{
+		try
+		{
+			std::ifstream ifs(config_path_);
+			if (!ifs.is_open())
+			{
+				if (err)
+					*err = "open config failed";
+				return false;
+			}
+			nlohmann::json j;
+			ifs >> j;
+			ifs.close();
+
+			if (!j.contains("subsystem_mapping") || !j["subsystem_mapping"].is_object())
+			{
+				j["subsystem_mapping"] = nlohmann::json::object();
+			}
+
+			std::string key = std::to_string(sub_id);
+			j["subsystem_mapping"][key] = {
+				{"scale_id", scale_id},
+				{"io_position", io_position},
+				{"description", description.empty() ? "Subsystem " + key : description}};
+
+			std::ofstream ofs(config_path_, std::ios::trunc);
+			if (!ofs.is_open())
+			{
+				if (err)
+					*err = "write config failed";
+				return false;
+			}
+			ofs << j.dump(2);
+			ofs.close();
+
+			// 更新内存缓存（先去重再添加）
+			auto it = std::find_if(parsed_.subsystem_mappings.begin(),
+								   parsed_.subsystem_mappings.end(),
+								   [sub_id](const ParsedConfig::SubMapping &m)
+								   { return m.sub_id == sub_id; });
+			if (it != parsed_.subsystem_mappings.end())
+			{
+				it->scale_id = scale_id;
+				it->io_position = io_position;
+				it->description = description;
+			}
+			else
+			{
+				ParsedConfig::SubMapping m;
+				m.sub_id = sub_id;
+				m.scale_id = scale_id;
+				m.io_position = io_position;
+				m.description = description.empty() ? "Subsystem " + key : description;
+				parsed_.subsystem_mappings.push_back(m);
+			}
+			return true;
+		}
+		catch (const std::exception &e)
+		{
+			if (err)
+				*err = e.what();
+			return false;
+		}
+	}
+
+	// ============================================================================
+	// 删除子系统条目并持久化
+	// ============================================================================
+	bool SystemInitializer::RemoveSubsystemFromConfig(uint32_t sub_id, std::string *err)
+	{
+		try
+		{
+			std::ifstream ifs(config_path_);
+			if (!ifs.is_open())
+			{
+				if (err)
+					*err = "open config failed";
+				return false;
+			}
+			nlohmann::json j;
+			ifs >> j;
+			ifs.close();
+
+			std::string key = std::to_string(sub_id);
+			if (j.contains("subsystem_mapping") && j["subsystem_mapping"].contains(key))
+			{
+				j["subsystem_mapping"].erase(key);
+			}
 
 			std::ofstream ofs(config_path_, std::ios::trunc);
 			if (!ofs.is_open())
@@ -721,14 +864,12 @@ namespace weighing
 			ofs.close();
 
 			// 更新内存缓存
-			for (auto &m : parsed_.subsystem_mappings)
-			{
-				if (m.sub_id == subsystem_id)
-				{
-					m.scale_id = scale_id;
-					break;
-				}
-			}
+			parsed_.subsystem_mappings.erase(
+				std::remove_if(parsed_.subsystem_mappings.begin(),
+							   parsed_.subsystem_mappings.end(),
+							   [sub_id](const ParsedConfig::SubMapping &m)
+							   { return m.sub_id == sub_id; }),
+				parsed_.subsystem_mappings.end());
 			return true;
 		}
 		catch (const std::exception &e)

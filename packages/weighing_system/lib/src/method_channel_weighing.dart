@@ -700,4 +700,36 @@ class ELinuxWeighingSystem extends WeighingPlatform {
       return false;
     }
   }
+
+  @override
+  Future<bool> addSubsystemMapping(int subsystemId, String description,
+      {int scaleId = 0, int ioPosition = 0}) async {
+    try {
+      final result = await _channel.invokeMapMethod<String, dynamic>(
+        'addSubsystemMapping',
+        {
+          'subsystemId': subsystemId,
+          'description': description,
+          'scaleId': scaleId,
+          'ioPosition': ioPosition,
+        },
+      );
+      return result?['ok'] == true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> removeSubsystemMapping(int subsystemId) async {
+    try {
+      final result = await _channel.invokeMapMethod<String, dynamic>(
+        'removeSubsystemMapping',
+        {'subsystemId': subsystemId},
+      );
+      return result?['ok'] == true;
+    } catch (e) {
+      return false;
+    }
+  }
 }

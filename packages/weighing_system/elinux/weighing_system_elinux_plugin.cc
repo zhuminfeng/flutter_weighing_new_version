@@ -624,6 +624,10 @@ namespace
 										  std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 		void HandleUpdateSlaveAlias(const flutter::EncodableMap &args,
 									std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+		void HandleAddSubsystemMapping(const flutter::EncodableMap &args,
+									   std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+		void HandleRemoveSubsystemMapping(const flutter::EncodableMap &args,
+										  std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 
 		// flutter::PluginRegistrar *registrar_;
 		std::unique_ptr<InputSource> input_source_;
@@ -1127,6 +1131,14 @@ namespace
 		else if (method == "updateSlaveAlias")
 		{
 			HandleUpdateSlaveAlias(args, std::move(result));
+		}
+		else if (method == "addSubsystemMapping")
+		{
+			HandleAddSubsystemMapping(args, std::move(result));
+		}
+		else if (method == "removeSubsystemMapping")
+		{
+			HandleRemoveSubsystemMapping(args, std::move(result));
 		}
 		else
 		{
@@ -3158,6 +3170,40 @@ namespace
 		std::string err;
 		bool ok = SystemInitializer::Instance().SaveSlaveAliasToConfig(
 			static_cast<uint16_t>(position), alias, &err);
+
+		result->Success(EV(BuildMapResult(ok, err)));
+	}
+
+	void WeighingSystemPlugin::HandleAddSubsystemMapping(
+		const flutter::EncodableMap &args,
+		std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		int subsystem_id = GetInt(args, "subsystemId");
+		int io_position = GetInt(args, "ioPosition", 0);
+		int scale_id = GetInt(args, "scaleId", 0);
+		std::string description = GetString(args, "description");
+
+		std::string err;
+		bool ok = SystemInitializer::Instance().AddSubsystemToConfig(
+			static_cast<uint32_t>(subsystem_id),
+			static_cast<uint16_t>(io_position),
+			static_cast<uint32_t>(scale_id),
+			description,
+			&err);
+
+		result->Success(EV(BuildMapResult(ok, err)));
+	}
+
+	void WeighingSystemPlugin::HandleRemoveSubsystemMapping(
+		const flutter::EncodableMap &args,
+		std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		int subsystem_id = GetInt(args, "subsystemId");
+
+		std::string err;
+		bool ok = SystemInitializer::Instance().RemoveSubsystemFromConfig(
+			static_cast<uint32_t>(subsystem_id),
+			&err);
 
 		result->Success(EV(BuildMapResult(ok, err)));
 	}

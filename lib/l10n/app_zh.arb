@@ -370,5 +370,29 @@
   "mappingUpdated": "映射已更新",
   "mappingFailed": "映射更新失败",
   "channel0": "通道 0",
-  "channel1": "通道 1"
+  "channel1": "通道 1",
+  "addSubsystem": "添加子系统",
+  "addSubsystemTitle": "添加子系统",
+  "removeSubsystem": "删除子系统",
+  "confirmRemoveSubsystem": "确定要删除子系统 {id} 吗？",
+  "@confirmRemoveSubsystem": {
+    "placeholders": {
+      "id": {
+        "type": "int"
+      }
+    }
+  },
+  "subsystemIdLabel": "子系统 ID",
+  "subsystemDescLabel": "描述",
+  "subsystemDescHint": "例如：称重线 1",
+  "addSuccess": "添加成功",
+  "addFailed": "添加失败",
+  "removeFailed": "删除失败",
+  "removeSuccess": "已删除",
+  "applyConfig": "应用配置",
+  "applyConfigConfirm": "系统将重新初始化以应用新配置，正在运行的任务将停止。确认继续？",
+  "applyConfigInProgress": "正在重新初始化...",
+  "applyConfigSuccess": "配置已应用，系统已重启",
+  "applyConfigFailed": "应用配置失败",
+  "confirm": "确认"
 }

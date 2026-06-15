@@ -1058,4 +1058,56 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get channel1 => '通道 1';
+
+  @override
+  String get addSubsystem => '添加子系统';
+
+  @override
+  String get addSubsystemTitle => '添加子系统';
+
+  @override
+  String get removeSubsystem => '删除子系统';
+
+  @override
+  String confirmRemoveSubsystem(int id) => '确定要删除子系统 $id 吗？';
+
+  @override
+  String get subsystemIdLabel => '子系统 ID';
+
+  @override
+  String get subsystemDescLabel => '描述';
+
+  @override
+  String get subsystemDescHint => '例如：称重线 1';
+
+  @override
+  String get addSuccess => '添加成功';
+
+  @override
+  String get addFailed => '添加失败';
+
+  @override
+  String get removeFailed => '删除失败';
+
+  @override
+  String get removeSuccess => '已删除';
+
+  @override
+  String get applyConfig => '应用配置';
+
+  @override
+  String get applyConfigConfirm =>
+      '系统将重新初始化以应用新配置，正在运行的任务将停止。确认继续？';
+
+  @override
+  String get applyConfigInProgress => '正在重新初始化...';
+
+  @override
+  String get applyConfigSuccess => '配置已应用，系统已重启';
+
+  @override
+  String get applyConfigFailed => '应用配置失败';
+
+  @override
+  String get confirm => '确认';
 }

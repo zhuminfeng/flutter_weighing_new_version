@@ -41,6 +41,21 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> reinitialize() async {
+    try {
+      await _weightSub?.cancel();
+      _weightSub = null;
+      await _statusSub?.cancel();
+      _statusSub = null;
+      _weightDataMap.clear();
+      _appStatusMap.clear();
+      await _platform.shutdown();
+    } catch (_) {}
+    _initialized = false;
+    notifyListeners();
+    await initialize();
+  }
+
   void selectAppType(int type) {
     _selectedAppType = type;
     notifyListeners();

@@ -36,7 +36,15 @@ namespace weighing
 		bool SaveDigitalOutputMapToConfig(const DigitalOutputMapConfig &cfg, std::string *err);
 
 		/// 更新指定子系统的秤台映射（scale_id/channel），并持久化到配置文件
+		/// 如果子系统在配置文件中不存在，则自动创建（upsert）
 		bool SaveSubsystemMappingToConfig(uint32_t subsystem_id, uint32_t scale_id, std::string *err);
+
+		/// 添加新的子系统条目到配置文件，并更新内存缓存
+		bool AddSubsystemToConfig(uint32_t sub_id, uint16_t io_position, uint32_t scale_id,
+								  const std::string &description, std::string *err);
+
+		/// 从配置文件中删除指定子系统条目，并更新内存缓存
+		bool RemoveSubsystemFromConfig(uint32_t sub_id, std::string *err);
 
 		/// 更新从站用户自定义别名，并持久化到配置文件
 		bool SaveSlaveAliasToConfig(uint16_t position, const std::string &alias, std::string *err);

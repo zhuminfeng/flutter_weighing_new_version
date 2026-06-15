@@ -1067,4 +1067,56 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get channel1 => 'Channel 1';
+
+  @override
+  String get addSubsystem => 'Add Subsystem';
+
+  @override
+  String get addSubsystemTitle => 'Add Subsystem';
+
+  @override
+  String get removeSubsystem => 'Remove Subsystem';
+
+  @override
+  String confirmRemoveSubsystem(int id) => 'Remove subsystem $id?';
+
+  @override
+  String get subsystemIdLabel => 'Subsystem ID';
+
+  @override
+  String get subsystemDescLabel => 'Description';
+
+  @override
+  String get subsystemDescHint => 'e.g. Feeder Line 1';
+
+  @override
+  String get addSuccess => 'Added successfully';
+
+  @override
+  String get addFailed => 'Failed to add';
+
+  @override
+  String get removeFailed => 'Failed to remove';
+
+  @override
+  String get removeSuccess => 'Removed';
+
+  @override
+  String get applyConfig => 'Apply Config';
+
+  @override
+  String get applyConfigConfirm =>
+      'The system will reinitialize to apply the new configuration. Running tasks will stop. Continue?';
+
+  @override
+  String get applyConfigInProgress => 'Reinitializing...';
+
+  @override
+  String get applyConfigSuccess => 'Configuration applied, system restarted';
+
+  @override
+  String get applyConfigFailed => 'Failed to apply configuration';
+
+  @override
+  String get confirm => 'Confirm';
 }

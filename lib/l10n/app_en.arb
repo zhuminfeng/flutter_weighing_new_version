@@ -370,5 +370,29 @@
   "mappingUpdated": "Mapping updated",
   "mappingFailed": "Mapping update failed",
   "channel0": "Channel 0",
-  "channel1": "Channel 1"
+  "channel1": "Channel 1",
+  "addSubsystem": "Add Subsystem",
+  "addSubsystemTitle": "Add Subsystem",
+  "removeSubsystem": "Remove Subsystem",
+  "confirmRemoveSubsystem": "Remove subsystem {id}?",
+  "@confirmRemoveSubsystem": {
+    "placeholders": {
+      "id": {
+        "type": "int"
+      }
+    }
+  },
+  "subsystemIdLabel": "Subsystem ID",
+  "subsystemDescLabel": "Description",
+  "subsystemDescHint": "e.g. Feeder Line 1",
+  "addSuccess": "Added successfully",
+  "addFailed": "Failed to add",
+  "removeFailed": "Failed to remove",
+  "removeSuccess": "Removed",
+  "applyConfig": "Apply Config",
+  "applyConfigConfirm": "The system will reinitialize to apply the new configuration. Running tasks will stop. Continue?",
+  "applyConfigInProgress": "Reinitializing...",
+  "applyConfigSuccess": "Configuration applied, system restarted",
+  "applyConfigFailed": "Failed to apply configuration",
+  "confirm": "Confirm"
 }
