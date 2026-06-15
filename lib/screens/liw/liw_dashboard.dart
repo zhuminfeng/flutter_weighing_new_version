@@ -8,6 +8,7 @@ import '../../widgets/weight_display.dart';
 import '../../widgets/status_indicator.dart';
 
 const Color _themeBlue = Color(0xFF005C99);
+const IconData _batchModeIcon = Icons.format_list_numbered;
 
 class LiwDashboard extends StatefulWidget {
   const LiwDashboard({super.key});
@@ -264,7 +265,7 @@ class _LiwDashboardState extends State<LiwDashboard>
                 icon: state.simulationMode
                     ? (state.liwBatchMode
                         ? Icons.loop
-                        : Icons.format_list_numbered)
+                        : _batchModeIcon)
                     : Icons.settings_input_component,
                 color: state.simulationMode
                     ? (state.liwBatchMode
@@ -382,7 +383,7 @@ class _LiwDashboardState extends State<LiwDashboard>
       children: [
         Row(
           children: [
-            const Icon(Icons.format_list_numbered, color: _themeBlue, size: 20),
+            const Icon(_batchModeIcon, color: _themeBlue, size: 20),
             const SizedBox(width: 6),
             Text(
               l.tr('batchMode'),

@@ -515,10 +515,10 @@ class AppState extends ChangeNotifier {
     }
 
     // Gross weight = sum of all dispensed amounts so far
-    final double grossWeight = _simFillingRecipeEnabled
+    final double totalDispensed = _simFillingRecipeEnabled
         ? _simFillingRecipeDispensed.fold(0.0, (sum, v) => sum + v)
         : _simFillingCurrent;
-    _simGrossWeight = grossWeight;
+    _simGrossWeight = totalDispensed;
 
     final tare = _simTareActive ? _simTareWeight : 0.0;
     final net = (_simGrossWeight - tare).clamp(0.0, 50.0);
@@ -535,10 +535,6 @@ class AppState extends ChangeNotifier {
       unit: WeightUnit.kilogram,
       timestampNs: DateTime.now().microsecondsSinceEpoch * 1000,
     );
-
-    final double totalDispensed = _simFillingRecipeEnabled
-        ? _simFillingRecipeDispensed.fold(0.0, (sum, v) => sum + v)
-        : _simFillingCurrent;
 
     _appStatusMap[_activeSubsystemId] = AppStatusData(
       state: simState,
