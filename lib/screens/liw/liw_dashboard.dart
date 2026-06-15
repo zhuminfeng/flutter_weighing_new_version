@@ -85,7 +85,7 @@ class _LiwDashboardState extends State<LiwDashboard>
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  '${l.tr('lossInWeight')} - ${_getModeString(l, appStatus)}',
+                  '${l.tr('lossInWeight')} - ${_getModeString(l, state)}',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: _themeBlue,
@@ -204,99 +204,11 @@ class _LiwDashboardState extends State<LiwDashboard>
                     ),
                     child: Padding(
                       padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            l.tr('processDetails'),
-                            style: Theme.of(context).textTheme.titleLarge
-                                ?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: _themeBlue,
-                                ),
-                          ),
-                          const Divider(height: 24),
-                          Expanded(
-                            child: SingleChildScrollView(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _HighlightDataRow(
-                                    l.tr('currentFlow'),
-                                    appStatus.currentFlow.toStringAsFixed(2),
-                                    'kg/h',
-                                    _themeBlue,
-                                  ),
-                                  _HighlightDataRow(
-                                    l.tr('controlRate'),
-                                    appStatus.controlRate.toStringAsFixed(1),
-                                    '%',
-                                    _themeBlue.withOpacity(0.8),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  _DataRow(
-                                    l.tr('targetFlow'),
-                                    '${appStatus.targetFlow.toStringAsFixed(2)} kg/h',
-                                  ),
-                                  _DataRow(
-                                    l.tr('accumulatedWeight'),
-                                    '${appStatus.accumulatedWeight.toStringAsFixed(3)} kg',
-                                  ),
-                                  _DataRow(
-                                    l.tr('totalAccumulated'),
-                                    '${appStatus.totalAccumulated.toStringAsFixed(3)} kg',
-                                  ),
-                                  _DataRow(
-                                    l.tr('grossWeight'),
-                                    '${weightData.grossWeight.toStringAsFixed(3)} ${weightData.unitString}',
-                                  ),
-                                  _DataRow(
-                                    l.tr('tareWeight'),
-                                    '${weightData.tareWeight.toStringAsFixed(3)} ${weightData.unitString}',
-                                  ),
-                                  if (appStatus.remainingTime > 0)
-                                    _DataRow(
-                                      l.tr('remainingTime'),
-                                      '${appStatus.remainingTime.toStringAsFixed(0)} s',
-                                    ),
-
-                                  const SizedBox(height: 16),
-                                  if (appStatus.warningActive)
-                                    Container(
-                                      padding: const EdgeInsets.all(12),
-                                      decoration: BoxDecoration(
-                                        color: Colors.orange.shade50,
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(
-                                          color: Colors.orange.shade200,
-                                        ),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          const Icon(
-                                            Icons.warning_amber_rounded,
-                                            color: Colors.orange,
-                                            size: 28,
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            child: Text(
-                                              appStatus.warningMessage,
-                                              style: const TextStyle(
-                                                color: Colors.orange,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                      child: state.liwBatchMode
+                          ? _buildBatchPanel(
+                              context, l, state, appStatus, weightData)
+                          : _buildContinuousPanel(
+                              context, l, appStatus, weightData),
                     ),
                   ),
                 ),
@@ -345,11 +257,23 @@ class _LiwDashboardState extends State<LiwDashboard>
               ),
               _LargeActionButton(
                 label: state.simulationMode
-                    ? l.tr('eprint')
+                    ? (state.liwBatchMode
+                        ? l.tr('continuousMode')
+                        : l.tr('batchMode'))
                     : (_axisTestEnabled ? 'Axis 0%' : 'Axis 50%'),
-                icon: Icons.print_outlined,
+                icon: state.simulationMode
+                    ? (state.liwBatchMode
+                        ? Icons.loop
+                        : Icons.format_list_numbered)
+                    : Icons.settings_input_component,
+                color: state.simulationMode
+                    ? (state.liwBatchMode
+                        ? Colors.teal.shade600
+                        : Colors.purple.shade600)
+                    : null,
                 onPressed: () async {
                   if (state.simulationMode) {
+                    state.toggleLiwBatchMode();
                     return;
                   }
                   final nextEnabled = !_axisTestEnabled;
@@ -367,6 +291,249 @@ class _LiwDashboardState extends State<LiwDashboard>
     );
   }
 
+  // 连续模式右侧面板
+  Widget _buildContinuousPanel(
+    BuildContext context,
+    AppLocalizations l,
+    AppStatusData appStatus,
+    WeightData weightData,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          l.tr('processDetails'),
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: _themeBlue,
+          ),
+        ),
+        const Divider(height: 24),
+        Expanded(
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _HighlightDataRow(
+                  l.tr('currentFlow'),
+                  appStatus.currentFlow.toStringAsFixed(2),
+                  'kg/h',
+                  _themeBlue,
+                ),
+                _HighlightDataRow(
+                  l.tr('controlRate'),
+                  appStatus.controlRate.toStringAsFixed(1),
+                  '%',
+                  _themeBlue.withOpacity(0.8),
+                ),
+                const SizedBox(height: 16),
+                _DataRow(
+                  l.tr('targetFlow'),
+                  '${appStatus.targetFlow.toStringAsFixed(2)} kg/h',
+                ),
+                _DataRow(
+                  l.tr('accumulatedWeight'),
+                  '${appStatus.accumulatedWeight.toStringAsFixed(3)} kg',
+                ),
+                _DataRow(
+                  l.tr('totalAccumulated'),
+                  '${appStatus.totalAccumulated.toStringAsFixed(3)} kg',
+                ),
+                _DataRow(
+                  l.tr('grossWeight'),
+                  '${weightData.grossWeight.toStringAsFixed(3)} ${weightData.unitString}',
+                ),
+                _DataRow(
+                  l.tr('tareWeight'),
+                  '${weightData.tareWeight.toStringAsFixed(3)} ${weightData.unitString}',
+                ),
+                if (appStatus.remainingTime > 0)
+                  _DataRow(
+                    l.tr('remainingTime'),
+                    '${appStatus.remainingTime.toStringAsFixed(0)} s',
+                  ),
+                const SizedBox(height: 16),
+                if (appStatus.warningActive)
+                  _buildWarningBanner(appStatus.warningMessage),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // 批次/配料模式右侧面板
+  Widget _buildBatchPanel(
+    BuildContext context,
+    AppLocalizations l,
+    AppState state,
+    AppStatusData appStatus,
+    WeightData weightData,
+  ) {
+    final batchTarget = state.liwBatchTarget;
+    final batchAccum = appStatus.accumulatedWeight;
+    final batchProgress =
+        batchTarget > 0 ? (batchAccum / batchTarget).clamp(0.0, 1.0) : 0.0;
+    final batchCompleted = appStatus.isCompleted;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.format_list_numbered, color: _themeBlue, size: 20),
+            const SizedBox(width: 6),
+            Text(
+              l.tr('batchMode'),
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: _themeBlue,
+              ),
+            ),
+          ],
+        ),
+        const Divider(height: 24),
+        Expanded(
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _HighlightDataRow(
+                  l.tr('currentBatch'),
+                  batchAccum.toStringAsFixed(3),
+                  'kg',
+                  batchCompleted ? Colors.green : _themeBlue,
+                ),
+                const SizedBox(height: 8),
+                // 配料进度条
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          l.tr('batchProgress'),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                        Text(
+                          '${(batchProgress * 100).toStringAsFixed(1)}%',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: LinearProgressIndicator(
+                        value: batchProgress,
+                        minHeight: 16,
+                        backgroundColor: Colors.grey.shade200,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          batchCompleted ? Colors.green : _themeBlue,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _DataRow(
+                  l.tr('batchTarget'),
+                  '${batchTarget.toStringAsFixed(3)} kg',
+                ),
+                _DataRow(
+                  l.tr('batchCount'),
+                  '${appStatus.stepNumber}',
+                ),
+                _DataRow(
+                  l.tr('totalAccumulated'),
+                  '${appStatus.totalAccumulated.toStringAsFixed(3)} kg',
+                ),
+                _DataRow(
+                  l.tr('currentFlow'),
+                  '${appStatus.currentFlow.toStringAsFixed(2)} kg/h',
+                ),
+                _DataRow(
+                  l.tr('controlRate'),
+                  '${appStatus.controlRate.toStringAsFixed(1)} %',
+                ),
+                _DataRow(
+                  l.tr('grossWeight'),
+                  '${weightData.grossWeight.toStringAsFixed(3)} ${weightData.unitString}',
+                ),
+                const SizedBox(height: 16),
+                if (batchCompleted)
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.green.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.check_circle,
+                          color: Colors.green,
+                          size: 28,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            l.tr('batchCompleted'),
+                            style: const TextStyle(
+                              color: Colors.green,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (appStatus.warningActive)
+                  _buildWarningBanner(appStatus.warningMessage),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWarningBanner(String message) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.orange.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.orange.shade200),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.warning_amber_rounded,
+            color: Colors.orange,
+            size: 28,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                color: Colors.orange,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Color _getStatusColor(AppStatusData status, bool refilling, bool emptying) {
     if (status.isError) return Colors.red;
     if (refilling) return _themeBlue; // 补料状态使用主题蓝
@@ -375,8 +542,8 @@ class _LiwDashboardState extends State<LiwDashboard>
     return Colors.grey;
   }
 
-  String _getModeString(AppLocalizations l, AppStatusData status) =>
-      l.tr('continuous');
+  String _getModeString(AppLocalizations l, AppState state) =>
+      state.liwBatchMode ? l.tr('batchMode') : l.tr('continuousMode');
 }
 
 // 失重秤料斗与流体粒子动画

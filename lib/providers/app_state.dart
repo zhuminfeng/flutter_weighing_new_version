@@ -29,11 +29,39 @@ class AppState extends ChangeNotifier {
   bool _simLiwRefilling = false;
   int _simLiwRefillTicksLeft = 0;
 
+  // LIW 批次/配料 mode simulation fields
+  bool _simLiwBatchMode = false;
+  double _simLiwBatchTarget = 2.0; // kg per batch
+  int _simLiwBatchCount = 0; // number of completed batches
+  double _simLiwCurrentBatchAccum = 0.0;
+  bool _simLiwBatchCompleted = false;
+  int _simLiwBatchCompleteTicks = 0;
+
+  // Filling 配料 (recipe) mode simulation fields
+  bool _simFillingRecipeEnabled = false;
+  List<double> _simFillingRecipeTargets = [1.5, 2.0, 1.0];
+  int _simFillingRecipeStep = 0;
+  List<double> _simFillingRecipeDispensed = [0.0, 0.0, 0.0];
+  bool _simFillingRecipeStepPausing = false;
+  int _simFillingRecipeStepPauseTicks = 0;
+
   bool get initialized => _initialized;
   int get selectedAppType => _selectedAppType;
   int get activeSubsystemId => _activeSubsystemId;
   Locale get locale => _locale;
   bool get simulationMode => _simulationMode;
+
+  // LIW 批次/配料 mode
+  bool get liwBatchMode => _simLiwBatchMode;
+  double get liwBatchTarget => _simLiwBatchTarget;
+
+  // Filling 配料 recipe mode
+  bool get fillingRecipeEnabled => _simFillingRecipeEnabled;
+  List<double> get fillingRecipeTargets =>
+      List.unmodifiable(_simFillingRecipeTargets);
+  int get fillingRecipeStep => _simFillingRecipeStep;
+  List<double> get fillingRecipeDispensed =>
+      List.unmodifiable(_simFillingRecipeDispensed);
 
   WeightData getWeightData(int scaleId) =>
       _weightDataMap[scaleId] ?? const WeightData();
@@ -104,6 +132,35 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Toggle LIW batch/配料 mode (simulation only). Resets simulation state.
+  void toggleLiwBatchMode() {
+    if (!_simulationMode) return;
+    _simLiwBatchMode = !_simLiwBatchMode;
+    _resetSimulationForAppType(0);
+    notifyListeners();
+  }
+
+  /// Toggle Filling recipe/配料 mode (simulation only). Resets simulation state.
+  void toggleFillingRecipeMode() {
+    if (!_simulationMode) return;
+    _simFillingRecipeEnabled = !_simFillingRecipeEnabled;
+    _resetSimulationForAppType(1);
+    notifyListeners();
+  }
+
+  /// Update the recipe ingredient targets and reset the recipe progress.
+  void setFillingRecipeTargets(List<double> targets) {
+    if (!_simulationMode || targets.isEmpty) return;
+    _simFillingRecipeTargets = List.of(targets);
+    _simFillingRecipeDispensed = List.filled(targets.length, 0.0);
+    _simFillingRecipeStep = 0;
+    _simFillingRecipeStepPausing = false;
+    _simFillingCurrent = 0.0;
+    _simFillingTarget =
+        _simFillingRecipeTargets.isNotEmpty ? _simFillingRecipeTargets[0] : 5.0;
+    notifyListeners();
+  }
+
   void setActiveSubsystem(int id) {
     _activeSubsystemId = id;
     notifyListeners();
@@ -144,6 +201,11 @@ class AppState extends ChangeNotifier {
       _simGrossWeight = 0.0;
       _simFillingCurrent = 0.0;
       _simLiwAccumulated = 0.0;
+      _simLiwCurrentBatchAccum = 0.0;
+      if (_simFillingRecipeEnabled) {
+        _simFillingRecipeDispensed =
+            List.filled(_simFillingRecipeTargets.length, 0.0);
+      }
       _updateSimulationData();
       return;
     }
@@ -199,10 +261,24 @@ class AppState extends ChangeNotifier {
       _simGrossWeight = 8.0;
       _simLiwAccumulated = 0.0;
       _simLiwTotal = 120.0;
+      _simLiwCurrentBatchAccum = 0.0;
+      _simLiwBatchCount = 0;
+      _simLiwBatchCompleted = false;
+      _simLiwBatchCompleteTicks = 0;
     } else {
-      _simFillingTarget = 5.0;
       _simFillingCurrent = 0.0;
       _simGrossWeight = 0.2;
+      if (_simFillingRecipeEnabled &&
+          _simFillingRecipeTargets.isNotEmpty) {
+        _simFillingTarget = _simFillingRecipeTargets[0];
+        _simFillingRecipeStep = 0;
+        _simFillingRecipeDispensed =
+            List.filled(_simFillingRecipeTargets.length, 0.0);
+        _simFillingRecipeStepPausing = false;
+        _simFillingRecipeStepPauseTicks = 0;
+      } else {
+        _simFillingTarget = 5.0;
+      }
     }
     _simTick = 0.0;
     _simRunning = false;
@@ -230,36 +306,78 @@ class AppState extends ChangeNotifier {
     bool warningActive = false;
 
     if (_simRunning) {
-      if (_simLiwRefilling) {
-        simState = 5;
-        _simLiwRefillTicksLeft -= 1;
-        _simGrossWeight = (_simGrossWeight + 0.055).clamp(1.8, 8.8);
-        currentFlow = 0.0;
+      if (_simLiwBatchMode) {
+        // ---- Batch / 配料 mode ----
+        if (_simLiwBatchCompleted) {
+          simState = 3; // completed – show batch-done state briefly
+          _simLiwBatchCompleteTicks -= 1;
+          if (_simLiwBatchCompleteTicks <= 0) {
+            // Auto-start next batch
+            _simLiwBatchCompleted = false;
+            _simLiwCurrentBatchAccum = 0.0;
+            _simLiwBatchCount++;
+          }
+        } else if (_simLiwRefilling) {
+          simState = 5; // refilling
+          _simLiwRefillTicksLeft -= 1;
+          _simGrossWeight = (_simGrossWeight + 0.055).clamp(1.8, 8.8);
+          currentFlow = 0.0;
+          if (_simLiwRefillTicksLeft <= 0 || _simGrossWeight >= 8.6) {
+            _simLiwRefilling = false;
+            _simLiwRefillTicksLeft = 0;
+          }
+        } else {
+          final wave = math.sin(_simTick * 1.4);
+          currentFlow = (targetFlow + wave * 5).clamp(30.0, 52.0);
+          final losePerTick = currentFlow / 3600.0 * 0.2;
+          _simGrossWeight = (_simGrossWeight - losePerTick).clamp(1.5, 10.0);
+          _simLiwCurrentBatchAccum += losePerTick;
+          _simLiwTotal += losePerTick;
+          simState = 1;
 
-        if (_simLiwRefillTicksLeft <= 0 || _simGrossWeight >= 8.6) {
-          _simLiwRefilling = false;
-          _simLiwRefillTicksLeft = 0;
+          if (_simLiwCurrentBatchAccum >= _simLiwBatchTarget) {
+            _simLiwBatchCompleted = true;
+            _simLiwBatchCompleteTicks = 15; // ~3 s at 200 ms tick
+            simState = 3;
+          } else if (_simGrossWeight <= 2.9) {
+            _simLiwRefilling = true;
+            _simLiwRefillTicksLeft = 45;
+            simState = 5;
+          }
         }
       } else {
-        final wave = math.sin(_simTick * 1.4);
-        currentFlow = (targetFlow + wave * 5).clamp(30.0, 52.0);
-        final losePerTick = currentFlow / 3600.0 * 0.2;
-        _simGrossWeight = (_simGrossWeight - losePerTick).clamp(1.5, 10.0);
-        _simLiwAccumulated += losePerTick;
-        _simLiwTotal += losePerTick;
-        simState = 1;
-
-        if (_simGrossWeight <= 2.9) {
-          _simLiwRefilling = true;
-          _simLiwRefillTicksLeft = 45;
+        // ---- Continuous mode ----
+        if (_simLiwRefilling) {
           simState = 5;
-        }
-      }
+          _simLiwRefillTicksLeft -= 1;
+          _simGrossWeight = (_simGrossWeight + 0.055).clamp(1.8, 8.8);
+          currentFlow = 0.0;
 
-      final deviation = (currentFlow - targetFlow).abs() / targetFlow;
-      if (deviation > 0.18) {
-        warningActive = true;
-        warningMessage = 'Flow deviation warning';
+          if (_simLiwRefillTicksLeft <= 0 || _simGrossWeight >= 8.6) {
+            _simLiwRefilling = false;
+            _simLiwRefillTicksLeft = 0;
+          }
+        } else {
+          final wave = math.sin(_simTick * 1.4);
+          currentFlow = (targetFlow + wave * 5).clamp(30.0, 52.0);
+          final losePerTick = currentFlow / 3600.0 * 0.2;
+          _simGrossWeight = (_simGrossWeight - losePerTick).clamp(1.5, 10.0);
+          _simLiwAccumulated += losePerTick;
+          _simLiwTotal += losePerTick;
+          simState = 1;
+
+          if (_simGrossWeight <= 2.9) {
+            _simLiwRefilling = true;
+            _simLiwRefillTicksLeft = 45;
+            simState = 5;
+          }
+        }
+
+        final deviation = (currentFlow - targetFlow).abs() / targetFlow;
+        if (deviation > 0.18) {
+          warningActive = true;
+          warningMessage = 'Flow deviation warning';
+        }
       }
     }
 
@@ -288,11 +406,13 @@ class AppState extends ChangeNotifier {
           ? (currentFlow / targetFlow * 100).clamp(60, 130)
           : 0,
       targetFlow: targetFlow,
-      targetWeight: 0,
-      accumulatedWeight: _simLiwAccumulated,
+      targetWeight: _simLiwBatchMode ? _simLiwBatchTarget : 0,
+      accumulatedWeight: _simLiwBatchMode
+          ? _simLiwCurrentBatchAccum
+          : _simLiwAccumulated,
       totalAccumulated: _simLiwTotal,
       remainingTime: 0,
-      stepNumber: 1,
+      stepNumber: _simLiwBatchCount,
       statusMessage: _simRunning ? 'LIW running' : 'LIW idle',
       warningMessage: warningMessage,
       warningActive: warningActive,
@@ -307,35 +427,98 @@ class AppState extends ChangeNotifier {
     double remainingTime = 0;
 
     if (_simRunning) {
-      final fillSpeed = 0.065 + (math.sin(_simTick * 1.1) + 1) * 0.01;
-      _simFillingCurrent = (_simFillingCurrent + fillSpeed).clamp(
-        0.0,
-        _simFillingTarget + 0.3,
-      );
-      _simGrossWeight = _simFillingCurrent;
-      controlRate = (fillSpeed / 0.085 * 100).clamp(20, 100);
-      remainingTime =
-          ((_simFillingTarget - _simFillingCurrent).clamp(
+      if (_simFillingRecipeEnabled) {
+        // ---- Recipe / 配料 mode ----
+        if (_simFillingRecipeStepPausing) {
+          // Brief pause between ingredients
+          simState = 2;
+          _simFillingRecipeStepPauseTicks--;
+          if (_simFillingRecipeStepPauseTicks <= 0) {
+            _simFillingRecipeStepPausing = false;
+            _simFillingRecipeStep++;
+            _simFillingCurrent = 0.0;
+            if (_simFillingRecipeStep < _simFillingRecipeTargets.length) {
+              _simFillingTarget =
+                  _simFillingRecipeTargets[_simFillingRecipeStep];
+              simState = 1;
+            } else {
+              // All ingredients done
+              simState = 3;
+              _simRunning = false;
+            }
+          }
+        } else if (_simFillingRecipeStep < _simFillingRecipeTargets.length) {
+          // Dispensing current ingredient
+          final fillSpeed = 0.065 + (math.sin(_simTick * 1.1) + 1) * 0.01;
+          _simFillingCurrent = (_simFillingCurrent + fillSpeed).clamp(
             0.0,
-            _simFillingTarget,
-          ) /
-          fillSpeed);
+            _simFillingTarget + 0.1,
+          );
+          controlRate = (fillSpeed / 0.085 * 100).clamp(20, 100);
+          remainingTime = ((_simFillingTarget - _simFillingCurrent).clamp(
+                0.0,
+                _simFillingTarget,
+              ) /
+              fillSpeed);
 
-      if (_simFillingCurrent >= _simFillingTarget) {
-        simState = 3;
-        _simRunning = false;
-      } else if (_simFillingCurrent >= _simFillingTarget * 0.97) {
-        simState = 1;
+          // Update the dispensed record for the active step
+          _simFillingRecipeDispensed[_simFillingRecipeStep] = _simFillingCurrent;
+          simState = 1;
+
+          if (_simFillingCurrent >= _simFillingTarget) {
+            _simFillingRecipeDispensed[_simFillingRecipeStep] =
+                _simFillingTarget;
+            if (_simFillingRecipeStep + 1 < _simFillingRecipeTargets.length) {
+              _simFillingRecipeStepPausing = true;
+              _simFillingRecipeStepPauseTicks = 10; // ~2 s at 200 ms tick
+              simState = 2;
+            } else {
+              simState = 3;
+              _simRunning = false;
+            }
+          }
+
+          if ((_simFillingTarget - _simFillingCurrent) < 0.08 &&
+              _simFillingCurrent < _simFillingTarget) {
+            warningActive = true;
+            warningMessage = 'Approaching target';
+          }
+        }
       } else {
-        simState = 1;
-      }
+        // ---- Single-target filling mode ----
+        final fillSpeed = 0.065 + (math.sin(_simTick * 1.1) + 1) * 0.01;
+        _simFillingCurrent = (_simFillingCurrent + fillSpeed).clamp(
+          0.0,
+          _simFillingTarget + 0.3,
+        );
+        controlRate = (fillSpeed / 0.085 * 100).clamp(20, 100);
+        remainingTime =
+            ((_simFillingTarget - _simFillingCurrent).clamp(
+                  0.0,
+                  _simFillingTarget,
+                ) /
+                fillSpeed);
 
-      if ((_simFillingTarget - _simFillingCurrent) < 0.12 &&
-          _simFillingCurrent < _simFillingTarget) {
-        warningActive = true;
-        warningMessage = 'Approaching target';
+        if (_simFillingCurrent >= _simFillingTarget) {
+          simState = 3;
+          _simRunning = false;
+        } else {
+          simState = 1;
+        }
+
+        if ((_simFillingTarget - _simFillingCurrent) < 0.12 &&
+            _simFillingCurrent < _simFillingTarget) {
+          warningActive = true;
+          warningMessage = 'Approaching target';
+        }
       }
     }
+
+    // Gross weight = sum of all dispensed amounts so far
+    final double grossWeight = _simFillingRecipeEnabled
+        ? _simFillingRecipeDispensed.fold(0.0, (sum, v) => sum + v)
+        : _simFillingCurrent;
+    _simGrossWeight = grossWeight;
 
     final tare = _simTareActive ? _simTareWeight : 0.0;
     final net = (_simGrossWeight - tare).clamp(0.0, 50.0);
@@ -353,6 +536,10 @@ class AppState extends ChangeNotifier {
       timestampNs: DateTime.now().microsecondsSinceEpoch * 1000,
     );
 
+    final double totalDispensed = _simFillingRecipeEnabled
+        ? _simFillingRecipeDispensed.fold(0.0, (sum, v) => sum + v)
+        : _simFillingCurrent;
+
     _appStatusMap[_activeSubsystemId] = AppStatusData(
       state: simState,
       appType: 1,
@@ -362,9 +549,9 @@ class AppState extends ChangeNotifier {
       targetFlow: 0,
       targetWeight: _simFillingTarget,
       accumulatedWeight: _simFillingCurrent,
-      totalAccumulated: _simFillingCurrent,
+      totalAccumulated: totalDispensed,
       remainingTime: remainingTime,
-      stepNumber: 1,
+      stepNumber: _simFillingRecipeStep,
       statusMessage: _simRunning ? 'Filling running' : 'Filling idle',
       warningMessage: warningMessage,
       warningActive: warningActive,

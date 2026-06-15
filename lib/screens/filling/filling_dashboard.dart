@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:weighing_system_elinux/weighing_system_elinux.dart';
 import '../../l10n/app_localizations.dart';
 import '../../providers/app_state.dart';
 import '../../widgets/weight_display.dart';
@@ -56,7 +57,15 @@ class _FillingDashboardState extends State<FillingDashboard>
     final isEmptying = stateStr.contains('empty') || stateStr.contains('清空');
 
     double fillPercentage = 0.0;
-    if (status.targetWeight > 0) {
+    if (state.fillingRecipeEnabled) {
+      // In recipe mode, show progress of the current step only
+      final targets = state.fillingRecipeTargets;
+      final step = state.fillingRecipeStep;
+      if (step < targets.length && targets[step] > 0) {
+        fillPercentage =
+            (status.accumulatedWeight / targets[step]).clamp(0.0, 1.0);
+      }
+    } else if (status.targetWeight > 0) {
       fillPercentage = (wd.netWeight / status.targetWeight).clamp(0.0, 1.0);
     }
 
@@ -208,119 +217,15 @@ class _FillingDashboardState extends State<FillingDashboard>
                     ),
                     child: Padding(
                       padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            l.tr('targetValues'),
-                            style: Theme.of(context).textTheme.titleLarge
-                                ?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: _themeBlue,
-                                ),
-                          ),
-                          const Divider(height: 24),
-                          Expanded(
-                            child: SingleChildScrollView(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _HighlightDataRow(
-                                    l.tr('targetFlow'),
-                                    status.targetWeight.toStringAsFixed(3),
-                                    'kg',
-                                    _themeBlue,
-                                  ),
-                                  const SizedBox(height: 12),
-                                  _DataRow(
-                                    l.tr('weight'),
-                                    '${wd.displayWeight.toStringAsFixed(3)} ${wd.unitString}',
-                                  ),
-                                  _DataRow(
-                                    l.tr('controlRate'),
-                                    '${status.controlRate.toStringAsFixed(1)} %',
-                                  ),
-
-                                  const SizedBox(height: 32),
-                                  // 主题色灌装进度条
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          const Text(
-                                            "灌装进度 (Fill Progress)",
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 14,
-                                            ),
-                                          ),
-                                          Text(
-                                            "${(fillPercentage * 100).toStringAsFixed(1)}%",
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 8),
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(8),
-                                        child: LinearProgressIndicator(
-                                          value: fillPercentage,
-                                          minHeight: 16,
-                                          backgroundColor: Colors.grey.shade200,
-                                          valueColor:
-                                              AlwaysStoppedAnimation<Color>(
-                                                fillPercentage >= 1.0
-                                                    ? Colors.green
-                                                    : _themeBlue,
-                                              ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 24),
-
-                                  if (status.warningActive)
-                                    Container(
-                                      padding: const EdgeInsets.all(12),
-                                      decoration: BoxDecoration(
-                                        color: Colors.orange.shade50,
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(
-                                          color: Colors.orange.shade200,
-                                        ),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          const Icon(
-                                            Icons.warning_amber_rounded,
-                                            color: Colors.orange,
-                                            size: 28,
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            child: Text(
-                                              status.warningMessage,
-                                              style: const TextStyle(
-                                                color: Colors.orange,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                ],
-                              ),
+                      child: state.fillingRecipeEnabled
+                          ? _buildRecipePanel(context, l, state, status)
+                          : _buildSingleFillPanel(
+                              context,
+                              l,
+                              status,
+                              wd,
+                              fillPercentage,
                             ),
-                          ),
-                        ],
-                      ),
                     ),
                   ),
                 ),
@@ -368,14 +273,373 @@ class _FillingDashboardState extends State<FillingDashboard>
                 onPressed: () => state.clearTare(0),
               ),
               _LargeActionButton(
-                label: l.tr('eprint'),
-                icon: Icons.print_outlined,
-                onPressed: () {},
+                label: state.simulationMode
+                    ? (state.fillingRecipeEnabled
+                        ? l.tr('filling')
+                        : l.tr('recipeMode'))
+                    : l.tr('eprint'),
+                icon: state.simulationMode
+                    ? (state.fillingRecipeEnabled
+                        ? Icons.local_drink
+                        : Icons.receipt_long)
+                    : Icons.print_outlined,
+                color: state.simulationMode
+                    ? (state.fillingRecipeEnabled
+                        ? Colors.teal.shade600
+                        : Colors.purple.shade600)
+                    : null,
+                onPressed: () {
+                  if (state.simulationMode) {
+                    state.toggleFillingRecipeMode();
+                  }
+                },
               ),
             ],
           ),
         ),
       ],
+    );
+  }
+
+  // 单目标灌装模式右侧面板
+  Widget _buildSingleFillPanel(
+    BuildContext context,
+    AppLocalizations l,
+    AppStatusData status,
+    WeightData wd,
+    double fillPercentage,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          l.tr('targetValues'),
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: _themeBlue,
+          ),
+        ),
+        const Divider(height: 24),
+        Expanded(
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _HighlightDataRow(
+                  l.tr('targetFlow'),
+                  status.targetWeight.toStringAsFixed(3),
+                  'kg',
+                  _themeBlue,
+                ),
+                const SizedBox(height: 12),
+                _DataRow(
+                  l.tr('weight'),
+                  '${wd.displayWeight.toStringAsFixed(3)} ${wd.unitString}',
+                ),
+                _DataRow(
+                  l.tr('controlRate'),
+                  '${status.controlRate.toStringAsFixed(1)} %',
+                ),
+                const SizedBox(height: 32),
+                // 灌装进度条
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "灌装进度 (Fill Progress)",
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                        Text(
+                          "${(fillPercentage * 100).toStringAsFixed(1)}%",
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: LinearProgressIndicator(
+                        value: fillPercentage,
+                        minHeight: 16,
+                        backgroundColor: Colors.grey.shade200,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          fillPercentage >= 1.0 ? Colors.green : _themeBlue,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                if (status.warningActive) _buildWarningBanner(status),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // 配料/配方模式右侧面板
+  Widget _buildRecipePanel(
+    BuildContext context,
+    AppLocalizations l,
+    AppState state,
+    AppStatusData status,
+  ) {
+    final targets = state.fillingRecipeTargets;
+    final dispensed = state.fillingRecipeDispensed;
+    final currentStep = state.fillingRecipeStep;
+    final recipeTotal = targets.fold(0.0, (sum, t) => sum + t);
+    final totalDispensed = dispensed.fold(0.0, (sum, v) => sum + v);
+    final overallProgress =
+        recipeTotal > 0 ? (totalDispensed / recipeTotal).clamp(0.0, 1.0) : 0.0;
+    final recipeDone = status.isCompleted && currentStep >= targets.length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.receipt_long, color: _themeBlue, size: 20),
+            const SizedBox(width: 6),
+            Text(
+              l.tr('recipeMode'),
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: _themeBlue,
+              ),
+            ),
+          ],
+        ),
+        const Divider(height: 16),
+        // 总进度条
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              l.tr('recipeProgress'),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            ),
+            Text(
+              '${(overallProgress * 100).toStringAsFixed(1)}%',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: LinearProgressIndicator(
+            value: overallProgress,
+            minHeight: 12,
+            backgroundColor: Colors.grey.shade200,
+            valueColor: AlwaysStoppedAnimation<Color>(
+              recipeDone ? Colors.green : _themeBlue,
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        // 配料清单
+        Expanded(
+          child: ListView.builder(
+            itemCount: targets.length,
+            itemBuilder: (context, index) {
+              final target = targets[index];
+              final dispensedAmt =
+                  index < dispensed.length ? dispensed[index] : 0.0;
+              final isActive = index == currentStep && !recipeDone;
+              final isDone =
+                  index < currentStep || (recipeDone && index < targets.length);
+              final stepPct =
+                  target > 0 ? (dispensedAmt / target).clamp(0.0, 1.0) : 0.0;
+
+              Color rowColor;
+              IconData rowIcon;
+              String statusLabel;
+              if (isDone) {
+                rowColor = Colors.green;
+                rowIcon = Icons.check_circle;
+                statusLabel = l.tr('done');
+              } else if (isActive) {
+                rowColor = _themeBlue;
+                rowIcon = Icons.play_circle;
+                statusLabel = l.tr('dispensing');
+              } else {
+                rowColor = Colors.grey.shade400;
+                rowIcon = Icons.radio_button_unchecked;
+                statusLabel = l.tr('pending');
+              }
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: isActive
+                      ? _themeBlue.withOpacity(0.06)
+                      : isDone
+                      ? Colors.green.withOpacity(0.06)
+                      : Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: isActive
+                        ? _themeBlue.withOpacity(0.4)
+                        : isDone
+                        ? Colors.green.withOpacity(0.3)
+                        : Colors.grey.shade200,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(rowIcon, color: rowColor, size: 18),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            '${l.tr('ingredientN')} ${index + 1}',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: rowColor,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          statusLabel,
+                          style: TextStyle(
+                            color: rowColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '${dispensedAmt.toStringAsFixed(3)} / ${target.toStringAsFixed(3)} kg',
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                        Text(
+                          '${(stepPct * 100).toStringAsFixed(0)}%',
+                          style: TextStyle(
+                            color: rowColor,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (isActive) ...[
+                      const SizedBox(height: 6),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: stepPct,
+                          minHeight: 8,
+                          backgroundColor: Colors.grey.shade200,
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(_themeBlue),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+        // 总计
+        Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                l.tr('recipeTotal'),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
+              Text(
+                '${totalDispensed.toStringAsFixed(3)} / ${recipeTotal.toStringAsFixed(3)} kg',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (recipeDone)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.green.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.green.shade200),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.green, size: 24),
+                  const SizedBox(width: 8),
+                  Text(
+                    l.tr('recipeCompleted'),
+                    style: const TextStyle(
+                      color: Colors.green,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        if (status.warningActive) _buildWarningBanner(status),
+      ],
+    );
+  }
+
+  Widget _buildWarningBanner(AppStatusData status) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.orange.shade50,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.orange.shade200),
+        ),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.warning_amber_rounded,
+              color: Colors.orange,
+              size: 28,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                status.warningMessage,
+                style: const TextStyle(
+                  color: Colors.orange,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
