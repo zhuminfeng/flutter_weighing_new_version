@@ -163,4 +163,10 @@ abstract class WeighingPlatform extends PlatformInterface {
   Future<Map<String, dynamic>> getConfigStatus();
   Future<bool> saveEthercatHardwareConfig(List<EthercatSlaveInfo> outputSlaves,
       List<EthercatSlaveInfo> inputSlaves);
+
+  // Material Recipe API (per-subsystem parameter presets for different materials)
+  Future<bool> saveMaterialRecipe(int subsystemId, String name, int appType);
+  Future<bool> loadMaterialRecipe(int subsystemId, int recipeId, int appType);
+  Future<List<Map<String, dynamic>>> getAllMaterialRecipes(int appType);
+  Future<bool> deleteMaterialRecipe(int recipeId, int appType);
 }

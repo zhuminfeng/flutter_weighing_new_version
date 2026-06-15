@@ -5,6 +5,7 @@ import '../../l10n/app_localizations.dart';
 import '../../providers/app_state.dart';
 import '../../widgets/weight_display.dart';
 import '../../widgets/status_indicator.dart';
+import '../material_recipe_screen.dart';
 
 const Color _themeBlue = Color(0xFF005C99);
 
@@ -345,8 +346,9 @@ class _FillingDashboardState extends State<FillingDashboard>
                 label: status.isRunning ? l.stop : l.start,
                 icon: status.isRunning ? Icons.stop : Icons.play_arrow,
                 color: status.isRunning ? Colors.red.shade600 : _themeBlue,
-                onPressed: () =>
-                    status.isRunning ? state.stopApp() : state.startApp(),
+                onPressed: () => status.isRunning
+                    ? state.stopApp(state.activeSubsystemId)
+                    : state.startApp(state.activeSubsystemId),
                 isPrimary: true,
               ),
               _LargeActionButton(
@@ -368,6 +370,19 @@ class _FillingDashboardState extends State<FillingDashboard>
                 label: l.eprint,
                 icon: Icons.print_outlined,
                 onPressed: () {},
+              ),
+              _LargeActionButton(
+                label: '配方',
+                icon: Icons.playlist_add_check,
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => MaterialRecipeScreen(
+                      appType: 1,
+                      subsystemId: state.activeSubsystemId,
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
