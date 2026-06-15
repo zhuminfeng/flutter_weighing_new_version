@@ -6,6 +6,7 @@ import '../../l10n/app_localizations.dart';
 import '../../providers/app_state.dart';
 import '../../widgets/weight_display.dart';
 import '../../widgets/status_indicator.dart';
+import '../material_recipe_screen.dart';
 
 const Color _themeBlue = Color(0xFF005C99);
 
@@ -330,8 +331,9 @@ class _LiwDashboardState extends State<LiwDashboard>
                 label: appStatus.isRunning ? l.stop : l.start,
                 icon: appStatus.isRunning ? Icons.stop : Icons.play_arrow,
                 color: appStatus.isRunning ? Colors.red.shade600 : _themeBlue,
-                onPressed: () =>
-                    appStatus.isRunning ? state.stopApp() : state.startApp(),
+                onPressed: () => appStatus.isRunning
+                    ? state.stopApp(state.activeSubsystemId)
+                    : state.startApp(state.activeSubsystemId),
                 isPrimary: true,
               ),
               _LargeActionButton(
@@ -358,6 +360,19 @@ class _LiwDashboardState extends State<LiwDashboard>
                     setState(() => _axisTestEnabled = nextEnabled);
                   }
                 },
+              ),
+              _LargeActionButton(
+                label: '配方',
+                icon: Icons.playlist_add_check,
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => MaterialRecipeScreen(
+                      appType: 0,
+                      subsystemId: state.activeSubsystemId,
+                    ),
+                  ),
+                ),
               ),
             ],
           ),

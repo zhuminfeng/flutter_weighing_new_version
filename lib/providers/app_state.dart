@@ -75,8 +75,8 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> startApp() => _platform.startApp(_activeSubsystemId);
-  Future<void> stopApp() => _platform.stopApp(_activeSubsystemId);
+  Future<void> startApp(int subsystemId) => _platform.startApp(subsystemId);
+  Future<void> stopApp(int subsystemId) => _platform.stopApp(subsystemId);
 
   Future<void> doZero(int scaleId) => _platform.doZero(scaleId);
   Future<void> doTare(int scaleId) => _platform.doTare(scaleId);
@@ -89,6 +89,26 @@ class AppState extends ChangeNotifier {
       notifyListeners();
     } catch (_) {}
   }
+
+  // ============ Material Recipe API ============
+
+  /// 将当前子系统参数保存为物料配方
+  Future<bool> saveMaterialRecipe(
+          int subsystemId, String name, int appType) =>
+      _platform.saveMaterialRecipe(subsystemId, name, appType);
+
+  /// 将物料配方参数载入子系统
+  Future<bool> loadMaterialRecipe(
+          int subsystemId, int recipeId, int appType) =>
+      _platform.loadMaterialRecipe(subsystemId, recipeId, appType);
+
+  /// 获取指定应用类型的所有物料配方
+  Future<List<Map<String, dynamic>>> getAllMaterialRecipes(int appType) =>
+      _platform.getAllMaterialRecipes(appType);
+
+  /// 删除物料配方
+  Future<bool> deleteMaterialRecipe(int recipeId, int appType) =>
+      _platform.deleteMaterialRecipe(recipeId, appType);
 
   @override
   void dispose() {
