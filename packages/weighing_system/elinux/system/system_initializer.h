@@ -35,9 +35,25 @@ namespace weighing
 
 		bool SaveDigitalOutputMapToConfig(const DigitalOutputMapConfig &cfg, std::string *err);
 
-		/// 更新指定子系统的秤台映射（scale_id/channel），并持久化到配置文件
-		/// 如果子系统在配置文件中不存在，则自动创建（upsert）
 		bool SaveSubsystemMappingToConfig(uint32_t subsystem_id, uint32_t scale_id, std::string *err);
+
+		// ── 1. 将用作公共接口的结构体提前声明 ────────────────────────────────
+		struct SlaveEntry
+		{
+			uint16_t alias;
+			uint16_t position;
+			uint32_t vendor_id;
+			uint32_t product_code;
+			std::string description;
+		};
+
+		struct SubMapping
+		{
+			uint32_t sub_id;
+			uint16_t io_position;
+			uint32_t scale_id;
+			std::string description;
+		};
 
 		// ── Config status accessors ──────────────────────────────────────────
 		bool GetHasOutputSlaves() const { return !parsed_.output_slaves.empty(); }
@@ -49,32 +65,20 @@ namespace weighing
 		}
 		bool GetHasDioMapCfg() const { return parsed_.has_dio_map_cfg; }
 
-		/// 将扫描到的 EtherCAT 从站持久化到 output 和 input_source.ethercat 段
-		struct SlaveEntry
-		{
-			uint16_t alias;
-			uint16_t position;
-			uint32_t vendor_id;
-			uint32_t product_code;
-			std::string description;
-		};
 		bool SaveEthercatHardwareConfig(
 			const std::vector<SlaveEntry> &output_slaves,
 			const std::vector<SlaveEntry> &input_slaves,
 			std::string *err);
 
-		/// 添加新的子系统条目到配置文件，并更新内存缓存
 		bool AddSubsystemToConfig(uint32_t sub_id, uint16_t io_position, uint32_t scale_id,
 								  const std::string &description, std::string *err);
 
-		/// 从配置文件中删除指定子系统条目，并更新内存缓存
 		bool RemoveSubsystemFromConfig(uint32_t sub_id, std::string *err);
 
-		/// 更新从站用户自定义别名，并持久化到配置文件
 		bool SaveSlaveAliasToConfig(uint16_t position, const std::string &alias, std::string *err);
 
-		/// 返回已解析的子系统映射列表（id, scale_id, description）
-		const std::vector<ParsedConfig::SubMapping> &GetSubsystemMappings() const
+		// ── 2. 返回值直接使用公有的 SubMapping 类型 ──────────────────────────
+		const std::vector<SubMapping> &GetSubsystemMappings() const
 		{
 			return parsed_.subsystem_mappings;
 		}
@@ -99,26 +103,12 @@ namespace weighing
 		uint32_t cycle_time_us_ = 1000;
 		unsigned int master_index_ = 0;
 
-		// 解析后的配置缓存
+		// ── 3. 简化私有缓存结构，复用外部定义的公共结构体 ──────────────────
 		struct ParsedConfig
 		{
-			struct SlaveEntry
-			{
-				uint16_t alias, position;
-				uint32_t vendor_id, product_code;
-				std::string description;
-			};
-
+			// 直接使用 public 区域定义的 SlaveEntry 和 SubMapping
 			std::vector<SlaveEntry> output_slaves;
 			std::vector<SlaveEntry> input_slaves;
-
-			struct SubMapping
-			{
-				uint32_t sub_id;
-				uint16_t io_position;
-				uint32_t scale_id;
-				std::string description;
-			};
 			std::vector<SubMapping> subsystem_mappings;
 
 			// DIO 映射配置

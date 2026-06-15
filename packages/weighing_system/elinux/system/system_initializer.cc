@@ -176,7 +176,7 @@ namespace weighing
 				master_index_ = j["output"].value("master_index", 0u);
 				for (const auto &s : j["output"]["slaves"])
 				{
-					ParsedConfig::SlaveEntry e;
+					SlaveEntry e;
 					e.alias = s.value("alias", 0);
 					e.position = s.value("position", 0);
 					e.vendor_id = static_cast<uint32_t>(
@@ -193,7 +193,7 @@ namespace weighing
 			{
 				for (const auto &s : j["input_source"]["ethercat"]["slaves"])
 				{
-					ParsedConfig::SlaveEntry e;
+					SlaveEntry e;
 					e.alias = s.value("alias", 0);
 					e.position = s.value("position", 0);
 					e.vendor_id = static_cast<uint32_t>(
@@ -219,7 +219,7 @@ namespace weighing
 			{
 				for (auto &[key, val] : j["subsystem_mapping"].items())
 				{
-					ParsedConfig::SubMapping m;
+					SubMapping m;
 					m.sub_id = std::stoul(key);
 					m.io_position = val.value("io_position", (uint16_t)0);
 					m.scale_id = val.value("scale_id", 0u);
@@ -717,7 +717,7 @@ namespace weighing
 					{"io_position", 0},
 					{"description", "Subsystem " + key}};
 				// 同步更新内存缓存
-				ParsedConfig::SubMapping m;
+				SubMapping m;
 				m.sub_id = subsystem_id;
 				m.scale_id = scale_id;
 				m.io_position = 0;
@@ -801,7 +801,7 @@ namespace weighing
 			// 更新内存缓存（先去重再添加）
 			auto it = std::find_if(parsed_.subsystem_mappings.begin(),
 								   parsed_.subsystem_mappings.end(),
-								   [sub_id](const ParsedConfig::SubMapping &m)
+								   [sub_id](const SubMapping &m)
 								   { return m.sub_id == sub_id; });
 			if (it != parsed_.subsystem_mappings.end())
 			{
@@ -811,7 +811,7 @@ namespace weighing
 			}
 			else
 			{
-				ParsedConfig::SubMapping m;
+				SubMapping m;
 				m.sub_id = sub_id;
 				m.scale_id = scale_id;
 				m.io_position = io_position;
@@ -866,7 +866,7 @@ namespace weighing
 			parsed_.subsystem_mappings.erase(
 				std::remove_if(parsed_.subsystem_mappings.begin(),
 							   parsed_.subsystem_mappings.end(),
-							   [sub_id](const ParsedConfig::SubMapping &m)
+							   [sub_id](const SubMapping &m)
 							   { return m.sub_id == sub_id; }),
 				parsed_.subsystem_mappings.end());
 			return true;
@@ -996,7 +996,7 @@ namespace weighing
 				parsed_.output_slaves.clear();
 				for (const auto &s : output_slaves)
 				{
-					ParsedConfig::SlaveEntry e;
+					SlaveEntry e;
 					e.alias = s.alias;
 					e.position = s.position;
 					e.vendor_id = s.vendor_id;
@@ -1026,7 +1026,7 @@ namespace weighing
 				parsed_.input_slaves.clear();
 				for (const auto &s : input_slaves)
 				{
-					ParsedConfig::SlaveEntry e;
+					SlaveEntry e;
 					e.alias = s.alias;
 					e.position = s.position;
 					e.vendor_id = s.vendor_id;
