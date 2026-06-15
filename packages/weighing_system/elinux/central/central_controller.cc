@@ -126,7 +126,7 @@ namespace weighing
 			status.accumulated_weight = app_status.total_accumulated;
 
 			// 更新剩余物料量（从秤台读取净重）
-			auto scales = sub->GetAllScales();
+			const auto &scales = sub->GetAllScales();
 			if (!scales.empty())
 			{
 				status.remaining_weight = scales[0]->GetWeightData().net_weight;
