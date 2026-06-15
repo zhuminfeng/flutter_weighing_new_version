@@ -629,6 +629,12 @@ namespace
 		void HandleRemoveSubsystemMapping(const flutter::EncodableMap &args,
 										  std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 
+		// === 硬件配置状态 ===
+		void HandleGetConfigStatus(const flutter::EncodableMap &args,
+								   std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+		void HandleSaveEthercatHardwareConfig(const flutter::EncodableMap &args,
+											  std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+
 		// flutter::PluginRegistrar *registrar_;
 		std::unique_ptr<InputSource> input_source_;
 		std::unique_ptr<flutter::EventSink<flutter::EncodableValue>> weight_event_sink_;
@@ -1139,6 +1145,14 @@ namespace
 		else if (method == "removeSubsystemMapping")
 		{
 			HandleRemoveSubsystemMapping(args, std::move(result));
+		}
+		else if (method == "getConfigStatus")
+		{
+			HandleGetConfigStatus(args, std::move(result));
+		}
+		else if (method == "saveEthercatHardwareConfig")
+		{
+			HandleSaveEthercatHardwareConfig(args, std::move(result));
 		}
 		else
 		{
@@ -3205,6 +3219,70 @@ namespace
 			static_cast<uint32_t>(subsystem_id),
 			&err);
 
+		result->Success(EV(BuildMapResult(ok, err)));
+	}
+
+	// ============================================================================
+	// 硬件配置状态
+	// ============================================================================
+
+	void WeighingSystemPlugin::HandleGetConfigStatus(
+		const flutter::EncodableMap & /*args*/,
+		std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		auto &si = SystemInitializer::Instance();
+		flutter::EncodableMap out;
+		out[EV("has_output_slaves")] = EV(si.GetHasOutputSlaves());
+		out[EV("has_input_source")] = EV(si.GetHasInputSourceConfig());
+		out[EV("has_digital_output_map")] = EV(si.GetHasDioMapCfg());
+		result->Success(EV(out));
+	}
+
+	void WeighingSystemPlugin::HandleSaveEthercatHardwareConfig(
+		const flutter::EncodableMap &args,
+		std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		// Parse output_slaves list
+		std::vector<SystemInitializer::SlaveEntry> output_slaves;
+		auto it_out = args.find(EV("outputSlaves"));
+		if (it_out != args.end())
+		{
+			const auto &list = std::get<flutter::EncodableList>(it_out->second);
+			for (const auto &item : list)
+			{
+				const auto &m = std::get<flutter::EncodableMap>(item);
+				SystemInitializer::SlaveEntry e;
+				e.alias = static_cast<uint16_t>(GetInt(m, "alias"));
+				e.position = static_cast<uint16_t>(GetInt(m, "position"));
+				e.vendor_id = static_cast<uint32_t>(GetInt(m, "vendorId"));
+				e.product_code = static_cast<uint32_t>(GetInt(m, "productCode"));
+				e.description = GetString(m, "description", "");
+				output_slaves.push_back(e);
+			}
+		}
+
+		// Parse input_slaves list
+		std::vector<SystemInitializer::SlaveEntry> input_slaves;
+		auto it_in = args.find(EV("inputSlaves"));
+		if (it_in != args.end())
+		{
+			const auto &list = std::get<flutter::EncodableList>(it_in->second);
+			for (const auto &item : list)
+			{
+				const auto &m = std::get<flutter::EncodableMap>(item);
+				SystemInitializer::SlaveEntry e;
+				e.alias = static_cast<uint16_t>(GetInt(m, "alias"));
+				e.position = static_cast<uint16_t>(GetInt(m, "position"));
+				e.vendor_id = static_cast<uint32_t>(GetInt(m, "vendorId"));
+				e.product_code = static_cast<uint32_t>(GetInt(m, "productCode"));
+				e.description = GetString(m, "description", "");
+				input_slaves.push_back(e);
+			}
+		}
+
+		std::string err;
+		bool ok = SystemInitializer::Instance().SaveEthercatHardwareConfig(
+			output_slaves, input_slaves, &err);
 		result->Success(EV(BuildMapResult(ok, err)));
 	}
 

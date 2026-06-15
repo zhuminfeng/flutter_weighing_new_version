@@ -395,5 +395,18 @@
   "applyConfigInProgress": "Reinitializing...",
   "applyConfigSuccess": "Configuration applied, system restarted",
   "applyConfigFailed": "Failed to apply configuration",
-  "confirm": "Confirm"
+  "confirm": "Confirm",
+  "setupRequired": "Initial Setup Required",
+  "setupRequiredHint": "Hardware configuration is incomplete. Please go to Settings to complete the initial setup before using the system.",
+  "goToSettings": "Go to Settings",
+  "hardwareConfigMissing": "Hardware Config Incomplete",
+  "hardwareConfigMissingHint": "The config file is missing input_source or output settings. Scan devices on this page, then tap \"Save Hardware Config\" and apply.",
+  "dioConfigMissing": "Digital Output Not Configured",
+  "dioConfigMissingHint": "No digital_output_map found in config. Add mappings here, save, then apply the configuration.",
+  "saveHardwareConfig": "Save Hardware Config",
+  "saveHardwareConfigConfirm": "Save the scanned devices as hardware config (output / input_source.ethercat). After saving, tap Apply Config to reinitialize the system.",
+  "saveHardwareConfigSuccess": "Hardware config saved. Please apply config to reinitialize.",
+  "saveHardwareConfigFailed": "Failed to save hardware config",
+  "noSlavesScannedYet": "No devices scanned yet. Please scan first.",
+  "dismiss": "Dismiss"
 }

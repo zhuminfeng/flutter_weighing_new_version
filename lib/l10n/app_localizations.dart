@@ -2152,6 +2152,45 @@ abstract class AppLocalizations {
 
   /// No description provided for @confirm.
   String get confirm;
+
+  /// No description provided for @setupRequired.
+  String get setupRequired;
+
+  /// No description provided for @setupRequiredHint.
+  String get setupRequiredHint;
+
+  /// No description provided for @goToSettings.
+  String get goToSettings;
+
+  /// No description provided for @hardwareConfigMissing.
+  String get hardwareConfigMissing;
+
+  /// No description provided for @hardwareConfigMissingHint.
+  String get hardwareConfigMissingHint;
+
+  /// No description provided for @dioConfigMissing.
+  String get dioConfigMissing;
+
+  /// No description provided for @dioConfigMissingHint.
+  String get dioConfigMissingHint;
+
+  /// No description provided for @saveHardwareConfig.
+  String get saveHardwareConfig;
+
+  /// No description provided for @saveHardwareConfigConfirm.
+  String get saveHardwareConfigConfirm;
+
+  /// No description provided for @saveHardwareConfigSuccess.
+  String get saveHardwareConfigSuccess;
+
+  /// No description provided for @saveHardwareConfigFailed.
+  String get saveHardwareConfigFailed;
+
+  /// No description provided for @noSlavesScannedYet.
+  String get noSlavesScannedYet;
+
+  /// No description provided for @dismiss.
+  String get dismiss;
 }
 
 class _AppLocalizationsDelegate

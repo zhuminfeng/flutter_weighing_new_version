@@ -1122,4 +1122,48 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get confirm => 'Confirm';
+
+  @override
+  String get setupRequired => 'Initial Setup Required';
+
+  @override
+  String get setupRequiredHint =>
+      'Hardware configuration is incomplete. Please go to Settings to complete the initial setup before using the system.';
+
+  @override
+  String get goToSettings => 'Go to Settings';
+
+  @override
+  String get hardwareConfigMissing => 'Hardware Config Incomplete';
+
+  @override
+  String get hardwareConfigMissingHint =>
+      'The config file is missing input_source or output settings. Scan devices on this page, then tap "Save Hardware Config" and apply.';
+
+  @override
+  String get dioConfigMissing => 'Digital Output Not Configured';
+
+  @override
+  String get dioConfigMissingHint =>
+      'No digital_output_map found in config. Add mappings here, save, then apply the configuration.';
+
+  @override
+  String get saveHardwareConfig => 'Save Hardware Config';
+
+  @override
+  String get saveHardwareConfigConfirm =>
+      'Save the scanned devices as hardware config (output / input_source.ethercat). After saving, tap Apply Config to reinitialize the system.';
+
+  @override
+  String get saveHardwareConfigSuccess =>
+      'Hardware config saved. Please apply config to reinitialize.';
+
+  @override
+  String get saveHardwareConfigFailed => 'Failed to save hardware config';
+
+  @override
+  String get noSlavesScannedYet => 'No devices scanned yet. Please scan first.';
+
+  @override
+  String get dismiss => 'Dismiss';
 }

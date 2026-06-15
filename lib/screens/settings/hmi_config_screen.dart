@@ -79,9 +79,12 @@ class _HmiConfigScreenState extends State<HmiConfigScreen> {
   bool _loading = true;
   bool _scanning = false;
   bool _applying = false;
+  bool _savingHw = false;
   String _inputMode = 'shmem';
   List<EthercatSlaveInfo> _slaves = [];
   List<SubsystemMappingInfo> _mappings = [];
+  bool _hasOutputSlaves = true;
+  bool _hasInputSource = true;
 
   @override
   void initState() {
@@ -93,9 +96,12 @@ class _HmiConfigScreenState extends State<HmiConfigScreen> {
     setState(() => _loading = true);
     final mode = await _platform.getInputMode();
     final mappings = await _platform.getSubsystemMappings();
+    final status = await _platform.getConfigStatus();
     setState(() {
       _inputMode = mode;
       _mappings = mappings;
+      _hasOutputSlaves = status['has_output_slaves'] as bool? ?? true;
+      _hasInputSource = status['has_input_source'] as bool? ?? true;
       _loading = false;
     });
   }
@@ -107,6 +113,76 @@ class _HmiConfigScreenState extends State<HmiConfigScreen> {
       _slaves = slaves;
       _scanning = false;
     });
+  }
+
+  /// Categorise scanned slaves and save them to output / input_source.ethercat.
+  Future<void> _saveHardwareConfig() async {
+    final l = AppLocalizations.of(context)!;
+
+    if (_slaves.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l.noSlavesScannedYet)),
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.saveHardwareConfig),
+        content: Text(l.saveHardwareConfigConfirm),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l.confirm),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _savingHw = true);
+    try {
+      // Weighing slaves → input_source.ethercat
+      // Servo + IO + unknown slaves → output
+      final inputSlaves = _slaves
+          .where((s) =>
+              _detectRole(s.vendorId, s.productCode) == _SlaveRole.weighing)
+          .toList();
+      final outputSlaves = _slaves
+          .where((s) =>
+              _detectRole(s.vendorId, s.productCode) != _SlaveRole.weighing)
+          .toList();
+
+      final ok = await _platform.saveEthercatHardwareConfig(
+          outputSlaves, inputSlaves);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              ok ? l.saveHardwareConfigSuccess : l.saveHardwareConfigFailed),
+          backgroundColor: ok ? Colors.green : Colors.red,
+        ),
+      );
+      if (ok) {
+        // Refresh status flags
+        final status = await _platform.getConfigStatus();
+        if (mounted) {
+          setState(() {
+            _hasOutputSlaves =
+                status['has_output_slaves'] as bool? ?? _hasOutputSlaves;
+            _hasInputSource =
+                status['has_input_source'] as bool? ?? _hasInputSource;
+          });
+        }
+      }
+    } finally {
+      if (mounted) setState(() => _savingHw = false);
+    }
   }
 
   // Show dialog to edit alias

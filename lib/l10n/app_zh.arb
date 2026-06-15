@@ -395,5 +395,18 @@
   "applyConfigInProgress": "正在重新初始化...",
   "applyConfigSuccess": "配置已应用，系统已重启",
   "applyConfigFailed": "应用配置失败",
-  "confirm": "确认"
+  "confirm": "确认",
+  "setupRequired": "需要初始配置",
+  "setupRequiredHint": "检测到硬件配置缺失，请前往设置页面完成初始配置后再使用系统。",
+  "goToSettings": "前往设置",
+  "hardwareConfigMissing": "硬件配置未完成",
+  "hardwareConfigMissingHint": "配置文件中缺少 input_source 或 output 配置。请在此页扫描设备后，点击"保存硬件配置"并应用。",
+  "dioConfigMissing": "数字输出未配置",
+  "dioConfigMissingHint": "配置文件中尚无 digital_output_map。请在此页添加映射并保存，然后应用配置。",
+  "saveHardwareConfig": "保存硬件配置",
+  "saveHardwareConfigConfirm": "将扫描到的设备保存为硬件配置（output / input_source.ethercat），保存后需点击应用配置使系统重新初始化。",
+  "saveHardwareConfigSuccess": "硬件配置已保存，请点击应用配置重新初始化系统",
+  "saveHardwareConfigFailed": "硬件配置保存失败",
+  "noSlavesScannedYet": "尚未扫描到设备，请先点击扫描按钮",
+  "dismiss": "关闭"
 }

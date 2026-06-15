@@ -11,6 +11,7 @@ class AppState extends ChangeNotifier {
   final Map<int, WeightData> _weightDataMap = {};
   final Map<int, AppStatusData> _appStatusMap = {};
   Locale _locale = const Locale('zh');
+  Map<String, dynamic> _configStatus = const {};
 
   StreamSubscription<WeightData>? _weightSub;
   StreamSubscription<Map<String, dynamic>>? _statusSub;
@@ -19,6 +20,7 @@ class AppState extends ChangeNotifier {
   int get selectedAppType => _selectedAppType;
   int get activeSubsystemId => _activeSubsystemId;
   Locale get locale => _locale;
+  Map<String, dynamic> get configStatus => _configStatus;
 
   WeightData getWeightData(int scaleId) =>
       _weightDataMap[scaleId] ?? const WeightData();
@@ -30,6 +32,7 @@ class AppState extends ChangeNotifier {
     try {
       _initialized = await _platform.initialize();
       if (_initialized) {
+        _configStatus = await _platform.getConfigStatus();
         _weightSub = _platform.weightStream.listen((data) {
           _weightDataMap[data.scaleId] = data;
           notifyListeners();
@@ -49,6 +52,7 @@ class AppState extends ChangeNotifier {
       _statusSub = null;
       _weightDataMap.clear();
       _appStatusMap.clear();
+      _configStatus = const {};
       await _platform.shutdown();
     } catch (_) {}
     _initialized = false;

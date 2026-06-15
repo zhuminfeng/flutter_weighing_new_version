@@ -732,4 +732,51 @@ class ELinuxWeighingSystem extends WeighingPlatform {
       return false;
     }
   }
+
+  // ============ Hardware Config Status ============
+
+  @override
+  Future<Map<String, dynamic>> getConfigStatus() async {
+    try {
+      final m =
+          await _channel.invokeMapMethod<String, dynamic>('getConfigStatus');
+      return Map<String, dynamic>.from(m ?? const {});
+    } catch (e) {
+      return const {};
+    }
+  }
+
+  @override
+  Future<bool> saveEthercatHardwareConfig(
+      List<EthercatSlaveInfo> outputSlaves,
+      List<EthercatSlaveInfo> inputSlaves) async {
+    try {
+      final result = await _channel.invokeMapMethod<String, dynamic>(
+        'saveEthercatHardwareConfig',
+        {
+          'outputSlaves': outputSlaves
+              .map((s) => {
+                    'alias': s.alias,
+                    'position': s.position,
+                    'vendorId': s.vendorId,
+                    'productCode': s.productCode,
+                    'description': s.description,
+                  })
+              .toList(),
+          'inputSlaves': inputSlaves
+              .map((s) => {
+                    'alias': s.alias,
+                    'position': s.position,
+                    'vendorId': s.vendorId,
+                    'productCode': s.productCode,
+                    'description': s.description,
+                  })
+              .toList(),
+        },
+      );
+      return result?['ok'] == true;
+    } catch (e) {
+      return false;
+    }
+  }
 }

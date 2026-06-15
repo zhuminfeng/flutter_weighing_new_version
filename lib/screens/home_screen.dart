@@ -13,6 +13,8 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  bool _setupBannerDismissed = false;
+
   @override
   void initState() {
     super.initState();
@@ -21,10 +23,27 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  /// Returns true when required hardware sections are missing from the config.
+  bool _isSetupIncomplete(AppState state) {
+    if (state.configStatus.isEmpty) return false;
+    final hasDigitalOutput =
+        state.configStatus['has_digital_output_map'] == true;
+    // For ethercat mode, output and input_source slaves must also be present.
+    // getInputMode() is not in AppState; use has_output_slaves as proxy
+    // (it will be false in shmem mode too, but shmem users typically don't
+    // need servo/IO output slaves, so only flag when digital output is also
+    // missing).
+    return !hasDigitalOutput;
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final state = AppStateProvider.of(context);
+
+    final showSetupBanner = state.initialized &&
+        !_setupBannerDismissed &&
+        _isSetupIncomplete(state);
 
     return Scaffold(
       appBar: AppBar(
@@ -51,13 +70,52 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: !state.initialized
-          ? const Center(child: CircularProgressIndicator())
-          : state.selectedAppType < 0
-          ? _buildAppSelector(l, state)
-          : state.selectedAppType == 0
-          ? const LiwDashboard()
-          : const FillingDashboard(),
+      body: Column(
+        children: [
+          if (showSetupBanner)
+            MaterialBanner(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              leading: Icon(Icons.warning_amber_rounded,
+                  color: Theme.of(context).colorScheme.error),
+              content: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(l.setupRequired,
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.error)),
+                  const SizedBox(height: 4),
+                  Text(l.setupRequiredHint),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () =>
+                      setState(() => _setupBannerDismissed = true),
+                  child: Text(l.dismiss),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const SettingsScreen()),
+                  ),
+                  child: Text(l.goToSettings),
+                ),
+              ],
+            ),
+          Expanded(
+            child: !state.initialized
+                ? const Center(child: CircularProgressIndicator())
+                : state.selectedAppType < 0
+                    ? _buildAppSelector(l, state)
+                    : state.selectedAppType == 0
+                        ? const LiwDashboard()
+                        : const FillingDashboard(),
+          ),
+        ],
+      ),
     );
   }
 

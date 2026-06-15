@@ -1113,4 +1113,47 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get confirm => '确认';
+
+  @override
+  String get setupRequired => '需要初始配置';
+
+  @override
+  String get setupRequiredHint =>
+      '检测到硬件配置缺失，请前往设置页面完成初始配置后再使用系统。';
+
+  @override
+  String get goToSettings => '前往设置';
+
+  @override
+  String get hardwareConfigMissing => '硬件配置未完成';
+
+  @override
+  String get hardwareConfigMissingHint =>
+      '配置文件中缺少 input_source 或 output 配置。请在此页扫描设备后，点击"保存硬件配置"并应用。';
+
+  @override
+  String get dioConfigMissing => '数字输出未配置';
+
+  @override
+  String get dioConfigMissingHint =>
+      '配置文件中尚无 digital_output_map。请在此页添加映射并保存，然后应用配置。';
+
+  @override
+  String get saveHardwareConfig => '保存硬件配置';
+
+  @override
+  String get saveHardwareConfigConfirm =>
+      '将扫描到的设备保存为硬件配置（output / input_source.ethercat），保存后需点击应用配置使系统重新初始化。';
+
+  @override
+  String get saveHardwareConfigSuccess => '硬件配置已保存，请点击应用配置重新初始化系统';
+
+  @override
+  String get saveHardwareConfigFailed => '硬件配置保存失败';
+
+  @override
+  String get noSlavesScannedYet => '尚未扫描到设备，请先点击扫描按钮';
+
+  @override
+  String get dismiss => '关闭';
 }

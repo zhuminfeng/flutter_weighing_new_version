@@ -160,4 +160,9 @@ abstract class WeighingPlatform extends PlatformInterface {
   Future<bool> addSubsystemMapping(int subsystemId, String description,
       {int scaleId = 0, int ioPosition = 0});
   Future<bool> removeSubsystemMapping(int subsystemId);
+
+  // Hardware config status
+  Future<Map<String, dynamic>> getConfigStatus();
+  Future<bool> saveEthercatHardwareConfig(
+      List<EthercatSlaveInfo> outputSlaves, List<EthercatSlaveInfo> inputSlaves);
 }

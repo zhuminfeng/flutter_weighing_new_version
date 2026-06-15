@@ -39,6 +39,30 @@ namespace weighing
 		/// 如果子系统在配置文件中不存在，则自动创建（upsert）
 		bool SaveSubsystemMappingToConfig(uint32_t subsystem_id, uint32_t scale_id, std::string *err);
 
+		// ── Config status accessors ──────────────────────────────────────────
+		bool GetHasOutputSlaves() const { return !parsed_.output_slaves.empty(); }
+		bool GetHasInputSourceConfig() const
+		{
+			if (input_mode_ == "ethercat")
+				return !parsed_.input_slaves.empty();
+			return true; // shmem always has default config
+		}
+		bool GetHasDioMapCfg() const { return parsed_.has_dio_map_cfg; }
+
+		/// 将扫描到的 EtherCAT 从站持久化到 output 和 input_source.ethercat 段
+		struct SlaveEntry
+		{
+			uint16_t alias;
+			uint16_t position;
+			uint32_t vendor_id;
+			uint32_t product_code;
+			std::string description;
+		};
+		bool SaveEthercatHardwareConfig(
+			const std::vector<SlaveEntry> &output_slaves,
+			const std::vector<SlaveEntry> &input_slaves,
+			std::string *err);
+
 		/// 添加新的子系统条目到配置文件，并更新内存缓存
 		bool AddSubsystemToConfig(uint32_t sub_id, uint16_t io_position, uint32_t scale_id,
 								  const std::string &description, std::string *err);

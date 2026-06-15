@@ -951,6 +951,111 @@ namespace weighing
 	}
 
 	// ============================================================================
+	// 保存 EtherCAT 硬件配置（output 和 input_source.ethercat）到 JSON 文件
+	// ============================================================================
+	bool SystemInitializer::SaveEthercatHardwareConfig(
+		const std::vector<SlaveEntry> &output_slaves,
+		const std::vector<SlaveEntry> &input_slaves,
+		std::string *err)
+	{
+		try
+		{
+			std::ifstream ifs(config_path_);
+			if (!ifs.is_open())
+			{
+				if (err)
+					*err = "open config failed";
+				return false;
+			}
+			nlohmann::json j;
+			ifs >> j;
+			ifs.close();
+
+			auto to_hex = [](uint32_t v) -> std::string {
+				char buf[16];
+				snprintf(buf, sizeof(buf), "0x%08x", v);
+				return std::string(buf);
+			};
+
+			// 输出从站 (servo + IO)
+			if (!output_slaves.empty())
+			{
+				j["output"]["master_index"] = master_index_;
+				j["output"]["slaves"] = nlohmann::json::array();
+				for (const auto &s : output_slaves)
+				{
+					j["output"]["slaves"].push_back({
+						{"alias", s.alias},
+						{"position", s.position},
+						{"vendor_id", to_hex(s.vendor_id)},
+						{"product_code", to_hex(s.product_code)},
+						{"description", s.description},
+					});
+				}
+				// 更新内存缓存
+				parsed_.output_slaves.clear();
+				for (const auto &s : output_slaves)
+				{
+					ParsedConfig::SlaveEntry e;
+					e.alias = s.alias;
+					e.position = s.position;
+					e.vendor_id = s.vendor_id;
+					e.product_code = s.product_code;
+					e.description = s.description;
+					parsed_.output_slaves.push_back(e);
+				}
+			}
+
+			// 输入从站 (称重仪表, 仅 ethercat 模式)
+			if (!input_slaves.empty())
+			{
+				if (!j.contains("input_source"))
+					j["input_source"] = nlohmann::json::object();
+				j["input_source"]["ethercat"]["slaves"] = nlohmann::json::array();
+				for (const auto &s : input_slaves)
+				{
+					j["input_source"]["ethercat"]["slaves"].push_back({
+						{"alias", s.alias},
+						{"position", s.position},
+						{"vendor_id", to_hex(s.vendor_id)},
+						{"product_code", to_hex(s.product_code)},
+						{"description", s.description},
+					});
+				}
+				// 更新内存缓存
+				parsed_.input_slaves.clear();
+				for (const auto &s : input_slaves)
+				{
+					ParsedConfig::SlaveEntry e;
+					e.alias = s.alias;
+					e.position = s.position;
+					e.vendor_id = s.vendor_id;
+					e.product_code = s.product_code;
+					e.description = s.description;
+					parsed_.input_slaves.push_back(e);
+				}
+			}
+
+			std::ofstream ofs(config_path_, std::ios::trunc);
+			if (!ofs.is_open())
+			{
+				if (err)
+					*err = "write config failed";
+				return false;
+			}
+			ofs << j.dump(2);
+			ofs.close();
+			return true;
+		}
+		catch (const std::exception &e)
+		{
+			if (err)
+				*err = e.what();
+			return false;
+		}
+	}
+
+	// ============================================================================
 	// Step 11: 启动 RT 线程
 	// ============================================================================
 	bool SystemInitializer::StartRTThread()
