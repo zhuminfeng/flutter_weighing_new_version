@@ -2105,6 +2105,9 @@ abstract class AppLocalizations {
   /// No description provided for @addSubsystemTitle.
   String get addSubsystemTitle;
 
+  /// No description provided for @noSubsystemsConfigured.
+  String get noSubsystemsConfigured;
+
   /// No description provided for @removeSubsystem.
   String get removeSubsystem;
 

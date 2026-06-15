@@ -484,7 +484,7 @@ class _HmiConfigScreenState extends State<HmiConfigScreen> {
                               Icon(Icons.widgets_outlined,
                                   size: 48, color: cs.outline),
                               const SizedBox(height: 8),
-                              Text(l.noDevicesFound,
+                              Text(l.noSubsystemsConfigured,
                                   style: TextStyle(color: cs.outline)),
                               const SizedBox(height: 12),
                               FilledButton.icon(

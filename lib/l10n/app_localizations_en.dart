@@ -1075,6 +1075,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addSubsystemTitle => 'Add Subsystem';
 
   @override
+  String get noSubsystemsConfigured => 'No subsystems configured yet';
+
+  @override
   String get removeSubsystem => 'Remove Subsystem';
 
   @override

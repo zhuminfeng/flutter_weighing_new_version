@@ -373,6 +373,7 @@
   "channel1": "Channel 1",
   "addSubsystem": "Add Subsystem",
   "addSubsystemTitle": "Add Subsystem",
+  "noSubsystemsConfigured": "No subsystems configured yet",
   "removeSubsystem": "Remove Subsystem",
   "confirmRemoveSubsystem": "Remove subsystem {id}?",
   "@confirmRemoveSubsystem": {

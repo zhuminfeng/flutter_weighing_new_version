@@ -808,7 +808,7 @@ namespace weighing
 			{
 				it->scale_id = scale_id;
 				it->io_position = io_position;
-				it->description = description;
+				it->description = description.empty() ? "Subsystem " + key : description;
 			}
 			else
 			{

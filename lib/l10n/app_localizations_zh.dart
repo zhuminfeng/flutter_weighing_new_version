@@ -1066,6 +1066,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get addSubsystemTitle => '添加子系统';
 
   @override
+  String get noSubsystemsConfigured => '尚未配置子系统';
+
+  @override
   String get removeSubsystem => '删除子系统';
 
   @override
