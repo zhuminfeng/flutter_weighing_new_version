@@ -896,11 +896,11 @@ namespace weighing
 	{
 		auto &db = DatabaseManager::Instance();
 
-		// 1. 在 material_recipe 插入元数据，获取 recipe_id
+		// 1. 在 material_recipe 插入元数据，获取 recipe_id（name 使用参数绑定防注入）
 		std::ostringstream meta_sql;
-		meta_sql << "INSERT INTO material_recipe (name, app_type, subsystem_id) VALUES ('"
-				 << name << "', 0, " << subsystem_id << ")";
-		if (!db.Execute(meta_sql.str()))
+		meta_sql << "INSERT INTO material_recipe (name, app_type, subsystem_id) VALUES (?, 0, "
+				 << subsystem_id << ")";
+		if (!db.ExecuteWithParams(meta_sql.str(), {name}))
 			return 0;
 
 		uint32_t recipe_id = 0;
@@ -966,9 +966,9 @@ namespace weighing
 		auto &db = DatabaseManager::Instance();
 
 		std::ostringstream meta_sql;
-		meta_sql << "INSERT INTO material_recipe (name, app_type, subsystem_id) VALUES ('"
-				 << name << "', 1, " << subsystem_id << ")";
-		if (!db.Execute(meta_sql.str()))
+		meta_sql << "INSERT INTO material_recipe (name, app_type, subsystem_id) VALUES (?, 1, "
+				 << subsystem_id << ")";
+		if (!db.ExecuteWithParams(meta_sql.str(), {name}))
 			return 0;
 
 		uint32_t recipe_id = 0;
