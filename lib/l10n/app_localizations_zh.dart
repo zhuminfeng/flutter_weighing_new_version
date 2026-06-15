@@ -965,4 +965,194 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get slavePositionPrefix => '从站位置';
+
+  @override
+  String get hmiConfig => 'HMI配置';
+
+  @override
+  String get hmiConfigSubtitle => '设备发现 / 子系统秤台绑定';
+
+  @override
+  String get ethercatDevices => 'EtherCAT 设备';
+
+  @override
+  String get scanDevices => '扫描';
+
+  @override
+  String get scanning => '扫描中...';
+
+  @override
+  String get noDevicesFound => '未发现设备';
+
+  @override
+  String get deviceAlias => '设备别名';
+
+  @override
+  String get deviceAliasHint => '输入自定义别名';
+
+  @override
+  String get assignToSubsystem => '分配子系统';
+
+  @override
+  String get shmemMode => '共享内存模式 (shmem)';
+
+  @override
+  String get ethercatMode => 'EtherCAT 模式';
+
+  @override
+  String get inputModeLabel => '输入模式';
+
+  @override
+  String get channelSelect => '通道选择';
+
+  @override
+  String get noDeviceAssigned => '未配置';
+
+  @override
+  String deviceDiscovered(int count) {
+    return '已发现 $count 台设备';
+  }
+
+  @override
+  String get subsystemScaleBinding => '子系统秤台绑定';
+
+  @override
+  String get selectWeighingDevice => '选择称重设备';
+
+  @override
+  String get vendorId => '厂商 ID';
+
+  @override
+  String get productCode => '产品代码';
+
+  @override
+  String get position => '位置';
+
+  @override
+  String get slaveRoleWeighing => '称重';
+
+  @override
+  String get slaveRoleDigitalIO => '数字 IO';
+
+  @override
+  String get slaveRoleServo => '伺服';
+
+  @override
+  String get slaveRoleUnknown => '未知';
+
+  @override
+  String get saveAlias => '保存别名';
+
+  @override
+  String get aliasUpdated => '别名已更新';
+
+  @override
+  String get aliasFailed => '别名更新失败';
+
+  @override
+  String get mappingUpdated => '映射已更新';
+
+  @override
+  String get mappingFailed => '映射更新失败';
+
+  @override
+  String get channel0 => '通道 0';
+
+  @override
+  String get channel1 => '通道 1';
+
+  @override
+  String get addSubsystem => '添加子系统';
+
+  @override
+  String get addSubsystemTitle => '添加子系统';
+
+  @override
+  String get noSubsystemsConfigured => '尚未配置子系统';
+
+  @override
+  String get removeSubsystem => '删除子系统';
+
+  @override
+  String confirmRemoveSubsystem(int id) {
+    return '确定要删除子系统 $id 吗？';
+  }
+
+  @override
+  String get subsystemIdLabel => '子系统 ID';
+
+  @override
+  String get subsystemDescLabel => '描述';
+
+  @override
+  String get subsystemDescHint => '例如：称重线 1';
+
+  @override
+  String get addSuccess => '添加成功';
+
+  @override
+  String get addFailed => '添加失败';
+
+  @override
+  String get removeFailed => '删除失败';
+
+  @override
+  String get removeSuccess => '已删除';
+
+  @override
+  String get applyConfig => '应用配置';
+
+  @override
+  String get applyConfigConfirm => '系统将重新初始化以应用新配置，正在运行的任务将停止。确认继续？';
+
+  @override
+  String get applyConfigInProgress => '正在重新初始化...';
+
+  @override
+  String get applyConfigSuccess => '配置已应用，系统已重启';
+
+  @override
+  String get applyConfigFailed => '应用配置失败';
+
+  @override
+  String get setupRequired => '需要初始配置';
+
+  @override
+  String get setupRequiredHint => '检测到硬件配置缺失，请前往设置页面完成初始配置后再使用系统。';
+
+  @override
+  String get goToSettings => '前往设置';
+
+  @override
+  String get hardwareConfigMissing => '硬件配置未完成';
+
+  @override
+  String get hardwareConfigMissingHint =>
+      '配置文件中缺少 input_source 或 output 配置。请在此页扫描设备后，点击\'保存硬件配置\'并应用。';
+
+  @override
+  String get dioConfigMissing => '数字输出未配置';
+
+  @override
+  String get dioConfigMissingHint =>
+      '配置文件中尚无 digital_output_map。请在此页添加映射并保存，然后应用配置。';
+
+  @override
+  String get saveHardwareConfig => '保存硬件配置';
+
+  @override
+  String get saveHardwareConfigConfirm =>
+      '将扫描到的设备保存为硬件配置（output / input_source.ethercat），保存后需点击应用配置使系统重新初始化。';
+
+  @override
+  String get saveHardwareConfigSuccess => '硬件配置已保存，请点击应用配置重新初始化系统';
+
+  @override
+  String get saveHardwareConfigFailed => '硬件配置保存失败';
+
+  @override
+  String get noSlavesScannedYet => '尚未扫描到设备，请先点击扫描按钮';
+
+  @override
+  String get dismiss => '关闭';
 }

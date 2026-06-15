@@ -124,7 +124,7 @@ namespace weighing
 		return nullptr;
 	}
 
-	std::vector<ScalePlatform *> Subsystem::GetAllScales()
+	const std::vector<ScalePlatform *> &Subsystem::GetAllScales() const
 	{
 		return scales_;
 	}

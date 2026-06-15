@@ -1,0 +1,31 @@
+class SubsystemMappingInfo {
+  final int subsystemId;
+  final int scaleId;
+  final int ioPosition;
+  final String description;
+
+  const SubsystemMappingInfo({
+    required this.subsystemId,
+    required this.scaleId,
+    required this.ioPosition,
+    required this.description,
+  });
+
+  factory SubsystemMappingInfo.fromMap(Map<String, dynamic> m) {
+    return SubsystemMappingInfo(
+      subsystemId: (m['subsystemId'] as num?)?.toInt() ?? 0,
+      scaleId: (m['scaleId'] as num?)?.toInt() ?? 0,
+      ioPosition: (m['ioPosition'] as num?)?.toInt() ?? 0,
+      description: m['description'] as String? ?? '',
+    );
+  }
+
+  SubsystemMappingInfo copyWith({int? scaleId}) {
+    return SubsystemMappingInfo(
+      subsystemId: subsystemId,
+      scaleId: scaleId ?? this.scaleId,
+      ioPosition: ioPosition,
+      description: description,
+    );
+  }
+}

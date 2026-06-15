@@ -332,5 +332,81 @@
   "scopeBoth": "Both (General)",
   "scopeLiwOnly": "LIW Only",
   "scopeFillingOnly": "Filling Only",
-  "slavePositionPrefix": "Slave Pos"
+  "slavePositionPrefix": "Slave Pos",
+  "hmiConfig": "HMI Config",
+  "hmiConfigSubtitle": "Device Discovery / Subsystem Scale Binding",
+  "ethercatDevices": "EtherCAT Devices",
+  "scanDevices": "Scan",
+  "scanning": "Scanning...",
+  "noDevicesFound": "No devices found",
+  "deviceAlias": "Device Alias",
+  "deviceAliasHint": "Enter custom alias",
+  "assignToSubsystem": "Assign Subsystem",
+  "shmemMode": "Shared Memory Mode (shmem)",
+  "ethercatMode": "EtherCAT Mode",
+  "inputModeLabel": "Input Mode",
+  "channelSelect": "Channel Select",
+  "noDeviceAssigned": "Not configured",
+  "deviceDiscovered": "{count} device(s) discovered",
+  "@deviceDiscovered": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "subsystemScaleBinding": "Subsystem Scale Binding",
+  "selectWeighingDevice": "Select Weighing Device",
+  "vendorId": "Vendor ID",
+  "productCode": "Product Code",
+  "position": "Position",
+  "slaveRoleWeighing": "Weighing",
+  "slaveRoleDigitalIO": "Digital IO",
+  "slaveRoleServo": "Servo",
+  "slaveRoleUnknown": "Unknown",
+  "saveAlias": "Save Alias",
+  "aliasUpdated": "Alias updated",
+  "aliasFailed": "Alias update failed",
+  "mappingUpdated": "Mapping updated",
+  "mappingFailed": "Mapping update failed",
+  "channel0": "Channel 0",
+  "channel1": "Channel 1",
+  "addSubsystem": "Add Subsystem",
+  "addSubsystemTitle": "Add Subsystem",
+  "noSubsystemsConfigured": "No subsystems configured yet",
+  "removeSubsystem": "Remove Subsystem",
+  "confirmRemoveSubsystem": "Remove subsystem {id}?",
+  "@confirmRemoveSubsystem": {
+    "placeholders": {
+      "id": {
+        "type": "int"
+      }
+    }
+  },
+  "subsystemIdLabel": "Subsystem ID",
+  "subsystemDescLabel": "Description",
+  "subsystemDescHint": "e.g. Feeder Line 1",
+  "addSuccess": "Added successfully",
+  "addFailed": "Failed to add",
+  "removeFailed": "Failed to remove",
+  "removeSuccess": "Removed",
+  "applyConfig": "Apply Config",
+  "applyConfigConfirm": "The system will reinitialize to apply the new configuration. Running tasks will stop. Continue?",
+  "applyConfigInProgress": "Reinitializing...",
+  "applyConfigSuccess": "Configuration applied, system restarted",
+  "applyConfigFailed": "Failed to apply configuration",
+  "confirm": "Confirm",
+  "setupRequired": "Initial Setup Required",
+  "setupRequiredHint": "Hardware configuration is incomplete. Please go to Settings to complete the initial setup before using the system.",
+  "goToSettings": "Go to Settings",
+  "hardwareConfigMissing": "Hardware Config Incomplete",
+  "hardwareConfigMissingHint": "The config file is missing input_source or output settings. Scan devices on this page, then tap \"Save Hardware Config\" and apply.",
+  "dioConfigMissing": "Digital Output Not Configured",
+  "dioConfigMissingHint": "No digital_output_map found in config. Add mappings here, save, then apply the configuration.",
+  "saveHardwareConfig": "Save Hardware Config",
+  "saveHardwareConfigConfirm": "Save the scanned devices as hardware config (output / input_source.ethercat). After saving, tap Apply Config to reinitialize the system.",
+  "saveHardwareConfigSuccess": "Hardware config saved. Please apply config to reinitialize.",
+  "saveHardwareConfigFailed": "Failed to save hardware config",
+  "noSlavesScannedYet": "No devices scanned yet. Please scan first.",
+  "dismiss": "Dismiss"
 }

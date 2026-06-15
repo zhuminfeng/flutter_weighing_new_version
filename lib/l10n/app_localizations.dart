@@ -2005,6 +2005,372 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Slave Pos'**
   String get slavePositionPrefix;
+
+  /// No description provided for @hmiConfig.
+  ///
+  /// In en, this message translates to:
+  /// **'HMI Config'**
+  String get hmiConfig;
+
+  /// No description provided for @hmiConfigSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Device Discovery / Subsystem Scale Binding'**
+  String get hmiConfigSubtitle;
+
+  /// No description provided for @ethercatDevices.
+  ///
+  /// In en, this message translates to:
+  /// **'EtherCAT Devices'**
+  String get ethercatDevices;
+
+  /// No description provided for @scanDevices.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan'**
+  String get scanDevices;
+
+  /// No description provided for @scanning.
+  ///
+  /// In en, this message translates to:
+  /// **'Scanning...'**
+  String get scanning;
+
+  /// No description provided for @noDevicesFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No devices found'**
+  String get noDevicesFound;
+
+  /// No description provided for @deviceAlias.
+  ///
+  /// In en, this message translates to:
+  /// **'Device Alias'**
+  String get deviceAlias;
+
+  /// No description provided for @deviceAliasHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter custom alias'**
+  String get deviceAliasHint;
+
+  /// No description provided for @assignToSubsystem.
+  ///
+  /// In en, this message translates to:
+  /// **'Assign Subsystem'**
+  String get assignToSubsystem;
+
+  /// No description provided for @shmemMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared Memory Mode (shmem)'**
+  String get shmemMode;
+
+  /// No description provided for @ethercatMode.
+  ///
+  /// In en, this message translates to:
+  /// **'EtherCAT Mode'**
+  String get ethercatMode;
+
+  /// No description provided for @inputModeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Input Mode'**
+  String get inputModeLabel;
+
+  /// No description provided for @channelSelect.
+  ///
+  /// In en, this message translates to:
+  /// **'Channel Select'**
+  String get channelSelect;
+
+  /// No description provided for @noDeviceAssigned.
+  ///
+  /// In en, this message translates to:
+  /// **'Not configured'**
+  String get noDeviceAssigned;
+
+  /// No description provided for @deviceDiscovered.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} device(s) discovered'**
+  String deviceDiscovered(int count);
+
+  /// No description provided for @subsystemScaleBinding.
+  ///
+  /// In en, this message translates to:
+  /// **'Subsystem Scale Binding'**
+  String get subsystemScaleBinding;
+
+  /// No description provided for @selectWeighingDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Weighing Device'**
+  String get selectWeighingDevice;
+
+  /// No description provided for @vendorId.
+  ///
+  /// In en, this message translates to:
+  /// **'Vendor ID'**
+  String get vendorId;
+
+  /// No description provided for @productCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Product Code'**
+  String get productCode;
+
+  /// No description provided for @position.
+  ///
+  /// In en, this message translates to:
+  /// **'Position'**
+  String get position;
+
+  /// No description provided for @slaveRoleWeighing.
+  ///
+  /// In en, this message translates to:
+  /// **'Weighing'**
+  String get slaveRoleWeighing;
+
+  /// No description provided for @slaveRoleDigitalIO.
+  ///
+  /// In en, this message translates to:
+  /// **'Digital IO'**
+  String get slaveRoleDigitalIO;
+
+  /// No description provided for @slaveRoleServo.
+  ///
+  /// In en, this message translates to:
+  /// **'Servo'**
+  String get slaveRoleServo;
+
+  /// No description provided for @slaveRoleUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get slaveRoleUnknown;
+
+  /// No description provided for @saveAlias.
+  ///
+  /// In en, this message translates to:
+  /// **'Save Alias'**
+  String get saveAlias;
+
+  /// No description provided for @aliasUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Alias updated'**
+  String get aliasUpdated;
+
+  /// No description provided for @aliasFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Alias update failed'**
+  String get aliasFailed;
+
+  /// No description provided for @mappingUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Mapping updated'**
+  String get mappingUpdated;
+
+  /// No description provided for @mappingFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Mapping update failed'**
+  String get mappingFailed;
+
+  /// No description provided for @channel0.
+  ///
+  /// In en, this message translates to:
+  /// **'Channel 0'**
+  String get channel0;
+
+  /// No description provided for @channel1.
+  ///
+  /// In en, this message translates to:
+  /// **'Channel 1'**
+  String get channel1;
+
+  /// No description provided for @addSubsystem.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Subsystem'**
+  String get addSubsystem;
+
+  /// No description provided for @addSubsystemTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Subsystem'**
+  String get addSubsystemTitle;
+
+  /// No description provided for @noSubsystemsConfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'No subsystems configured yet'**
+  String get noSubsystemsConfigured;
+
+  /// No description provided for @removeSubsystem.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove Subsystem'**
+  String get removeSubsystem;
+
+  /// No description provided for @confirmRemoveSubsystem.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove subsystem {id}?'**
+  String confirmRemoveSubsystem(int id);
+
+  /// No description provided for @subsystemIdLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Subsystem ID'**
+  String get subsystemIdLabel;
+
+  /// No description provided for @subsystemDescLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get subsystemDescLabel;
+
+  /// No description provided for @subsystemDescHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Feeder Line 1'**
+  String get subsystemDescHint;
+
+  /// No description provided for @addSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Added successfully'**
+  String get addSuccess;
+
+  /// No description provided for @addFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to add'**
+  String get addFailed;
+
+  /// No description provided for @removeFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to remove'**
+  String get removeFailed;
+
+  /// No description provided for @removeSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Removed'**
+  String get removeSuccess;
+
+  /// No description provided for @applyConfig.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply Config'**
+  String get applyConfig;
+
+  /// No description provided for @applyConfigConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'The system will reinitialize to apply the new configuration. Running tasks will stop. Continue?'**
+  String get applyConfigConfirm;
+
+  /// No description provided for @applyConfigInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Reinitializing...'**
+  String get applyConfigInProgress;
+
+  /// No description provided for @applyConfigSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Configuration applied, system restarted'**
+  String get applyConfigSuccess;
+
+  /// No description provided for @applyConfigFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to apply configuration'**
+  String get applyConfigFailed;
+
+  /// No description provided for @setupRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Initial Setup Required'**
+  String get setupRequired;
+
+  /// No description provided for @setupRequiredHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Hardware configuration is incomplete. Please go to Settings to complete the initial setup before using the system.'**
+  String get setupRequiredHint;
+
+  /// No description provided for @goToSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to Settings'**
+  String get goToSettings;
+
+  /// No description provided for @hardwareConfigMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Hardware Config Incomplete'**
+  String get hardwareConfigMissing;
+
+  /// No description provided for @hardwareConfigMissingHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The config file is missing input_source or output settings. Scan devices on this page, then tap \"Save Hardware Config\" and apply.'**
+  String get hardwareConfigMissingHint;
+
+  /// No description provided for @dioConfigMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Digital Output Not Configured'**
+  String get dioConfigMissing;
+
+  /// No description provided for @dioConfigMissingHint.
+  ///
+  /// In en, this message translates to:
+  /// **'No digital_output_map found in config. Add mappings here, save, then apply the configuration.'**
+  String get dioConfigMissingHint;
+
+  /// No description provided for @saveHardwareConfig.
+  ///
+  /// In en, this message translates to:
+  /// **'Save Hardware Config'**
+  String get saveHardwareConfig;
+
+  /// No description provided for @saveHardwareConfigConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Save the scanned devices as hardware config (output / input_source.ethercat). After saving, tap Apply Config to reinitialize the system.'**
+  String get saveHardwareConfigConfirm;
+
+  /// No description provided for @saveHardwareConfigSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Hardware config saved. Please apply config to reinitialize.'**
+  String get saveHardwareConfigSuccess;
+
+  /// No description provided for @saveHardwareConfigFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to save hardware config'**
+  String get saveHardwareConfigFailed;
+
+  /// No description provided for @noSlavesScannedYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No devices scanned yet. Please scan first.'**
+  String get noSlavesScannedYet;
+
+  /// No description provided for @dismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss'**
+  String get dismiss;
 }
 
 class _AppLocalizationsDelegate

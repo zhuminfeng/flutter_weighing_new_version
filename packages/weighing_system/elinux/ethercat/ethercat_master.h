@@ -51,6 +51,9 @@ namespace weighing
 		const SlaveRuntime *GetSlaveRuntime(uint16_t position) const;
 		std::vector<const SlaveRuntime *> GetSlavesByRole(SlaveRole role) const;
 
+		/// 扫描总线上当前连接的所有 EtherCAT 从站
+		std::vector<ScannedSlaveInfo> ScanSlaves() const;
+
 		bool IsOperational() const { return operational_.load(); }
 		uint8_t *GetDomainData() { return domain_data_; }
 

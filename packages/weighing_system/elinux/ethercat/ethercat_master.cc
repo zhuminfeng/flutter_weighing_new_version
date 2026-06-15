@@ -461,4 +461,43 @@ namespace weighing
 		return result;
 	}
 
+	// ============================================================================
+	// 扫描总线上所有已连接的从站
+	// ============================================================================
+	std::vector<ScannedSlaveInfo> EtherCATMaster::ScanSlaves() const
+	{
+		std::lock_guard<std::mutex> lock(config_mutex_);
+
+		std::vector<ScannedSlaveInfo> results;
+		if (!master_)
+			return results;
+
+		// ecrt_master() fills ec_master_info_t (slave_count etc.); not to be
+		// confused with ecrt_request_master() which returns the master handle.
+		ec_master_info_t master_info;
+		if (ecrt_master(master_, &master_info) != 0)
+		{
+			fprintf(stderr, "ECMaster: ScanSlaves - ecrt_master() failed\n");
+			return results;
+		}
+
+		const uint32_t slave_count = master_info.slave_count;
+		for (uint32_t i = 0; i < slave_count; ++i)
+		{
+			ec_slave_info_t info;
+			if (ecrt_master_get_slave(master_, static_cast<uint16_t>(i), &info) != 0)
+				continue;
+
+			ScannedSlaveInfo s;
+			s.position = info.position;
+			s.alias = info.alias;
+			s.vendor_id = info.vendor_id;
+			s.product_code = info.product_code;
+			s.description = info.name;
+			results.push_back(s);
+		}
+
+		return results;
+	}
+
 } // namespace weighing

@@ -69,9 +69,9 @@ namespace weighing
 		FillingApplication *GetFillingApp();
 
 		// ===== 秤台访问（兼容两种模式）=====
-		ScalePlatform *GetPrimaryScale();			 // 获取主秤台（单秤台/粗秤）
-		ScalePlatform *GetScale(uint16_t channel);	 // 获取指定通道的秤台
-		std::vector<ScalePlatform *> GetAllScales(); // 获取所有秤台
+		ScalePlatform *GetPrimaryScale();						  // 获取主秤台（单秤台/粗秤）
+		ScalePlatform *GetScale(uint16_t channel);				  // 获取指定通道的秤台
+		const std::vector<ScalePlatform *> &GetAllScales() const; // 获取所有秤台
 		size_t GetScaleCount() const { return scales_.size(); }
 
 		// Weight data routing

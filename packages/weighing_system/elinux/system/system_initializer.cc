@@ -684,6 +684,378 @@ namespace weighing
 	}
 
 	// ============================================================================
+	// 更新子系统秤台映射并持久化（upsert：不存在则创建）
+	// ============================================================================
+	bool SystemInitializer::SaveSubsystemMappingToConfig(uint32_t subsystem_id, uint32_t scale_id, std::string *err)
+	{
+		try
+		{
+			std::ifstream ifs(config_path_);
+			if (!ifs.is_open())
+			{
+				if (err)
+					*err = "open config failed";
+				return false;
+			}
+			nlohmann::json j;
+			ifs >> j;
+			ifs.close();
+
+			std::string key = std::to_string(subsystem_id);
+
+			// 如果 subsystem_mapping 段不存在，创建它
+			if (!j.contains("subsystem_mapping") || !j["subsystem_mapping"].is_object())
+			{
+				j["subsystem_mapping"] = nlohmann::json::object();
+			}
+
+			// 如果该子系统条目不存在，创建默认条目（upsert）
+			if (!j["subsystem_mapping"].contains(key))
+			{
+				j["subsystem_mapping"][key] = {
+					{"scale_id", scale_id},
+					{"io_position", 0},
+					{"description", "Subsystem " + key}};
+				// 同步更新内存缓存
+				ParsedConfig::SubMapping m;
+				m.sub_id = subsystem_id;
+				m.scale_id = scale_id;
+				m.io_position = 0;
+				m.description = "Subsystem " + key;
+				parsed_.subsystem_mappings.push_back(m);
+			}
+			else
+			{
+				j["subsystem_mapping"][key]["scale_id"] = scale_id;
+				// 更新内存缓存
+				for (auto &m : parsed_.subsystem_mappings)
+				{
+					if (m.sub_id == subsystem_id)
+					{
+						m.scale_id = scale_id;
+						break;
+					}
+				}
+			}
+
+			std::ofstream ofs(config_path_, std::ios::trunc);
+			if (!ofs.is_open())
+			{
+				if (err)
+					*err = "write config failed";
+				return false;
+			}
+			ofs << j.dump(2);
+			ofs.close();
+			return true;
+		}
+		catch (const std::exception &e)
+		{
+			if (err)
+				*err = e.what();
+			return false;
+		}
+	}
+
+	// ============================================================================
+	// 添加新的子系统条目并持久化
+	// ============================================================================
+	bool SystemInitializer::AddSubsystemToConfig(uint32_t sub_id, uint16_t io_position,
+												 uint32_t scale_id, const std::string &description,
+												 std::string *err)
+	{
+		try
+		{
+			std::ifstream ifs(config_path_);
+			if (!ifs.is_open())
+			{
+				if (err)
+					*err = "open config failed";
+				return false;
+			}
+			nlohmann::json j;
+			ifs >> j;
+			ifs.close();
+
+			if (!j.contains("subsystem_mapping") || !j["subsystem_mapping"].is_object())
+			{
+				j["subsystem_mapping"] = nlohmann::json::object();
+			}
+
+			std::string key = std::to_string(sub_id);
+			j["subsystem_mapping"][key] = {
+				{"scale_id", scale_id},
+				{"io_position", io_position},
+				{"description", description.empty() ? "Subsystem " + key : description}};
+
+			std::ofstream ofs(config_path_, std::ios::trunc);
+			if (!ofs.is_open())
+			{
+				if (err)
+					*err = "write config failed";
+				return false;
+			}
+			ofs << j.dump(2);
+			ofs.close();
+
+			// 更新内存缓存（先去重再添加）
+			auto it = std::find_if(parsed_.subsystem_mappings.begin(),
+								   parsed_.subsystem_mappings.end(),
+								   [sub_id](const ParsedConfig::SubMapping &m)
+								   { return m.sub_id == sub_id; });
+			if (it != parsed_.subsystem_mappings.end())
+			{
+				it->scale_id = scale_id;
+				it->io_position = io_position;
+				it->description = description.empty() ? "Subsystem " + key : description;
+			}
+			else
+			{
+				ParsedConfig::SubMapping m;
+				m.sub_id = sub_id;
+				m.scale_id = scale_id;
+				m.io_position = io_position;
+				m.description = description.empty() ? "Subsystem " + key : description;
+				parsed_.subsystem_mappings.push_back(m);
+			}
+			return true;
+		}
+		catch (const std::exception &e)
+		{
+			if (err)
+				*err = e.what();
+			return false;
+		}
+	}
+
+	// ============================================================================
+	// 删除子系统条目并持久化
+	// ============================================================================
+	bool SystemInitializer::RemoveSubsystemFromConfig(uint32_t sub_id, std::string *err)
+	{
+		try
+		{
+			std::ifstream ifs(config_path_);
+			if (!ifs.is_open())
+			{
+				if (err)
+					*err = "open config failed";
+				return false;
+			}
+			nlohmann::json j;
+			ifs >> j;
+			ifs.close();
+
+			std::string key = std::to_string(sub_id);
+			if (j.contains("subsystem_mapping") && j["subsystem_mapping"].contains(key))
+			{
+				j["subsystem_mapping"].erase(key);
+			}
+
+			std::ofstream ofs(config_path_, std::ios::trunc);
+			if (!ofs.is_open())
+			{
+				if (err)
+					*err = "write config failed";
+				return false;
+			}
+			ofs << j.dump(2);
+			ofs.close();
+
+			// 更新内存缓存
+			parsed_.subsystem_mappings.erase(
+				std::remove_if(parsed_.subsystem_mappings.begin(),
+							   parsed_.subsystem_mappings.end(),
+							   [sub_id](const ParsedConfig::SubMapping &m)
+							   { return m.sub_id == sub_id; }),
+				parsed_.subsystem_mappings.end());
+			return true;
+		}
+		catch (const std::exception &e)
+		{
+			if (err)
+				*err = e.what();
+			return false;
+		}
+	}
+
+	// ============================================================================
+	// 更新从站用户别名并持久化
+	// ============================================================================
+	bool SystemInitializer::SaveSlaveAliasToConfig(uint16_t position, const std::string &alias, std::string *err)
+	{
+		try
+		{
+			std::ifstream ifs(config_path_);
+			if (!ifs.is_open())
+			{
+				if (err)
+					*err = "open config failed";
+				return false;
+			}
+			nlohmann::json j;
+			ifs >> j;
+			ifs.close();
+
+			bool found = false;
+			// 搜索 ethercat 输入从站
+			if (j.contains("input_source") && j["input_source"].contains("ethercat"))
+			{
+				for (auto &s : j["input_source"]["ethercat"]["slaves"])
+				{
+					if (s.value("position", -1) == position)
+					{
+						s["user_alias"] = alias;
+						found = true;
+						break;
+					}
+				}
+			}
+			// 搜索输出从站
+			if (!found && j.contains("output") && j["output"].contains("slaves"))
+			{
+				for (auto &s : j["output"]["slaves"])
+				{
+					if (s.value("position", -1) == position)
+					{
+						s["user_alias"] = alias;
+						found = true;
+						break;
+					}
+				}
+			}
+			if (!found)
+			{
+				// 从站不在已注册列表中也没关系，写入一个 user_aliases 附加表
+				j["user_aliases"][std::to_string(position)] = alias;
+			}
+
+			std::ofstream ofs(config_path_, std::ios::trunc);
+			if (!ofs.is_open())
+			{
+				if (err)
+					*err = "write config failed";
+				return false;
+			}
+			ofs << j.dump(2);
+			ofs.close();
+			return true;
+		}
+		catch (const std::exception &e)
+		{
+			if (err)
+				*err = e.what();
+			return false;
+		}
+	}
+
+	// ============================================================================
+	// 保存 EtherCAT 硬件配置（output 和 input_source.ethercat）到 JSON 文件
+	// ============================================================================
+	bool SystemInitializer::SaveEthercatHardwareConfig(
+		const std::vector<SlaveEntry> &output_slaves,
+		const std::vector<SlaveEntry> &input_slaves,
+		std::string *err)
+	{
+		try
+		{
+			std::ifstream ifs(config_path_);
+			if (!ifs.is_open())
+			{
+				if (err)
+					*err = "open config failed";
+				return false;
+			}
+			nlohmann::json j;
+			ifs >> j;
+			ifs.close();
+
+			auto to_hex = [](uint32_t v) -> std::string
+			{
+				char buf[16];
+				snprintf(buf, sizeof(buf), "0x%08x", v);
+				return std::string(buf);
+			};
+
+			// 输出从站 (servo + IO)
+			if (!output_slaves.empty())
+			{
+				j["output"]["master_index"] = master_index_;
+				j["output"]["slaves"] = nlohmann::json::array();
+				for (const auto &s : output_slaves)
+				{
+					j["output"]["slaves"].push_back({
+						{"alias", s.alias},
+						{"position", s.position},
+						{"vendor_id", to_hex(s.vendor_id)},
+						{"product_code", to_hex(s.product_code)},
+						{"description", s.description},
+					});
+				}
+				// 更新内存缓存
+				parsed_.output_slaves.clear();
+				for (const auto &s : output_slaves)
+				{
+					ParsedConfig::SlaveEntry e;
+					e.alias = s.alias;
+					e.position = s.position;
+					e.vendor_id = s.vendor_id;
+					e.product_code = s.product_code;
+					e.description = s.description;
+					parsed_.output_slaves.push_back(e);
+				}
+			}
+
+			// 输入从站 (称重仪表, 仅 ethercat 模式)
+			if (!input_slaves.empty())
+			{
+				if (!j.contains("input_source"))
+					j["input_source"] = nlohmann::json::object();
+				j["input_source"]["ethercat"]["slaves"] = nlohmann::json::array();
+				for (const auto &s : input_slaves)
+				{
+					j["input_source"]["ethercat"]["slaves"].push_back({
+						{"alias", s.alias},
+						{"position", s.position},
+						{"vendor_id", to_hex(s.vendor_id)},
+						{"product_code", to_hex(s.product_code)},
+						{"description", s.description},
+					});
+				}
+				// 更新内存缓存
+				parsed_.input_slaves.clear();
+				for (const auto &s : input_slaves)
+				{
+					ParsedConfig::SlaveEntry e;
+					e.alias = s.alias;
+					e.position = s.position;
+					e.vendor_id = s.vendor_id;
+					e.product_code = s.product_code;
+					e.description = s.description;
+					parsed_.input_slaves.push_back(e);
+				}
+			}
+
+			std::ofstream ofs(config_path_, std::ios::trunc);
+			if (!ofs.is_open())
+			{
+				if (err)
+					*err = "write config failed";
+				return false;
+			}
+			ofs << j.dump(2);
+			ofs.close();
+			return true;
+		}
+		catch (const std::exception &e)
+		{
+			if (err)
+				*err = e.what();
+			return false;
+		}
+	}
+
+	// ============================================================================
 	// Step 11: 启动 RT 线程
 	// ============================================================================
 	bool SystemInitializer::StartRTThread()

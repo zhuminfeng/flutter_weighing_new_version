@@ -332,5 +332,81 @@
   "scopeBoth": "通用",
   "scopeLiwOnly": "仅失重",
   "scopeFillingOnly": "仅灌装",
-  "slavePositionPrefix": "从站位置"
+  "slavePositionPrefix": "从站位置",
+  "hmiConfig": "HMI配置",
+  "hmiConfigSubtitle": "设备发现 / 子系统秤台绑定",
+  "ethercatDevices": "EtherCAT 设备",
+  "scanDevices": "扫描",
+  "scanning": "扫描中...",
+  "noDevicesFound": "未发现设备",
+  "deviceAlias": "设备别名",
+  "deviceAliasHint": "输入自定义别名",
+  "assignToSubsystem": "分配子系统",
+  "shmemMode": "共享内存模式 (shmem)",
+  "ethercatMode": "EtherCAT 模式",
+  "inputModeLabel": "输入模式",
+  "channelSelect": "通道选择",
+  "noDeviceAssigned": "未配置",
+  "deviceDiscovered": "已发现 {count} 台设备",
+  "@deviceDiscovered": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "subsystemScaleBinding": "子系统秤台绑定",
+  "selectWeighingDevice": "选择称重设备",
+  "vendorId": "厂商 ID",
+  "productCode": "产品代码",
+  "position": "位置",
+  "slaveRoleWeighing": "称重",
+  "slaveRoleDigitalIO": "数字 IO",
+  "slaveRoleServo": "伺服",
+  "slaveRoleUnknown": "未知",
+  "saveAlias": "保存别名",
+  "aliasUpdated": "别名已更新",
+  "aliasFailed": "别名更新失败",
+  "mappingUpdated": "映射已更新",
+  "mappingFailed": "映射更新失败",
+  "channel0": "通道 0",
+  "channel1": "通道 1",
+  "addSubsystem": "添加子系统",
+  "addSubsystemTitle": "添加子系统",
+  "noSubsystemsConfigured": "尚未配置子系统",
+  "removeSubsystem": "删除子系统",
+  "confirmRemoveSubsystem": "确定要删除子系统 {id} 吗？",
+  "@confirmRemoveSubsystem": {
+    "placeholders": {
+      "id": {
+        "type": "int"
+      }
+    }
+  },
+  "subsystemIdLabel": "子系统 ID",
+  "subsystemDescLabel": "描述",
+  "subsystemDescHint": "例如：称重线 1",
+  "addSuccess": "添加成功",
+  "addFailed": "添加失败",
+  "removeFailed": "删除失败",
+  "removeSuccess": "已删除",
+  "applyConfig": "应用配置",
+  "applyConfigConfirm": "系统将重新初始化以应用新配置，正在运行的任务将停止。确认继续？",
+  "applyConfigInProgress": "正在重新初始化...",
+  "applyConfigSuccess": "配置已应用，系统已重启",
+  "applyConfigFailed": "应用配置失败",
+  "confirm": "确认",
+  "setupRequired": "需要初始配置",
+  "setupRequiredHint": "检测到硬件配置缺失，请前往设置页面完成初始配置后再使用系统。",
+  "goToSettings": "前往设置",
+  "hardwareConfigMissing": "硬件配置未完成",
+  "hardwareConfigMissingHint": "配置文件中缺少 input_source 或 output 配置。请在此页扫描设备后，点击'保存硬件配置'并应用。",
+  "dioConfigMissing": "数字输出未配置",
+  "dioConfigMissingHint": "配置文件中尚无 digital_output_map。请在此页添加映射并保存，然后应用配置。",
+  "saveHardwareConfig": "保存硬件配置",
+  "saveHardwareConfigConfirm": "将扫描到的设备保存为硬件配置（output / input_source.ethercat），保存后需点击应用配置使系统重新初始化。",
+  "saveHardwareConfigSuccess": "硬件配置已保存，请点击应用配置重新初始化系统",
+  "saveHardwareConfigFailed": "硬件配置保存失败",
+  "noSlavesScannedYet": "尚未扫描到设备，请先点击扫描按钮",
+  "dismiss": "关闭"
 }
