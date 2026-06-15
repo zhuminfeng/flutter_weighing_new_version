@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:weighing_system_elinux/weighing_system_elinux.dart';
 import '../../l10n/app_localizations.dart';
+import '../../providers/app_state.dart';
 
 class DigitalOutputSettingsScreen extends StatefulWidget {
   const DigitalOutputSettingsScreen({super.key});
@@ -690,82 +691,133 @@ class _DigitalOutputSettingsScreenState
           ),
         ],
       ),
-      body: isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.settings_input_composite_outlined,
-                    size: 80,
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.secondary.withOpacity(0.3),
-                  ),
-                  const SizedBox(height: 16),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 32),
-                    child: Text(
-                      l.noMappingsHint,
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withOpacity(0.6),
-                      ),
-                    ),
-                  ),
-                ],
+      body: _buildBody(context, l, isEmpty),
+    );
+  }
+
+  // 构建页面主体（包含配置缺失提示横幅）
+  Widget _buildBody(BuildContext context, AppLocalizations l, bool isEmpty) {
+    final cs = Theme.of(context).colorScheme;
+    final configStatus = AppStateProvider.of(context).configStatus;
+    final dioMissing = configStatus.isNotEmpty &&
+        configStatus['has_digital_output_map'] != true;
+
+    Widget content;
+    if (isEmpty) {
+      content = Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.settings_input_composite_outlined,
+              size: 80,
+              color: cs.secondary.withOpacity(0.3),
+            ),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Text(
+                l.noMappingsHint,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: cs.onSurface.withOpacity(0.6),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      content = ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          // 1. 数字量 IO 映射区
+          Text(
+            l.digitalIoMappingSection,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (_cfg.bindings.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                l.noDigitalIoConfig,
+                style: TextStyle(color: Colors.grey.shade500),
               ),
             )
-          : ListView(
-              padding: const EdgeInsets.all(16),
+          else
+            ..._cfg.bindings.asMap().entries.map(
+              (e) => _buildBindingCard(e.value, e.key),
+            ),
+
+          const SizedBox(height: 32),
+
+          // 2. 伺服电机映射区
+          Text(
+            l.servoRoutingSection,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (_cfg.servoBindings.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                l.noServoConfig,
+                style: TextStyle(color: Colors.grey.shade500),
+              ),
+            )
+          else
+            ..._cfg.servoBindings.asMap().entries.map(
+              (e) => _buildServoBindingCard(e.value, e.key),
+            ),
+        ],
+      );
+    }
+
+    if (!dioMissing) return content;
+
+    return Column(
+      children: [
+        Card(
+          margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+          color: cs.tertiaryContainer,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 1. 数字量 IO 映射区
-                Text(
-                  l.digitalIoMappingSection, // 使用国际化字段
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
+                Icon(Icons.info_outline,
+                    color: cs.onTertiaryContainer, size: 26),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l.dioConfigMissing,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: cs.onTertiaryContainer,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        l.dioConfigMissingHint,
+                        style: TextStyle(color: cs.onTertiaryContainer),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 8),
-                if (_cfg.bindings.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Text(
-                      l.noDigitalIoConfig,
-                      style: TextStyle(color: Colors.grey.shade500),
-                    ), // 国际化
-                  )
-                else
-                  ..._cfg.bindings.asMap().entries.map(
-                    (e) => _buildBindingCard(e.value, e.key),
-                  ),
-
-                const SizedBox(height: 32),
-
-                // 2. 伺服电机映射区
-                Text(
-                  l.servoRoutingSection, // 使用国际化字段
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                if (_cfg.servoBindings.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Text(
-                      l.noServoConfig,
-                      style: TextStyle(color: Colors.grey.shade500),
-                    ), // 国际化
-                  )
-                else
-                  ..._cfg.servoBindings.asMap().entries.map(
-                    (e) => _buildServoBindingCard(e.value, e.key),
-                  ),
               ],
             ),
+          ),
+        ),
+        Expanded(child: content),
+      ],
     );
   }
 

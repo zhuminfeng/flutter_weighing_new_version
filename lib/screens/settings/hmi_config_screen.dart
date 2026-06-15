@@ -445,7 +445,7 @@ class _HmiConfigScreenState extends State<HmiConfigScreen> {
       appBar: AppBar(
         title: Text(l.hmiConfig),
         actions: [
-          if (_inputMode == 'ethercat')
+          if (_inputMode == 'ethercat') ...[
             _scanning
                 ? const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 16),
@@ -459,6 +459,21 @@ class _HmiConfigScreenState extends State<HmiConfigScreen> {
                     tooltip: l.scanDevices,
                     onPressed: _doScan,
                   ),
+            if (_slaves.isNotEmpty)
+              _savingHw
+                  ? const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      child: SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2.5)),
+                    )
+                  : IconButton(
+                      icon: const Icon(Icons.save_alt),
+                      tooltip: l.saveHardwareConfig,
+                      onPressed: _saveHardwareConfig,
+                    ),
+          ],
           _applying
               ? const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 16),
@@ -486,6 +501,45 @@ class _HmiConfigScreenState extends State<HmiConfigScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(12),
                 children: [
+                  // ── Hardware Config Missing Warning ────────────────────
+                  if (_inputMode == 'ethercat' &&
+                      (!_hasOutputSlaves || !_hasInputSource))
+                    Card(
+                      color: cs.errorContainer,
+                      margin: const EdgeInsets.only(bottom: 12),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.warning_amber_rounded,
+                                color: cs.error, size: 28),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    l.hardwareConfigMissing,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: cs.onErrorContainer,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    l.hardwareConfigMissingHint,
+                                    style:
+                                        TextStyle(color: cs.onErrorContainer),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
                   // ── Input Mode Banner ──────────────────────────────────
                   _InputModeBanner(
                     inputMode: _inputMode,
