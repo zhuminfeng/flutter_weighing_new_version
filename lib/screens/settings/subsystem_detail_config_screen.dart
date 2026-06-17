@@ -242,7 +242,7 @@ class _SubsystemDetailConfigScreenState
                 Expanded(
                   child: RadioListTile<int>(
                     title: Text(l.filling),
-                    subtitle: l.filling.isNotEmpty ? null : null,
+                    subtitle: null,
                     value: 1,
                     groupValue: _mapping.appType,
                     onChanged: _saving ? null : (v) => _setAppType(v!),

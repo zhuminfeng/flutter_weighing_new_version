@@ -3271,8 +3271,8 @@ namespace
 	{
 		// Stub — digital input map is not yet persisted to C++ config.
 		// Return an empty list so Dart can render an empty binding list.
-		int subsystem_id = GetInt(args, "subsystemId");
-		(void)subsystem_id;
+		// subsystemId is accepted for future use but not yet needed.
+		(void)args;
 		flutter::EncodableMap response;
 		response[EV("success")] = EV(true);
 		response[EV("bindings")] = EV(flutter::EncodableList{});

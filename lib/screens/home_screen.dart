@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:weighing_system_elinux/weighing_system_elinux.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/app_state.dart';
 import 'liw/liw_dashboard.dart';
@@ -224,7 +225,7 @@ class _HomeScreenState extends State<HomeScreen> {
 // ---------------------------------------------------------------------------
 
 class _SubsystemSummaryCard extends StatelessWidget {
-  final dynamic mapping; // SubsystemMappingInfo
+  final SubsystemMappingInfo mapping;
   final VoidCallback onExpand;
 
   const _SubsystemSummaryCard({
