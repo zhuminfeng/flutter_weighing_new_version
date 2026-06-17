@@ -194,7 +194,18 @@ namespace weighing
 				{
 					ParsedConfig::SubMapping m;
 					m.sub_id = std::stoul(key);
-					m.servo_position = val.value("servo_position", (uint16_t)0);
+					// 支持 servo_positions（数组）和旧版 servo_position（单值）两种配置格式
+					if (val.contains("servo_positions") && val["servo_positions"].is_array())
+					{
+						for (auto &sp : val["servo_positions"])
+							m.servo_positions.push_back(static_cast<uint16_t>(sp.get<int>()));
+					}
+					else
+					{
+						// 兼容旧配置：单个 servo_position
+						m.servo_positions.push_back(
+							static_cast<uint16_t>(val.value("servo_position", 0)));
+					}
 					m.io_position = val.value("io_position", (uint16_t)0);
 					m.io_channel = val.value("io_channel", (uint16_t)0);
 					m.scale_id = val.value("scale_id", 0u);
@@ -303,7 +314,8 @@ namespace weighing
 		// 设置子系统映射
 		for (const auto &m : parsed_.subsystem_mappings)
 		{
-			om.MapSubsystemServo(m.sub_id, m.servo_position);
+			for (uint16_t sp : m.servo_positions)
+				om.MapSubsystemServo(m.sub_id, sp);
 			om.MapSubsystemIO(m.sub_id, m.io_position);
 		}
 

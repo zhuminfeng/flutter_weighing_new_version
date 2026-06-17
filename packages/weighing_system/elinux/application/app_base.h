@@ -90,9 +90,10 @@ namespace weighing
 		void ClearWarning();
 
 		// === 通过 OutputManager 统一控制物理输出 ===
-		void SetControlRate(float rate_pct)
+		// servo_index: 子系统内第几个伺服（0 = 主喂料伺服，1 = 补料/清空伺服，以此类推）
+		void SetControlRate(float rate_pct, uint32_t servo_index = 0)
 		{
-			OutputManager::Instance().SetControlRate(subsystem_id_, rate_pct);
+			OutputManager::Instance().SetControlRate(subsystem_id_, rate_pct, servo_index);
 		}
 
 		void SetValveOutputs(uint16_t channel, bool fast, bool slow, bool refill, bool emptying)

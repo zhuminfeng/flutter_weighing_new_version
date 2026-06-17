@@ -68,7 +68,9 @@ namespace weighing
 			struct SubMapping
 			{
 				uint32_t sub_id;
-				uint16_t servo_position, io_position, io_channel;
+				// 一个子系统可对应多个伺服（index 0 通常为主喂料伺服）
+				std::vector<uint16_t> servo_positions;
+				uint16_t io_position, io_channel;
 				uint32_t scale_id;
 				std::string description;
 			};

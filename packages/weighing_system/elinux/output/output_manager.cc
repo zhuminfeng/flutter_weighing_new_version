@@ -92,7 +92,7 @@ namespace weighing
 
 	void OutputManager::MapSubsystemServo(uint32_t sub_id, uint16_t servo_pos)
 	{
-		subsystem_servo_map_[sub_id] = servo_pos;
+		subsystem_servo_map_[sub_id].push_back(servo_pos);
 	}
 
 	void OutputManager::MapSubsystemIO(uint32_t sub_id, uint16_t io_pos)
@@ -105,15 +105,14 @@ namespace weighing
 		subsystem_output_mapping_[sub_id] = mapping;
 	}
 
-	void OutputManager::SetControlRate(uint32_t sub_id, float rate)
+	void OutputManager::SetControlRate(uint32_t sub_id, float rate, uint32_t servo_index)
 	{
 		auto it = subsystem_servo_map_.find(sub_id);
-		if (it != subsystem_servo_map_.end())
-		{
-			auto sit = servos_.find(it->second);
-			if (sit != servos_.end())
-				sit->second->SetControlRate(rate);
-		}
+		if (it == subsystem_servo_map_.end() || servo_index >= it->second.size())
+			return;
+		auto sit = servos_.find(it->second[servo_index]);
+		if (sit != servos_.end())
+			sit->second->SetControlRate(rate);
 	}
 
 	void OutputManager::SetValveOutputs(uint32_t sub_id, uint16_t channel,
