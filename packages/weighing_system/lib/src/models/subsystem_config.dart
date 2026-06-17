@@ -1,5 +1,7 @@
 /// 子系统离散输入自定义映射配置
-/// 每个字段代表对应逻辑功能所在的硬件位索引（0-15），-1 表示未映射
+///
+/// 每个字段代表对应逻辑功能所绑定的硬件位索引（0–15）。
+/// 值为 -1 表示该功能未映射到任何硬件输入。
 class DioInputConfig {
   final int start;
   final int stop;
@@ -20,6 +22,28 @@ class DioInputConfig {
     this.zero = 6,
     this.jogTrigger = 7,
   });
+
+  /// Returns a copy of this config with the specified fields replaced.
+  DioInputConfig copyWith({
+    int? start,
+    int? stop,
+    int? executeRefill,
+    int? triggerEmptying,
+    int? interlock,
+    int? tare,
+    int? zero,
+    int? jogTrigger,
+  }) =>
+      DioInputConfig(
+        start: start ?? this.start,
+        stop: stop ?? this.stop,
+        executeRefill: executeRefill ?? this.executeRefill,
+        triggerEmptying: triggerEmptying ?? this.triggerEmptying,
+        interlock: interlock ?? this.interlock,
+        tare: tare ?? this.tare,
+        zero: zero ?? this.zero,
+        jogTrigger: jogTrigger ?? this.jogTrigger,
+      );
 
   Map<String, dynamic> toMap() => {
         'start': start,
