@@ -2371,6 +2371,132 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Dismiss'**
   String get dismiss;
+
+  /// No description provided for @subsystemConfigTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Subsystem Configuration'**
+  String get subsystemConfigTitle;
+
+  /// No description provided for @subsystemName.
+  ///
+  /// In en, this message translates to:
+  /// **'Subsystem Name'**
+  String get subsystemName;
+
+  /// No description provided for @appType.
+  ///
+  /// In en, this message translates to:
+  /// **'Application Type'**
+  String get appType;
+
+  /// No description provided for @noSubsystemsSetupTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure Subsystems'**
+  String get noSubsystemsSetupTitle;
+
+  /// No description provided for @noSubsystemsSetupHint.
+  ///
+  /// In en, this message translates to:
+  /// **'No subsystems are configured. Please go to the subsystem configuration page to add and enable at least one subsystem.'**
+  String get noSubsystemsSetupHint;
+
+  /// No description provided for @configureSubsystems.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure Subsystems'**
+  String get configureSubsystems;
+
+  /// No description provided for @expandDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand Detail'**
+  String get expandDetail;
+
+  /// No description provided for @ethercatConflictError.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable failed: subsystem(s) {names} already use the same EtherCAT instrument. Please resolve the conflict first.'**
+  String ethercatConflictError(String names);
+
+  /// No description provided for @materialRecipeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Recipe Settings'**
+  String get materialRecipeTitle;
+
+  /// No description provided for @materialRecipeSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage material recipes for this subsystem'**
+  String get materialRecipeSubtitle;
+
+  /// No description provided for @digitalInputMapping.
+  ///
+  /// In en, this message translates to:
+  /// **'Digital Input Mapping'**
+  String get digitalInputMapping;
+
+  /// No description provided for @diInputRouting.
+  ///
+  /// In en, this message translates to:
+  /// **'DI bit routing / key mapping'**
+  String get diInputRouting;
+
+  /// No description provided for @subsystemEnabledHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Subsystem is enabled and will participate in system operation'**
+  String get subsystemEnabledHint;
+
+  /// No description provided for @subsystemDisabledHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Subsystem is disabled and will not participate in system operation'**
+  String get subsystemDisabledHint;
+
+  /// No description provided for @diBinding.
+  ///
+  /// In en, this message translates to:
+  /// **'Input Binding'**
+  String get diBinding;
+
+  /// No description provided for @diStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start Signal'**
+  String get diStart;
+
+  /// No description provided for @diStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop Signal'**
+  String get diStop;
+
+  /// No description provided for @diReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset Signal'**
+  String get diReset;
+
+  /// No description provided for @diRefillRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'Refill Request'**
+  String get diRefillRequest;
+
+  /// No description provided for @diEmergencyStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Emergency Stop'**
+  String get diEmergencyStop;
+
+  /// No description provided for @diCustomKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom Key {n}'**
+  String diCustomKey(int n);
 }
 
 class _AppLocalizationsDelegate

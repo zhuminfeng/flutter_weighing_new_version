@@ -2,69 +2,67 @@ import 'package:flutter/material.dart';
 import 'package:weighing_system_elinux/weighing_system_elinux.dart';
 import '../../l10n/app_localizations.dart';
 import '../../providers/app_state.dart';
+import 'subsystem_detail_config_screen.dart';
 
 // ---------------------------------------------------------------------------
 // Helper: detect slave role from vendor/product codes
 // ---------------------------------------------------------------------------
-enum _SlaveRole { weighing, digitalIo, servo, unknown }
+enum SlaveRole { weighing, digitalIo, servo, unknown }
 
-_SlaveRole _detectRole(int vendorId, int productCode) {
-  // AD2020EB 称重仪表
+SlaveRole detectSlaveRole(int vendorId, int productCode) {
   if (vendorId == 0x00001071 && productCode == 0x00000001) {
-    return _SlaveRole.weighing;
+    return SlaveRole.weighing;
   }
-  // EC3A-IO1632 数字IO
   if (vendorId == 0x00000b95 && productCode == 0x00001101) {
-    return _SlaveRole.digitalIo;
+    return SlaveRole.digitalIo;
   }
-  // InoSV630N 伺服
   if (vendorId == 0x00100000 && productCode == 0x000c0112) {
-    return _SlaveRole.servo;
+    return SlaveRole.servo;
   }
-  return _SlaveRole.unknown;
+  return SlaveRole.unknown;
 }
 
-IconData _roleIcon(_SlaveRole role) {
+IconData slaveRoleIcon(SlaveRole role) {
   switch (role) {
-    case _SlaveRole.weighing:
+    case SlaveRole.weighing:
       return Icons.scale;
-    case _SlaveRole.digitalIo:
+    case SlaveRole.digitalIo:
       return Icons.grid_on;
-    case _SlaveRole.servo:
+    case SlaveRole.servo:
       return Icons.electric_bolt;
-    case _SlaveRole.unknown:
+    case SlaveRole.unknown:
       return Icons.device_unknown;
   }
 }
 
-Color _roleColor(_SlaveRole role, ColorScheme cs) {
+Color slaveRoleColor(SlaveRole role, ColorScheme cs) {
   switch (role) {
-    case _SlaveRole.weighing:
+    case SlaveRole.weighing:
       return cs.primary;
-    case _SlaveRole.digitalIo:
+    case SlaveRole.digitalIo:
       return cs.tertiary;
-    case _SlaveRole.servo:
+    case SlaveRole.servo:
       return cs.secondary;
-    case _SlaveRole.unknown:
+    case SlaveRole.unknown:
       return cs.outline;
   }
 }
 
-String _roleLabel(_SlaveRole role, AppLocalizations l) {
+String slaveRoleLabel(SlaveRole role, AppLocalizations l) {
   switch (role) {
-    case _SlaveRole.weighing:
+    case SlaveRole.weighing:
       return l.slaveRoleWeighing;
-    case _SlaveRole.digitalIo:
+    case SlaveRole.digitalIo:
       return l.slaveRoleDigitalIO;
-    case _SlaveRole.servo:
+    case SlaveRole.servo:
       return l.slaveRoleServo;
-    case _SlaveRole.unknown:
+    case SlaveRole.unknown:
       return l.slaveRoleUnknown;
   }
 }
 
 // ---------------------------------------------------------------------------
-// Screen
+// Subsystem Config Screen (list of subsystems)
 // ---------------------------------------------------------------------------
 class SubsystemConfigScreen extends StatefulWidget {
   const SubsystemConfigScreen({super.key});
@@ -79,12 +77,9 @@ class _SubsystemConfigScreenState extends State<SubsystemConfigScreen> {
   bool _loading = true;
   bool _scanning = false;
   bool _applying = false;
-  bool _savingHw = false;
   String _inputMode = 'shmem';
   List<EthercatSlaveInfo> _slaves = [];
   List<SubsystemMappingInfo> _mappings = [];
-  bool _hasOutputSlaves = true;
-  bool _hasInputSource = true;
 
   @override
   void initState() {
@@ -96,12 +91,9 @@ class _SubsystemConfigScreenState extends State<SubsystemConfigScreen> {
     setState(() => _loading = true);
     final mode = await _platform.getInputMode();
     final mappings = await _platform.getSubsystemMappings();
-    final status = await _platform.getConfigStatus();
     setState(() {
       _inputMode = mode;
       _mappings = mappings;
-      _hasOutputSlaves = status['has_output_slaves'] as bool? ?? true;
-      _hasInputSource = status['has_input_source'] as bool? ?? true;
       _loading = false;
     });
   }
@@ -115,258 +107,100 @@ class _SubsystemConfigScreenState extends State<SubsystemConfigScreen> {
     });
   }
 
-  /// Categorise scanned slaves and save them to output / input_source.ethercat.
-  Future<void> _saveHardwareConfig() async {
-    final l = AppLocalizations.of(context)!;
-
-    if (_slaves.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(l.noSlavesScannedYet)));
-      return;
-    }
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l.saveHardwareConfig),
-        content: Text(l.saveHardwareConfigConfirm),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(l.confirm),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !mounted) return;
-
-    setState(() => _savingHw = true);
-    try {
-      // Weighing slaves → input_source.ethercat
-      // Servo + IO + unknown slaves → output
-      final inputSlaves = _slaves
-          .where(
-            (s) =>
-                _detectRole(s.vendorId, s.productCode) == _SlaveRole.weighing,
-          )
-          .toList();
-      final outputSlaves = _slaves
-          .where(
-            (s) =>
-                _detectRole(s.vendorId, s.productCode) != _SlaveRole.weighing,
-          )
-          .toList();
-
-      final ok = await _platform.saveEthercatHardwareConfig(
-        outputSlaves,
-        inputSlaves,
-      );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            ok ? l.saveHardwareConfigSuccess : l.saveHardwareConfigFailed,
-          ),
-          backgroundColor: ok ? Colors.green : Colors.red,
-        ),
-      );
-      if (ok) {
-        // Refresh status flags
-        final status = await _platform.getConfigStatus();
-        if (mounted) {
-          setState(() {
-            _hasOutputSlaves =
-                status['has_output_slaves'] as bool? ?? _hasOutputSlaves;
-            _hasInputSource =
-                status['has_input_source'] as bool? ?? _hasInputSource;
-          });
-        }
-      }
-    } finally {
-      if (mounted) setState(() => _savingHw = false);
-    }
-  }
-
-  // Show dialog to edit alias
-  Future<void> _editAlias(EthercatSlaveInfo slave) async {
-    final l = AppLocalizations.of(context)!;
-    final controller = TextEditingController(text: slave.userAlias);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l.deviceAlias),
-        content: TextField(
-          controller: controller,
-          decoration: InputDecoration(hintText: l.deviceAliasHint),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(l.saveAlias),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true && mounted) {
-      final ok = await _platform.updateSlaveAlias(
-        slave.position,
-        controller.text.trim(),
-      );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(ok ? l.aliasUpdated : l.aliasFailed)),
-        );
-        if (ok) {
-          setState(() {
-            _slaves = _slaves.map((s) {
-              if (s.position == slave.position) {
-                return s.copyWith(userAlias: controller.text.trim());
-              }
-              return s;
-            }).toList();
-          });
-        }
-      }
-    }
-  }
-
-  // Show dialog to assign slave to a subsystem (ethercat mode)
-  Future<void> _assignToSubsystem(EthercatSlaveInfo slave) async {
-    final l = AppLocalizations.of(context)!;
-    if (_mappings.isEmpty) return;
-    final selected = await showDialog<SubsystemMappingInfo>(
-      context: context,
-      builder: (ctx) => SimpleDialog(
-        title: Text(l.assignToSubsystem),
-        children: _mappings
-            .map(
-              (m) => SimpleDialogOption(
-                onPressed: () => Navigator.pop(ctx, m),
-                child: ListTile(
-                  leading: const Icon(Icons.widgets),
-                  title: Text(
-                    m.description.isNotEmpty
-                        ? m.description
-                        : 'Subsystem ${m.subsystemId}',
-                  ),
-                  subtitle: Text('ID: ${m.subsystemId}'),
-                ),
-              ),
-            )
-            .toList(),
-      ),
-    );
-    if (selected != null && mounted) {
-      final ok = await _platform.updateSubsystemMapping(
-        selected.subsystemId,
-        slave.position,
-      );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(ok ? l.mappingUpdated : l.mappingFailed)),
-        );
-        if (ok) {
-          setState(() {
-            _mappings = _mappings.map((m) {
-              if (m.subsystemId == selected.subsystemId) {
-                return m.copyWith(scaleId: slave.position);
-              }
-              return m;
-            }).toList();
-          });
-        }
-      }
-    }
-  }
-
-  // Update subsystem channel (shmem mode)
-  Future<void> _updateChannel(SubsystemMappingInfo mapping, int channel) async {
-    final l = AppLocalizations.of(context)!;
-    final ok = await _platform.updateSubsystemMapping(
-      mapping.subsystemId,
-      channel,
-    );
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(ok ? l.mappingUpdated : l.mappingFailed)),
-      );
-      if (ok) {
-        setState(() {
-          _mappings = _mappings.map((m) {
-            if (m.subsystemId == mapping.subsystemId) {
-              return m.copyWith(scaleId: channel);
-            }
-            return m;
-          }).toList();
-        });
-      }
-    }
-  }
-
   // Show dialog to add a new subsystem
   Future<void> _addSubsystem() async {
     final l = AppLocalizations.of(context)!;
-    final idController = TextEditingController();
-    final descController = TextEditingController();
+    final nameController = TextEditingController();
+    int selectedAppType = 0; // 0=LIW, 1=Filling
+
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l.addSubsystemTitle),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: idController,
-              decoration: InputDecoration(labelText: l.subsystemIdLabel),
-              keyboardType: TextInputType.number,
-              autofocus: true,
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: descController,
-              decoration: InputDecoration(
-                labelText: l.subsystemDescLabel,
-                hintText: l.subsystemDescHint,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text(l.addSubsystemTitle),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: InputDecoration(
+                  labelText: l.subsystemName,
+                  hintText: l.subsystemDescHint,
+                ),
+                autofocus: true,
               ),
+              const SizedBox(height: 16),
+              Text(l.appType, style: Theme.of(ctx).textTheme.labelMedium),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: RadioListTile<int>(
+                      title: Text(l.lossInWeight),
+                      value: 0,
+                      groupValue: selectedAppType,
+                      onChanged: (v) =>
+                          setDialogState(() => selectedAppType = v!),
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                  Expanded(
+                    child: RadioListTile<int>(
+                      title: Text(l.filling),
+                      value: 1,
+                      groupValue: selectedAppType,
+                      onChanged: (v) =>
+                          setDialogState(() => selectedAppType = v!),
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(l.cancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(l.addSubsystem),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(l.addSubsystem),
-          ),
-        ],
       ),
     );
-    if (confirmed == true && mounted) {
-      final idText = idController.text.trim();
-      final subsystemId = int.tryParse(idText);
-      if (subsystemId == null) return;
-      final description = descController.text.trim();
-      final ok = await _platform.addSubsystemMapping(subsystemId, description);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(ok ? l.addSuccess : l.addFailed)),
-        );
-        if (ok) {
-          await _loadInitialData();
-        }
-      }
+
+    if (confirmed != true || !mounted) return;
+    final name = nameController.text.trim();
+    if (name.isEmpty) return;
+
+    // Auto-assign ID = max existing + 1
+    final newId = _mappings.isEmpty
+        ? 0
+        : _mappings.map((m) => m.subsystemId).reduce((a, b) => a > b ? a : b) +
+              1;
+
+    final ok = await _platform.addSubsystemMapping(
+      newId,
+      name,
+      appType: selectedAppType,
+    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            ok
+                ? AppLocalizations.of(context)!.addSuccess
+                : AppLocalizations.of(context)!.addFailed,
+          ),
+        ),
+      );
+      if (ok) await _loadInitialData();
     }
   }
 
@@ -390,24 +224,72 @@ class _SubsystemConfigScreenState extends State<SubsystemConfigScreen> {
         ],
       ),
     );
-    if (confirmed == true && mounted) {
-      final ok = await _platform.removeSubsystemMapping(mapping.subsystemId);
-      if (mounted) {
+    if (confirmed != true || !mounted) return;
+    final ok = await _platform.removeSubsystemMapping(mapping.subsystemId);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(ok ? l.removeSuccess : l.removeFailed)),
+      );
+      if (ok) await _loadInitialData();
+    }
+  }
+
+  // Toggle enabled with conflict check
+  Future<void> _toggleEnabled(SubsystemMappingInfo mapping) async {
+    final l = AppLocalizations.of(context)!;
+    final newEnabled = !mapping.enabled;
+
+    // If enabling in ethercat mode, check for scale_id conflicts
+    if (newEnabled && _inputMode == 'ethercat' && mapping.scaleId > 0) {
+      final conflicts = _mappings
+          .where(
+            (m) =>
+                m.subsystemId != mapping.subsystemId &&
+                m.scaleId == mapping.scaleId &&
+                m.enabled,
+          )
+          .toList();
+      if (conflicts.isNotEmpty) {
+        final conflictNames = conflicts
+            .map(
+              (m) => m.description.isNotEmpty
+                  ? m.description
+                  : 'Sub ${m.subsystemId}',
+            )
+            .join(', ');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(ok ? l.removeSuccess : l.removeFailed)),
+          SnackBar(
+            content: Text(l.ethercatConflictError(conflictNames)),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
         );
-        if (ok) {
-          setState(() {
-            _mappings = _mappings
-                .where((m) => m.subsystemId != mapping.subsystemId)
-                .toList();
-          });
-        }
+        return;
+      }
+    }
+
+    final ok = await _platform.setSubsystemEnabled(
+      mapping.subsystemId,
+      newEnabled,
+    );
+    if (mounted) {
+      if (ok) {
+        setState(() {
+          _mappings = _mappings.map((m) {
+            if (m.subsystemId == mapping.subsystemId) {
+              return m.copyWith(enabled: newEnabled);
+            }
+            return m;
+          }).toList();
+        });
+      } else {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l.saveFailedMsg)));
       }
     }
   }
 
-  // Apply config: reinitialize the system
+  // Apply config: reinitialize
   Future<void> _applyConfig() async {
     final l = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
@@ -437,7 +319,6 @@ class _SubsystemConfigScreenState extends State<SubsystemConfigScreen> {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(l.applyConfigSuccess)));
-        // Reload mappings from the reinitialized system
         await _loadInitialData();
       }
     } catch (_) {
@@ -451,9 +332,6 @@ class _SubsystemConfigScreenState extends State<SubsystemConfigScreen> {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Build
-  // ---------------------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
@@ -461,7 +339,7 @@ class _SubsystemConfigScreenState extends State<SubsystemConfigScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l.hmiConfig),
+        title: Text(l.subsystemConfigTitle),
         actions: [
           if (_inputMode == 'ethercat') ...[
             _scanning
@@ -478,21 +356,6 @@ class _SubsystemConfigScreenState extends State<SubsystemConfigScreen> {
                     tooltip: l.scanDevices,
                     onPressed: _doScan,
                   ),
-            if (_slaves.isNotEmpty)
-              _savingHw
-                  ? const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(strokeWidth: 2.5),
-                      ),
-                    )
-                  : IconButton(
-                      icon: const Icon(Icons.save_alt),
-                      tooltip: l.saveHardwareConfig,
-                      onPressed: _saveHardwareConfig,
-                    ),
           ],
           _applying
               ? const Padding(
@@ -522,110 +385,30 @@ class _SubsystemConfigScreenState extends State<SubsystemConfigScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(12),
                 children: [
-                  // ── Hardware Config Missing Warning ────────────────────
-                  if (_inputMode == 'ethercat' &&
-                      (!_hasOutputSlaves || !_hasInputSource))
-                    Card(
-                      color: cs.errorContainer,
-                      margin: const EdgeInsets.only(bottom: 12),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Icon(
-                              Icons.warning_amber_rounded,
-                              color: cs.error,
-                              size: 28,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    l.hardwareConfigMissing,
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: cs.onErrorContainer,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    l.hardwareConfigMissingHint,
-                                    style: TextStyle(
-                                      color: cs.onErrorContainer,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                  // ── Input Mode Banner ──────────────────────────────────
-                  _InputModeBanner(
-                    inputMode: _inputMode,
-                    slaveCount: _slaves.length,
-                  ),
+                  // ── 输入模式横幅 ──────────────────────────────────────────
+                  _buildInputModeBanner(l, cs),
                   const SizedBox(height: 16),
 
-                  // ── EtherCAT Devices Section ───────────────────────────
-                  if (_inputMode == 'ethercat') ...[
+                  // ── EtherCAT 设备扫描结果 ──────────────────────────────────
+                  if (_inputMode == 'ethercat' && _slaves.isNotEmpty) ...[
                     _SectionHeader(
                       icon: Icons.device_hub,
                       title: l.ethercatDevices,
-                      trailing: _slaves.isNotEmpty
-                          ? Chip(
-                              avatar: const Icon(Icons.sensors, size: 16),
-                              label: Text(l.deviceDiscovered(_slaves.length)),
-                            )
-                          : null,
+                      trailing: Chip(
+                        avatar: const Icon(Icons.sensors, size: 16),
+                        label: Text(l.deviceDiscovered(_slaves.length)),
+                      ),
                     ),
-                    if (_slaves.isEmpty)
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: Center(
-                            child: Column(
-                              children: [
-                                Icon(
-                                  Icons.search_off,
-                                  size: 48,
-                                  color: cs.outline,
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  l.noDevicesFound,
-                                  style: TextStyle(color: cs.outline),
-                                ),
-                                const SizedBox(height: 12),
-                                FilledButton.icon(
-                                  icon: const Icon(Icons.search),
-                                  label: Text(l.scanDevices),
-                                  onPressed: _scanning ? null : _doScan,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      )
-                    else
-                      ..._slaves
-                          .map(
-                            (s) => _SlaveCard(
-                              slave: s,
-                              onEditAlias: () => _editAlias(s),
-                              onAssign: () => _assignToSubsystem(s),
-                            ),
-                          )
-                          .toList(),
+                    ..._slaves.map(
+                      (s) => _SlaveInfoTile(
+                        slave: s,
+                        onEditAlias: () => _editAlias(s),
+                      ),
+                    ),
                     const SizedBox(height: 16),
                   ],
 
-                  // ── Subsystem Scale Binding Section ────────────────────
+                  // ── 子系统列表 ─────────────────────────────────────────────
                   _SectionHeader(
                     icon: Icons.widgets,
                     title: l.subsystemScaleBinding,
@@ -635,6 +418,7 @@ class _SubsystemConfigScreenState extends State<SubsystemConfigScreen> {
                       onPressed: _addSubsystem,
                     ),
                   ),
+
                   if (_mappings.isEmpty)
                     Card(
                       child: Padding(
@@ -664,90 +448,36 @@ class _SubsystemConfigScreenState extends State<SubsystemConfigScreen> {
                       ),
                     )
                   else
-                    ..._mappings
-                        .map(
-                          (m) => _SubsystemMappingCard(
-                            mapping: m,
-                            inputMode: _inputMode,
-                            slaves: _slaves,
-                            onChannelChanged: (ch) => _updateChannel(m, ch),
-                            onRemove: () => _removeSubsystem(m),
-                            onSelectDevice: () async {
-                              // In ethercat mode: pick from weighing slaves
-                              final weighing = _slaves
-                                  .where(
-                                    (s) =>
-                                        _detectRole(
-                                          s.vendorId,
-                                          s.productCode,
-                                        ) ==
-                                        _SlaveRole.weighing,
-                                  )
-                                  .toList();
-                              if (weighing.isEmpty) return;
-                              final picked =
-                                  await showDialog<EthercatSlaveInfo>(
-                                    context: context,
-                                    builder: (ctx) => SimpleDialog(
-                                      title: Text(
-                                        AppLocalizations.of(
-                                          context,
-                                        )!.selectWeighingDevice,
-                                      ),
-                                      children: weighing
-                                          .map(
-                                            (s) => SimpleDialogOption(
-                                              onPressed: () =>
-                                                  Navigator.pop(ctx, s),
-                                              child: ListTile(
-                                                leading: const Icon(
-                                                  Icons.scale,
-                                                ),
-                                                title: Text(
-                                                  s.userAlias.isNotEmpty
-                                                      ? s.userAlias
-                                                      : s.description,
-                                                ),
-                                                subtitle: Text(
-                                                  'Pos: ${s.position}',
-                                                ),
-                                              ),
-                                            ),
-                                          )
-                                          .toList(),
-                                    ),
-                                  );
-                              if (picked != null) {
-                                await _updateChannel(m, picked.position);
-                              }
-                            },
-                          ),
-                        )
-                        .toList(),
-                  const SizedBox(height: 80), // space for FAB
+                    ..._mappings.map(
+                      (m) => _SubsystemCard(
+                        mapping: m,
+                        inputMode: _inputMode,
+                        onTap: () async {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => SubsystemDetailConfigScreen(
+                                mapping: m,
+                                inputMode: _inputMode,
+                                slaves: _slaves,
+                              ),
+                            ),
+                          );
+                          await _loadInitialData();
+                        },
+                        onToggleEnabled: () => _toggleEnabled(m),
+                        onRemove: () => _removeSubsystem(m),
+                      ),
+                    ),
+                  const SizedBox(height: 80),
                 ],
               ),
             ),
     );
   }
-}
 
-// ---------------------------------------------------------------------------
-// Sub-widgets
-// ---------------------------------------------------------------------------
-
-class _InputModeBanner extends StatelessWidget {
-  final String inputMode;
-  final int slaveCount;
-
-  const _InputModeBanner({required this.inputMode, required this.slaveCount});
-
-  @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
-    final isEthercat = inputMode == 'ethercat';
-
+  Widget _buildInputModeBanner(AppLocalizations l, ColorScheme cs) {
+    final isEthercat = _inputMode == 'ethercat';
     return Card(
       color: isEthercat ? cs.primaryContainer : cs.secondaryContainer,
       child: Padding(
@@ -786,17 +516,81 @@ class _InputModeBanner extends StatelessWidget {
                 ],
               ),
             ),
-            if (isEthercat && slaveCount > 0)
-              Chip(
-                avatar: const Icon(Icons.sensors, size: 16),
-                label: Text('$slaveCount'),
-              ),
+            if (isEthercat)
+              _scanning
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : OutlinedButton.icon(
+                      icon: const Icon(Icons.search, size: 16),
+                      label: Text(l.scanDevices),
+                      onPressed: _doScan,
+                    ),
           ],
         ),
       ),
     );
   }
+
+  Future<void> _editAlias(EthercatSlaveInfo slave) async {
+    final l = AppLocalizations.of(context)!;
+    final controller = TextEditingController(text: slave.userAlias);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.deviceAlias),
+        content: TextField(
+          controller: controller,
+          decoration: InputDecoration(hintText: l.deviceAliasHint),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l.saveAlias),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) {
+      final ok = await _platform.updateSlaveAlias(
+        slave.position,
+        controller.text.trim(),
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              ok
+                  ? AppLocalizations.of(context)!.aliasUpdated
+                  : AppLocalizations.of(context)!.aliasFailed,
+            ),
+          ),
+        );
+        if (ok) {
+          setState(() {
+            _slaves = _slaves.map((s) {
+              if (s.position == slave.position) {
+                return s.copyWith(userAlias: controller.text.trim());
+              }
+              return s;
+            }).toList();
+          });
+        }
+      }
+    }
+  }
 }
+
+// ---------------------------------------------------------------------------
+// Sub-widgets
+// ---------------------------------------------------------------------------
 
 class _SectionHeader extends StatelessWidget {
   final IconData icon;
@@ -826,106 +620,58 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-class _SlaveCard extends StatelessWidget {
+class _SlaveInfoTile extends StatelessWidget {
   final EthercatSlaveInfo slave;
   final VoidCallback onEditAlias;
-  final VoidCallback onAssign;
 
-  const _SlaveCard({
-    required this.slave,
-    required this.onEditAlias,
-    required this.onAssign,
-  });
+  const _SlaveInfoTile({required this.slave, required this.onEditAlias});
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
-    final role = _detectRole(slave.vendorId, slave.productCode);
-    final roleColor = _roleColor(role, cs);
+    final role = detectSlaveRole(slave.vendorId, slave.productCode);
+    final roleColor = slaveRoleColor(role, cs);
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
+      margin: const EdgeInsets.only(bottom: 6),
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: roleColor.withOpacity(0.15),
+          child: Icon(slaveRoleIcon(role), color: roleColor, size: 20),
+        ),
+        title: Text(
+          slave.userAlias.isNotEmpty
+              ? slave.userAlias
+              : slave.description.isNotEmpty
+              ? slave.description
+              : 'Slave #${slave.position}',
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
+        subtitle: Text(
+          '${l.position}: ${slave.position}  '
+          'VID: 0x${slave.vendorId.toRadixString(16).padLeft(8, "0")}  '
+          'PID: 0x${slave.productCode.toRadixString(16).padLeft(8, "0")}',
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: cs.outline),
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Role icon badge
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: roleColor.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(12),
+            Chip(
+              label: Text(
+                slaveRoleLabel(role, l),
+                style: const TextStyle(fontSize: 11),
               ),
-              child: Icon(_roleIcon(role), color: roleColor, size: 26),
+              backgroundColor: roleColor.withOpacity(0.15),
+              padding: EdgeInsets.zero,
+              visualDensity: VisualDensity.compact,
             ),
-            const SizedBox(width: 12),
-            // Info column
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          slave.userAlias.isNotEmpty
-                              ? slave.userAlias
-                              : slave.description.isNotEmpty
-                              ? slave.description
-                              : 'Slave #${slave.position}',
-                          style: Theme.of(context).textTheme.titleSmall
-                              ?.copyWith(fontWeight: FontWeight.bold),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      Chip(
-                        padding: EdgeInsets.zero,
-                        visualDensity: VisualDensity.compact,
-                        label: Text(
-                          _roleLabel(role, l),
-                          style: const TextStyle(fontSize: 11),
-                        ),
-                        backgroundColor: roleColor.withOpacity(0.15),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${l.position}: ${slave.position}  '
-                    '${l.vendorId}: 0x${slave.vendorId.toRadixString(16).padLeft(8, '0')}  '
-                    '${l.productCode}: 0x${slave.productCode.toRadixString(16).padLeft(8, '0')}',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodySmall?.copyWith(color: cs.outline),
-                  ),
-                  if (slave.description.isNotEmpty &&
-                      slave.userAlias.isNotEmpty)
-                    Text(
-                      slave.description,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodySmall?.copyWith(color: cs.outline),
-                    ),
-                ],
-              ),
-            ),
-            // Action buttons
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.edit, size: 20),
-                  tooltip: l.deviceAlias,
-                  onPressed: onEditAlias,
-                ),
-                IconButton(
-                  icon: const Icon(Icons.link, size: 20),
-                  tooltip: l.assignToSubsystem,
-                  onPressed: onAssign,
-                ),
-              ],
+            IconButton(
+              icon: const Icon(Icons.edit, size: 18),
+              tooltip: l.deviceAlias,
+              onPressed: onEditAlias,
             ),
           ],
         ),
@@ -934,20 +680,18 @@ class _SlaveCard extends StatelessWidget {
   }
 }
 
-class _SubsystemMappingCard extends StatelessWidget {
+class _SubsystemCard extends StatelessWidget {
   final SubsystemMappingInfo mapping;
   final String inputMode;
-  final List<EthercatSlaveInfo> slaves;
-  final ValueChanged<int> onChannelChanged;
-  final VoidCallback onSelectDevice;
+  final VoidCallback onTap;
+  final VoidCallback onToggleEnabled;
   final VoidCallback onRemove;
 
-  const _SubsystemMappingCard({
+  const _SubsystemCard({
     required this.mapping,
     required this.inputMode,
-    required this.slaves,
-    required this.onChannelChanged,
-    required this.onSelectDevice,
+    required this.onTap,
+    required this.onToggleEnabled,
     required this.onRemove,
   });
 
@@ -955,141 +699,110 @@ class _SubsystemMappingCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
+    final isLiw = mapping.appType == 0;
+    final typeColor = isLiw ? Colors.blue : Colors.green;
+    final typeIcon = isLiw ? Icons.trending_down : Icons.local_drink;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: cs.primaryContainer,
-                borderRadius: BorderRadius.circular(10),
+      margin: const EdgeInsets.only(bottom: 10),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              // App type icon
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: typeColor.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(typeIcon, color: typeColor, size: 26),
               ),
-              child: Center(
-                child: Text(
-                  '${mapping.subsystemId}',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: cs.onPrimaryContainer,
-                  ),
+              const SizedBox(width: 14),
+              // Info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      mapping.description.isNotEmpty
+                          ? mapping.description
+                          : 'Subsystem ${mapping.subsystemId}',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: typeColor.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            isLiw ? l.lossInWeight : l.filling,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: typeColor,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        if (inputMode == 'ethercat')
+                          Text(
+                            '${l.position}: ${mapping.scaleId}',
+                            style: Theme.of(
+                              context,
+                            ).textTheme.bodySmall?.copyWith(color: cs.outline),
+                          )
+                        else
+                          Text(
+                            '${l.channel}: ${mapping.scaleId}',
+                            style: Theme.of(
+                              context,
+                            ).textTheme.bodySmall?.copyWith(color: cs.outline),
+                          ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              // Enabled toggle + menu
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
+                  Switch(
+                    value: mapping.enabled,
+                    onChanged: (_) => onToggleEnabled(),
+                  ),
                   Text(
-                    mapping.description.isNotEmpty
-                        ? mapping.description
-                        : 'Subsystem ${mapping.subsystemId}',
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
+                    mapping.enabled ? l.enabled : l.disabled,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: mapping.enabled ? Colors.green : cs.outline,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  if (inputMode == 'shmem')
-                    // shmem: SegmentedButton for channel 0/1
-                    SegmentedButton<int>(
-                      showSelectedIcon: false,
-                      style: SegmentedButton.styleFrom(
-                        visualDensity: VisualDensity.compact,
-                      ),
-                      segments: [
-                        ButtonSegment(
-                          value: 0,
-                          label: Text(l.channel0),
-                          icon: const Icon(Icons.looks_one, size: 16),
-                        ),
-                        ButtonSegment(
-                          value: 1,
-                          label: Text(l.channel1),
-                          icon: const Icon(Icons.looks_two, size: 16),
-                        ),
-                      ],
-                      selected: {mapping.scaleId.clamp(0, 1)},
-                      onSelectionChanged: (s) => onChannelChanged(s.first),
-                    )
-                  else
-                    // ethercat: show assigned slave or "not configured"
-                    _EthercatSlaveSelector(
-                      currentScaleId: mapping.scaleId,
-                      slaves: slaves,
-                      onTap: onSelectDevice,
-                    ),
                 ],
               ),
-            ),
-            IconButton(
-              icon: Icon(Icons.delete_outline, color: cs.error, size: 20),
-              tooltip: l.removeSubsystem,
-              onPressed: onRemove,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _EthercatSlaveSelector extends StatelessWidget {
-  final int currentScaleId;
-  final List<EthercatSlaveInfo> slaves;
-  final VoidCallback onTap;
-
-  const _EthercatSlaveSelector({
-    required this.currentScaleId,
-    required this.slaves,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
-
-    final assigned = slaves
-        .where((s) => s.position == currentScaleId)
-        .firstOrNull;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          border: Border.all(color: cs.outline.withOpacity(0.4)),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              assigned != null ? Icons.scale : Icons.link_off,
-              size: 16,
-              color: assigned != null ? cs.primary : cs.outline,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              assigned != null
-                  ? (assigned.userAlias.isNotEmpty
-                        ? assigned.userAlias
-                        : assigned.description.isNotEmpty
-                        ? assigned.description
-                        : 'Pos: ${assigned.position}')
-                  : l.noDeviceAssigned,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: assigned != null ? cs.primary : cs.outline,
+              IconButton(
+                icon: const Icon(Icons.delete_outline, size: 20),
+                tooltip: l.removeSubsystem,
+                color: cs.error,
+                onPressed: onRemove,
               ),
-            ),
-            const SizedBox(width: 4),
-            Icon(Icons.arrow_drop_down, size: 18, color: cs.outline),
-          ],
+              const Icon(Icons.chevron_right),
+            ],
+          ),
         ),
       ),
     );

@@ -408,5 +408,41 @@
   "saveHardwareConfigSuccess": "硬件配置已保存，请点击应用配置重新初始化系统",
   "saveHardwareConfigFailed": "硬件配置保存失败",
   "noSlavesScannedYet": "尚未扫描到设备，请先点击扫描按钮",
-  "dismiss": "关闭"
+  "dismiss": "关闭",
+
+  "subsystemConfigTitle": "子系统配置",
+  "subsystemName": "子系统名称",
+  "appType": "应用类型",
+  "noSubsystemsSetupTitle": "请配置子系统",
+  "noSubsystemsSetupHint": "未检测到已配置的子系统，请前往子系统配置页面添加并启用至少一个子系统。",
+  "configureSubsystems": "配置子系统",
+  "expandDetail": "展开详情",
+  "ethercatConflictError": "启用失败：子系统 {names} 已占用相同的 EtherCAT 仪表，请先修改配置。",
+  "@ethercatConflictError": {
+    "placeholders": {
+      "names": {
+        "type": "String"
+      }
+    }
+  },
+  "materialRecipeTitle": "配方设置",
+  "materialRecipeSubtitle": "管理此子系统的物料配方",
+  "digitalInputMapping": "离散输入配置",
+  "diInputRouting": "DI位路由 / 按键映射",
+  "subsystemEnabledHint": "子系统已启用，将参与系统运行",
+  "subsystemDisabledHint": "子系统已禁用，不参与系统运行",
+  "diBinding": "输入绑定",
+  "diStart": "启动信号",
+  "diStop": "停止信号",
+  "diReset": "复位信号",
+  "diRefillRequest": "补料请求",
+  "diEmergencyStop": "紧急停止",
+  "diCustomKey": "自定义按键 {n}",
+  "@diCustomKey": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  }
 }

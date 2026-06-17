@@ -8,6 +8,7 @@ import 'models/liw_config.dart';
 import 'models/filling_config.dart';
 import 'models/system_status.dart';
 import 'models/digital_output_map.dart';
+import 'models/digital_input_map.dart';
 import 'models/ethercat_slave_info.dart';
 import 'models/subsystem_mapping_info.dart';
 
@@ -131,6 +132,12 @@ abstract class WeighingPlatform extends PlatformInterface {
   Future<Map<String, dynamic>> validateDigitalOutputMap(
       DigitalOutputMapConfig config);
 
+  // Digital input mapping
+  Future<bool> updateDigitalInputMap(DigitalInputMapConfig config);
+  Future<DigitalInputMapConfig> getDigitalInputMap();
+  Future<Map<String, dynamic>> validateDigitalInputMap(
+      DigitalInputMapConfig config);
+
   // App control
   Future<bool> startApp(int subsystemId);
   Future<bool> stopApp(int subsystemId);
@@ -157,7 +164,9 @@ abstract class WeighingPlatform extends PlatformInterface {
   Future<bool> updateSubsystemMapping(int subsystemId, int scaleId);
   Future<bool> updateSlaveAlias(int position, String alias);
   Future<bool> addSubsystemMapping(int subsystemId, String description,
-      {int scaleId = 0, int ioPosition = 0});
+      {int scaleId = 0, int ioPosition = 0, int appType = 0});
+  Future<bool> setSubsystemAppType(int subsystemId, int appType);
+  Future<bool> setSubsystemEnabled(int subsystemId, bool enabled);
   Future<bool> removeSubsystemMapping(int subsystemId);
   // Hardware config status
   Future<Map<String, dynamic>> getConfigStatus();

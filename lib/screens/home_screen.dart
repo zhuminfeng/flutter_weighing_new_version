@@ -1,9 +1,14 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:weighing_system_elinux/weighing_system_elinux.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/app_state.dart';
 import 'liw/liw_dashboard.dart';
+import 'liw/liw_detail_screen.dart';
 import 'filling/filling_dashboard.dart';
+import 'filling/filling_detail_screen.dart';
 import 'settings/settings_screen.dart';
+import 'settings/subsystem_config_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -14,6 +19,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   bool _setupBannerDismissed = false;
+  Timer? _statusTimer;
 
   @override
   void initState() {
@@ -21,19 +27,20 @@ class _HomeScreenState extends State<HomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       AppStateProvider.of(context).initialize();
     });
+    // 定期刷新所有子系统状态
+    _statusTimer = Timer.periodic(const Duration(milliseconds: 500), (_) {
+      if (!mounted) return;
+      final state = AppStateProvider.of(context);
+      for (final sub in state.subsystems) {
+        state.refreshAppStatusForSubsystem(sub.subsystemId);
+      }
+    });
   }
 
-  /// Returns true when required hardware sections are missing from the config.
-  bool _isSetupIncomplete(AppState state) {
-    if (state.configStatus.isEmpty) return false;
-    final hasDigitalOutput =
-        state.configStatus['has_digital_output_map'] == true;
-    // For ethercat mode, output and input_source slaves must also be present.
-    // getInputMode() is not in AppState; use has_output_slaves as proxy
-    // (it will be false in shmem mode too, but shmem users typically don't
-    // need servo/IO output slaves, so only flag when digital output is also
-    // missing).
-    return !hasDigitalOutput;
+  @override
+  void dispose() {
+    _statusTimer?.cancel();
+    super.dispose();
   }
 
   @override
@@ -41,10 +48,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final l = AppLocalizations.of(context)!;
     final state = AppStateProvider.of(context);
 
-    final showSetupBanner =
-        state.initialized &&
-        !_setupBannerDismissed &&
-        _isSetupIncomplete(state);
+    // 没有配置子系统时显示提示横幅
+    final noSubsystems = state.initialized && !state.hasConfiguredSubsystems;
+    final showNoSubBanner = noSubsystems && !_setupBannerDismissed;
 
     return Scaffold(
       appBar: AppBar(
@@ -73,7 +79,8 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: Column(
         children: [
-          if (showSetupBanner)
+          // ── 未配置子系统提示横幅 ──────────────────────────────────────────
+          if (showNoSubBanner)
             MaterialBanner(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               leading: Icon(
@@ -84,14 +91,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    l.setupRequired,
+                    l.noSubsystemsSetupTitle,
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: Theme.of(context).colorScheme.error,
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text(l.setupRequiredHint),
+                  Text(l.noSubsystemsSetupHint),
                 ],
               ),
               actions: [
@@ -100,104 +107,270 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Text(l.dismiss),
                 ),
                 FilledButton(
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                  ),
-                  child: Text(l.goToSettings),
+                  onPressed: () =>
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const SubsystemConfigScreen(),
+                        ),
+                      ).then((_) {
+                        // 返回后刷新子系统列表
+                        AppStateProvider.of(context).refreshSubsystems();
+                      }),
+                  child: Text(l.configureSubsystems),
                 ),
               ],
             ),
           Expanded(
             child: !state.initialized
                 ? const Center(child: CircularProgressIndicator())
-                : state.selectedAppType < 0
-                ? _buildAppSelector(l, state)
-                : state.selectedAppType == 0
-                ? const LiwDashboard()
-                : const FillingDashboard(),
+                : noSubsystems
+                ? _buildNoSubsystemsPlaceholder(l, state)
+                : state.subsystems.length == 1
+                ? _buildSingleSubsystem(state)
+                : _buildMultiSubsystemGrid(state),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildAppSelector(AppLocalizations l, AppState state) {
+  /// 未配置子系统时的空状态提示
+  Widget _buildNoSubsystemsPlaceholder(AppLocalizations l, AppState state) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(l.selectApp, style: Theme.of(context).textTheme.headlineMedium),
-          const SizedBox(height: 48),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _AppCard(
-                icon: Icons.trending_down,
-                title: l.lossInWeight,
-                color: Colors.blue,
-                onTap: () => state.selectAppType(0),
-              ),
-              const SizedBox(width: 32),
-              _AppCard(
-                icon: Icons.local_drink,
-                title: l.filling,
-                color: Colors.green,
-                onTap: () => state.selectAppType(1),
-              ),
-            ],
+          Icon(
+            Icons.widgets_outlined,
+            size: 80,
+            color: Theme.of(context).colorScheme.outline,
           ),
           const SizedBox(height: 24),
-          TextButton.icon(
+          Text(
+            l.noSubsystemsSetupTitle,
+            style: Theme.of(context).textTheme.headlineSmall,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            l.noSubsystemsSetupHint,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.outline,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 32),
+          FilledButton.icon(
             icon: const Icon(Icons.settings),
-            label: Text(l.settings),
+            label: Text(l.configureSubsystems),
             onPressed: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const SettingsScreen()),
-            ),
+              MaterialPageRoute(builder: (_) => const SubsystemConfigScreen()),
+            ).then((_) => AppStateProvider.of(context).refreshSubsystems()),
           ),
         ],
       ),
     );
   }
+
+  /// 单子系统：直接嵌入对应 Dashboard
+  Widget _buildSingleSubsystem(AppState state) {
+    final sub = state.subsystems.first;
+    state.setActiveSubsystem(sub.subsystemId);
+    if (sub.appType == 1) {
+      return const FillingDashboard();
+    }
+    return const LiwDashboard();
+  }
+
+  /// 多子系统：网格展示每个子系统的概要卡片
+  Widget _buildMultiSubsystemGrid(AppState state) {
+    final subsystems = state.subsystems;
+    final crossCount = subsystems.length <= 2 ? subsystems.length : 2;
+    return GridView.builder(
+      padding: const EdgeInsets.all(12),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossCount,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 1.3,
+      ),
+      itemCount: subsystems.length,
+      itemBuilder: (ctx, i) {
+        final sub = subsystems[i];
+        return _SubsystemSummaryCard(
+          mapping: sub,
+          onExpand: () {
+            state.setActiveSubsystem(sub.subsystemId);
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => sub.appType == 1
+                    ? const FillingDetailScreen()
+                    : const LiwDetailScreen(),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 }
 
-class _AppCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final Color color;
-  final VoidCallback onTap;
+// ---------------------------------------------------------------------------
+// Subsystem Summary Card
+// ---------------------------------------------------------------------------
 
-  const _AppCard({
-    required this.icon,
-    required this.title,
-    required this.color,
-    required this.onTap,
-  });
+class _SubsystemSummaryCard extends StatelessWidget {
+  final SubsystemMappingInfo mapping;
+  final VoidCallback onExpand;
+
+  const _SubsystemSummaryCard({required this.mapping, required this.onExpand});
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final state = AppStateProvider.of(context);
+    final cs = Theme.of(context).colorScheme;
+
+    final weightData = state.getWeightData(mapping.scaleId);
+    final appStatus = state.getAppStatus(mapping.subsystemId);
+
+    final isLiw = mapping.appType == 0;
+    final typeColor = isLiw ? Colors.blue : Colors.green;
+    final typeIcon = isLiw ? Icons.trending_down : Icons.local_drink;
+    final typeName = isLiw ? l.lossInWeight : l.filling;
+
     return Card(
-      elevation: 4,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          width: 200,
-          height: 200,
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 64, color: color),
-              const SizedBox(height: 16),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleMedium,
+      elevation: 3,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── 顶部：类型图标 + 名称 + 展开按钮 ──────────────────────────
+            Row(
+              children: [
+                Icon(typeIcon, color: typeColor, size: 20),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        mapping.description.isNotEmpty
+                            ? mapping.description
+                            : 'Sub ${mapping.subsystemId}',
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        typeName,
+                        style: Theme.of(
+                          context,
+                        ).textTheme.labelSmall?.copyWith(color: typeColor),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.open_in_full, size: 18),
+                  tooltip: l.expandDetail,
+                  onPressed: onExpand,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+              ],
+            ),
+            const Divider(height: 10),
+            // ── 重量数据 ────────────────────────────────────────────────────
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        l.netWeight,
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodySmall?.copyWith(color: cs.outline),
+                      ),
+                      Text(
+                        '${weightData.netWeight.toStringAsFixed(2)} kg',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        l.running,
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodySmall?.copyWith(color: cs.outline),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: appStatus.isRunning
+                              ? Colors.green.shade100
+                              : cs.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          appStatus.isRunning ? l.running : l.idle,
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                color: appStatus.isRunning
+                                    ? Colors.green.shade700
+                                    : cs.outline,
+                              ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (appStatus.stateString.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      appStatus.stateString,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.labelSmall?.copyWith(color: cs.outline),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ],
               ),
-            ],
-          ),
+            ),
+            // ── 底部：是否启用 ───────────────────────────────────────────────
+            if (!mapping.enabled)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                decoration: BoxDecoration(
+                  color: cs.errorContainer,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  l.disabled,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelSmall?.copyWith(color: cs.onErrorContainer),
+                ),
+              ),
+          ],
         ),
       ),
     );

@@ -10,6 +10,7 @@ import 'models/liw_config.dart';
 import 'models/filling_config.dart';
 import 'models/system_status.dart';
 import 'models/digital_output_map.dart';
+import 'models/digital_input_map.dart';
 import 'models/ethercat_slave_info.dart';
 import 'models/subsystem_mapping_info.dart';
 
@@ -703,7 +704,7 @@ class ELinuxWeighingSystem extends WeighingPlatform {
 
   @override
   Future<bool> addSubsystemMapping(int subsystemId, String description,
-      {int scaleId = 0, int ioPosition = 0}) async {
+      {int scaleId = 0, int ioPosition = 0, int appType = 0}) async {
     try {
       final result = await _channel.invokeMapMethod<String, dynamic>(
         'addSubsystemMapping',
@@ -712,6 +713,7 @@ class ELinuxWeighingSystem extends WeighingPlatform {
           'description': description,
           'scaleId': scaleId,
           'ioPosition': ioPosition,
+          'appType': appType,
         },
       );
       return result?['ok'] == true;
@@ -776,6 +778,75 @@ class ELinuxWeighingSystem extends WeighingPlatform {
       return result?['ok'] == true;
     } catch (e) {
       return false;
+    }
+  }
+
+  // ============ Subsystem Enable / AppType ============
+
+  @override
+  Future<bool> setSubsystemAppType(int subsystemId, int appType) async {
+    try {
+      final result = await _channel.invokeMapMethod<String, dynamic>(
+        'setSubsystemAppType',
+        {'subsystemId': subsystemId, 'appType': appType},
+      );
+      return result?['ok'] == true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> setSubsystemEnabled(int subsystemId, bool enabled) async {
+    try {
+      final result = await _channel.invokeMapMethod<String, dynamic>(
+        'setSubsystemEnabled',
+        {'subsystemId': subsystemId, 'enabled': enabled},
+      );
+      return result?['ok'] == true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // ============ Digital Input Mapping ============
+
+  @override
+  Future<DigitalInputMapConfig> getDigitalInputMap() async {
+    try {
+      final m =
+          await _channel.invokeMapMethod<String, dynamic>('getDigitalInputMap');
+      return DigitalInputMapConfig.fromMap(m ?? const {});
+    } catch (e) {
+      return const DigitalInputMapConfig();
+    }
+  }
+
+  @override
+  Future<bool> updateDigitalInputMap(DigitalInputMapConfig config) async {
+    try {
+      final m = await _channel.invokeMapMethod<String, dynamic>(
+        'updateDigitalInputMap',
+        config.toMap(),
+      );
+      return (m?['ok'] == true);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> validateDigitalInputMap(
+      DigitalInputMapConfig config) async {
+    try {
+      final m = await _channel.invokeMapMethod<String, dynamic>(
+        'validateDigitalInputMap',
+        config.toMap(),
+      );
+      return Map<String, dynamic>.from(
+          m ?? const {'ok': false, 'error': 'null response'});
+    } catch (e) {
+      return {'ok': false, 'error': e.toString()};
     }
   }
 

@@ -629,6 +629,17 @@ namespace
 		void HandleRemoveSubsystemMapping(const flutter::EncodableMap &args,
 										  std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 
+		void HandleSetSubsystemAppType(const flutter::EncodableMap &args,
+									   std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+		void HandleSetSubsystemEnabled(const flutter::EncodableMap &args,
+									   std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+		void HandleGetDigitalInputMap(const flutter::EncodableMap &args,
+									  std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+		void HandleUpdateDigitalInputMap(const flutter::EncodableMap &args,
+										 std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+		void HandleValidateDigitalInputMap(const flutter::EncodableMap &args,
+										   std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+
 		// === 硬件配置状态 ===
 		void HandleGetConfigStatus(const flutter::EncodableMap &args,
 								   std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
@@ -1155,6 +1166,26 @@ namespace
 		else if (method == "removeSubsystemMapping")
 		{
 			HandleRemoveSubsystemMapping(args, std::move(result));
+		}
+		else if (method == "setSubsystemAppType")
+		{
+			HandleSetSubsystemAppType(args, std::move(result));
+		}
+		else if (method == "setSubsystemEnabled")
+		{
+			HandleSetSubsystemEnabled(args, std::move(result));
+		}
+		else if (method == "getDigitalInputMap")
+		{
+			HandleGetDigitalInputMap(args, std::move(result));
+		}
+		else if (method == "updateDigitalInputMap")
+		{
+			HandleUpdateDigitalInputMap(args, std::move(result));
+		}
+		else if (method == "validateDigitalInputMap")
+		{
+			HandleValidateDigitalInputMap(args, std::move(result));
 		}
 		else if (method == "getConfigStatus")
 		{
@@ -3150,6 +3181,8 @@ namespace
 			item[EV("scaleId")] = EV(static_cast<int32_t>(m.scale_id));
 			item[EV("ioPosition")] = EV(static_cast<int32_t>(m.io_position));
 			item[EV("description")] = EV(m.description);
+			item[EV("appType")] = EV(m.app_type);
+			item[EV("enabled")] = EV(m.enabled);
 			list.push_back(EV(item));
 		}
 		result->Success(EV(list));
@@ -3194,15 +3227,89 @@ namespace
 		int scale_id = GetInt(args, "scaleId", 0);
 		std::string description = GetString(args, "description");
 
+		int app_type = GetInt(args, "appType", 0);
+		bool enabled = true;
+		auto it = args.find(EV("enabled"));
+		if (it != args.end() && std::holds_alternative<bool>(it->second))
+			enabled = std::get<bool>(it->second);
+
 		std::string err;
 		bool ok = SystemInitializer::Instance().AddSubsystemToConfig(
 			static_cast<uint32_t>(subsystem_id),
 			static_cast<uint16_t>(io_position),
 			static_cast<uint32_t>(scale_id),
 			description,
-			&err);
+			&err,
+			app_type,
+			enabled);
 
 		result->Success(EV(BuildMapResult(ok, err)));
+	}
+
+	void WeighingSystemPlugin::HandleSetSubsystemAppType(
+		const flutter::EncodableMap &args,
+		std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		int subsystem_id = GetInt(args, "subsystemId");
+		int app_type = GetInt(args, "appType", 0);
+
+		std::string err;
+		bool ok = SystemInitializer::Instance().SetSubsystemAppType(
+			static_cast<uint32_t>(subsystem_id), app_type, &err);
+
+		result->Success(EV(BuildMapResult(ok, err)));
+	}
+
+	void WeighingSystemPlugin::HandleSetSubsystemEnabled(
+		const flutter::EncodableMap &args,
+		std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		int subsystem_id = GetInt(args, "subsystemId");
+		bool enabled = true;
+		auto it = args.find(EV("enabled"));
+		if (it != args.end() && std::holds_alternative<bool>(it->second))
+			enabled = std::get<bool>(it->second);
+
+		std::string err;
+		bool ok = SystemInitializer::Instance().SetSubsystemEnabled(
+			static_cast<uint32_t>(subsystem_id), enabled, &err);
+
+		result->Success(EV(BuildMapResult(ok, err)));
+	}
+
+	void WeighingSystemPlugin::HandleGetDigitalInputMap(
+		const flutter::EncodableMap &args,
+		std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		// Stub — digital input map is not yet persisted to C++ config.
+		// Return an empty list so Dart can render an empty binding list.
+		// subsystemId is accepted for future use but not yet needed.
+		(void)args;
+		flutter::EncodableMap response;
+		response[EV("success")] = EV(true);
+		response[EV("bindings")] = EV(flutter::EncodableList{});
+		result->Success(EV(response));
+	}
+
+	void WeighingSystemPlugin::HandleUpdateDigitalInputMap(
+		const flutter::EncodableMap &args,
+		std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		// Stub — accept and acknowledge; persistence not yet implemented.
+		(void)args;
+		result->Success(EV(BuildMapResult(true, "")));
+	}
+
+	void WeighingSystemPlugin::HandleValidateDigitalInputMap(
+		const flutter::EncodableMap &args,
+		std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		// Stub — always valid for now.
+		(void)args;
+		flutter::EncodableMap response;
+		response[EV("success")] = EV(true);
+		response[EV("valid")] = EV(true);
+		result->Success(EV(response));
 	}
 
 	void WeighingSystemPlugin::HandleRemoveSubsystemMapping(
@@ -3383,6 +3490,7 @@ namespace
 		out[EV("has_output_slaves")] = EV(si.GetHasOutputSlaves());
 		out[EV("has_input_source")] = EV(si.GetHasInputSourceConfig());
 		out[EV("has_digital_output_map")] = EV(si.GetHasDioMapCfg());
+		out[EV("subsystem_count")] = EV(si.GetSubsystemCount());
 		result->Success(EV(out));
 	}
 

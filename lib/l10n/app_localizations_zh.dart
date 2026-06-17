@@ -1155,4 +1155,71 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get dismiss => '关闭';
+
+  @override
+  String get subsystemConfigTitle => '子系统配置';
+
+  @override
+  String get subsystemName => '子系统名称';
+
+  @override
+  String get appType => '应用类型';
+
+  @override
+  String get noSubsystemsSetupTitle => '请配置子系统';
+
+  @override
+  String get noSubsystemsSetupHint => '未检测到已配置的子系统，请前往子系统配置页面添加并启用至少一个子系统。';
+
+  @override
+  String get configureSubsystems => '配置子系统';
+
+  @override
+  String get expandDetail => '展开详情';
+
+  @override
+  String ethercatConflictError(String names) {
+    return '启用失败：子系统 $names 已占用相同的 EtherCAT 仪表，请先修改配置。';
+  }
+
+  @override
+  String get materialRecipeTitle => '配方设置';
+
+  @override
+  String get materialRecipeSubtitle => '管理此子系统的物料配方';
+
+  @override
+  String get digitalInputMapping => '离散输入配置';
+
+  @override
+  String get diInputRouting => 'DI位路由 / 按键映射';
+
+  @override
+  String get subsystemEnabledHint => '子系统已启用，将参与系统运行';
+
+  @override
+  String get subsystemDisabledHint => '子系统已禁用，不参与系统运行';
+
+  @override
+  String get diBinding => '输入绑定';
+
+  @override
+  String get diStart => '启动信号';
+
+  @override
+  String get diStop => '停止信号';
+
+  @override
+  String get diReset => '复位信号';
+
+  @override
+  String get diRefillRequest => '补料请求';
+
+  @override
+  String get diEmergencyStop => '紧急停止';
+
+  @override
+  String diCustomKey(int n) {
+    return '自定义按键 $n';
+  }
 }
