@@ -13,8 +13,8 @@
 namespace weighing
 {
 
-	// 回调使用 DioInputSignals（只含输入）
-	using DioInputCallback = std::function<void(uint32_t io_pos, const DioInputSignals &signals)>;
+	// 回调传递原始16位输入字，由调用方负责应用自定义映射
+	using DioInputCallback = DioInputRawCallback;
 
 	class OutputManager
 	{

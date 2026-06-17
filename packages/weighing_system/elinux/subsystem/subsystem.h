@@ -20,6 +20,7 @@ namespace weighing
 		AppType app_type = AppType::kLossInWeight;
 		std::vector<uint32_t> scale_ids;
 		std::vector<uint32_t> ethercat_slave_ids;
+		DioInputMapping dio_input_mapping; // 离散输入自定义映射
 	};
 
 	class Subsystem
@@ -46,7 +47,12 @@ namespace weighing
 		void HandleDioInputs(const DioInputSignals &signals);
 		DioOutputSignals GetDioOutputs() const;
 
+		// 根据子系统的离散输入映射，将原始硬件输入字转换为逻辑信号
+		DioInputSignals ApplyDioMapping(uint16_t raw_inputs) const;
+
 		SubsystemConfig GetConfig() const { return config_; }
+		void UpdateDioInputMapping(const DioInputMapping &mapping) { config_.dio_input_mapping = mapping; }
+		void UpdateName(const std::string &name) { config_.name = name; }
 
 	private:
 		SubsystemConfig config_;

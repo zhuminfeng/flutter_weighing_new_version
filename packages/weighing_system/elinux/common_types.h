@@ -384,6 +384,19 @@ namespace weighing
 		bool jog_trigger = false;
 	};
 
+	// 离散输入自定义映射：每个逻辑功能对应的硬件位索引（0-15），-1 表示未映射
+	struct DioInputMapping
+	{
+		int start = 0;
+		int stop = 1;
+		int execute_refill = 2;
+		int trigger_emptying = 3;
+		int interlock = 4;
+		int tare = 5;
+		int zero = 6;
+		int jog_trigger = 7;
+	};
+
 	// DIO 输出信号（写入 EtherCAT IO 模块）
 	// 注意：阀门类输出由 DigitalIOController::ApplyDioOutputs() 独立控制
 	//       以下仅为状态指示类输出
@@ -437,6 +450,8 @@ namespace weighing
 	using WeightCallback = std::function<void(const WeightData &)>;
 	using StatusCallback = std::function<void(uint32_t scale_id, ScaleState state, const std::string &msg)>;
 	using CalibrationCallback = std::function<void(uint32_t scale_id, CalibrationState state, const std::string &msg)>;
+	// io_pos: EtherCAT IO从站位置; raw_inputs: 原始16位输入字
+	using DioInputRawCallback = std::function<void(uint32_t io_pos, uint16_t raw_inputs)>;
 
 } // namespace weighing
 

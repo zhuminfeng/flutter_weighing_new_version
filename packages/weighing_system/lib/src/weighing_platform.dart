@@ -7,6 +7,7 @@ import 'models/filter_stability_config.dart';
 import 'models/liw_config.dart';
 import 'models/filling_config.dart';
 import 'models/system_status.dart';
+import 'models/subsystem_config.dart';
 
 abstract class WeighingPlatform extends PlatformInterface {
   WeighingPlatform() : super(token: _token);
@@ -125,6 +126,12 @@ abstract class WeighingPlatform extends PlatformInterface {
   // App control
   Future<bool> startApp(int subsystemId);
   Future<bool> stopApp(int subsystemId);
-    Future<bool> setManualControlRate(int subsystemId, double ratePct);
+  Future<bool> setManualControlRate(int subsystemId, double ratePct);
   Future<AppStatusData> getAppStatus(int subsystemId);
+
+  // Subsystem config
+  Future<String> getSubsystemName(int subsystemId);
+  Future<bool> updateSubsystemName(int subsystemId, String name);
+  Future<DioInputConfig> getDioInputConfig(int subsystemId);
+  Future<bool> updateDioInputConfig(int subsystemId, DioInputConfig config);
 }

@@ -9,6 +9,7 @@ import 'models/filter_stability_config.dart';
 import 'models/liw_config.dart';
 import 'models/filling_config.dart';
 import 'models/system_status.dart';
+import 'models/subsystem_config.dart';
 
 class ELinuxWeighingSystem extends WeighingPlatform {
   static const MethodChannel _channel =
@@ -434,5 +435,38 @@ class ELinuxWeighingSystem extends WeighingPlatform {
     final result = await _channel
         .invokeMethod<Map>('getAppStatus', {'subsystemId': subsystemId});
     return AppStatusData.fromMap(Map<String, dynamic>.from(result!));
+  }
+
+  // ============ Subsystem Config ============
+
+  @override
+  Future<String> getSubsystemName(int subsystemId) async {
+    final result = await _channel
+        .invokeMethod<Map>('getSubsystemName', {'subsystemId': subsystemId});
+    return (result?['name'] as String?) ?? '';
+  }
+
+  @override
+  Future<bool> updateSubsystemName(int subsystemId, String name) async {
+    final result = await _channel.invokeMethod<bool>(
+        'updateSubsystemName', {'subsystemId': subsystemId, 'name': name});
+    return result ?? false;
+  }
+
+  @override
+  Future<DioInputConfig> getDioInputConfig(int subsystemId) async {
+    final result = await _channel
+        .invokeMethod<Map>('getDioInputConfig', {'subsystemId': subsystemId});
+    return DioInputConfig.fromMap(Map<String, dynamic>.from(result!));
+  }
+
+  @override
+  Future<bool> updateDioInputConfig(
+      int subsystemId, DioInputConfig config) async {
+    final args = <String, dynamic>{'subsystemId': subsystemId};
+    args.addAll(config.toMap());
+    final result =
+        await _channel.invokeMethod<bool>('updateDioInputConfig', args);
+    return result ?? false;
   }
 }

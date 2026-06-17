@@ -274,6 +274,16 @@ namespace
 		void HandleGetAppStatus(const flutter::EncodableMap &args,
 								std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 
+		// === Subsystem config ===
+		void HandleGetSubsystemName(const flutter::EncodableMap &args,
+									std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+		void HandleUpdateSubsystemName(const flutter::EncodableMap &args,
+									   std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+		void HandleGetDioInputConfig(const flutter::EncodableMap &args,
+									 std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+		void HandleUpdateDioInputConfig(const flutter::EncodableMap &args,
+										std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+
 		// flutter::PluginRegistrar *registrar_;
 		std::unique_ptr<InputSource> input_source_;
 		std::unique_ptr<flutter::EventSink<flutter::EncodableValue>> weight_event_sink_;
@@ -680,6 +690,23 @@ namespace
 		else if (method == "getAppStatus")
 		{
 			HandleGetAppStatus(args, std::move(result));
+		}
+		// === Subsystem config ===
+		else if (method == "getSubsystemName")
+		{
+			HandleGetSubsystemName(args, std::move(result));
+		}
+		else if (method == "updateSubsystemName")
+		{
+			HandleUpdateSubsystemName(args, std::move(result));
+		}
+		else if (method == "getDioInputConfig")
+		{
+			HandleGetDioInputConfig(args, std::move(result));
+		}
+		else if (method == "updateDioInputConfig")
+		{
+			HandleUpdateDioInputConfig(args, std::move(result));
 		}
 		else
 		{
@@ -2223,6 +2250,89 @@ namespace
 		map[flutter::EncodableValue("warningActive")] = flutter::EncodableValue(status.warning_active);
 		map[flutter::EncodableValue("warningMessage")] = flutter::EncodableValue(status.warning_message);
 		result->Success(flutter::EncodableValue(map));
+	}
+
+	// === Subsystem config handlers ===
+
+	void WeighingSystemPlugin::HandleGetSubsystemName(const flutter::EncodableMap &args,
+													  std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		int sub_id = GetInt(args, "subsystemId");
+		auto *sub = SubsystemManager::Instance().GetSubsystem(sub_id);
+		if (!sub)
+		{
+			result->Error("NOT_FOUND", "Subsystem not found");
+			return;
+		}
+		flutter::EncodableMap map;
+		map[flutter::EncodableValue("name")] = flutter::EncodableValue(sub->GetConfig().name);
+		result->Success(flutter::EncodableValue(map));
+	}
+
+	void WeighingSystemPlugin::HandleUpdateSubsystemName(const flutter::EncodableMap &args,
+														 std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		int sub_id = GetInt(args, "subsystemId");
+		std::string name = GetString(args, "name");
+		auto *sub = SubsystemManager::Instance().GetSubsystem(sub_id);
+		if (!sub)
+		{
+			result->Error("NOT_FOUND", "Subsystem not found");
+			return;
+		}
+		sub->UpdateName(name);
+		// 持久化到数据库
+		SubsystemConfig cfg = sub->GetConfig();
+		ConfigStore::Instance().SaveSubsystemConfig(cfg);
+		result->Success(flutter::EncodableValue(true));
+	}
+
+	void WeighingSystemPlugin::HandleGetDioInputConfig(const flutter::EncodableMap &args,
+													   std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		int sub_id = GetInt(args, "subsystemId");
+		auto *sub = SubsystemManager::Instance().GetSubsystem(sub_id);
+		if (!sub)
+		{
+			result->Error("NOT_FOUND", "Subsystem not found");
+			return;
+		}
+		const auto &m = sub->GetConfig().dio_input_mapping;
+		flutter::EncodableMap map;
+		map[flutter::EncodableValue("start")]           = flutter::EncodableValue(m.start);
+		map[flutter::EncodableValue("stop")]            = flutter::EncodableValue(m.stop);
+		map[flutter::EncodableValue("executeRefill")]   = flutter::EncodableValue(m.execute_refill);
+		map[flutter::EncodableValue("triggerEmptying")] = flutter::EncodableValue(m.trigger_emptying);
+		map[flutter::EncodableValue("interlock")]       = flutter::EncodableValue(m.interlock);
+		map[flutter::EncodableValue("tare")]            = flutter::EncodableValue(m.tare);
+		map[flutter::EncodableValue("zero")]            = flutter::EncodableValue(m.zero);
+		map[flutter::EncodableValue("jogTrigger")]      = flutter::EncodableValue(m.jog_trigger);
+		result->Success(flutter::EncodableValue(map));
+	}
+
+	void WeighingSystemPlugin::HandleUpdateDioInputConfig(const flutter::EncodableMap &args,
+														  std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		int sub_id = GetInt(args, "subsystemId");
+		auto *sub = SubsystemManager::Instance().GetSubsystem(sub_id);
+		if (!sub)
+		{
+			result->Error("NOT_FOUND", "Subsystem not found");
+			return;
+		}
+		DioInputMapping mapping;
+		mapping.start            = GetInt(args, "start", 0);
+		mapping.stop             = GetInt(args, "stop", 1);
+		mapping.execute_refill   = GetInt(args, "executeRefill", 2);
+		mapping.trigger_emptying = GetInt(args, "triggerEmptying", 3);
+		mapping.interlock        = GetInt(args, "interlock", 4);
+		mapping.tare             = GetInt(args, "tare", 5);
+		mapping.zero             = GetInt(args, "zero", 6);
+		mapping.jog_trigger      = GetInt(args, "jogTrigger", 7);
+
+		sub->UpdateDioInputMapping(mapping);
+		ConfigStore::Instance().SaveSubsystemDioMapping(static_cast<uint32_t>(sub_id), mapping);
+		result->Success(flutter::EncodableValue(true));
 	}
 
 	// Weight event stream management

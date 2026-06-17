@@ -459,8 +459,17 @@ namespace weighing
 			cfg.name = m.description;
 			cfg.scale_ids.push_back(m.scale_id);
 
-			// 从数据库加载应用类型（如果没有记录则返回默认值 kLossInWeight）
-			cfg.app_type = ConfigStore::Instance().LoadAppType(m.sub_id);
+			// 从数据库加载完整子系统配置（含应用类型和离散输入映射）
+			SubsystemConfig saved_cfg;
+			if (ConfigStore::Instance().LoadSubsystemConfig(m.sub_id, saved_cfg))
+			{
+				cfg.app_type = saved_cfg.app_type;
+				cfg.dio_input_mapping = saved_cfg.dio_input_mapping;
+			}
+			else
+			{
+				cfg.app_type = AppType::kLossInWeight;
+			}
 
 			auto *sub = SubsystemManager::Instance().CreateSubsystem(cfg);
 			if (!sub)
@@ -495,6 +504,13 @@ namespace weighing
 			cfg.name = "Default";
 			cfg.app_type = AppType::kLossInWeight;
 			cfg.scale_ids.push_back(0);
+			// 尝试从数据库加载已保存的配置（含DIO映射）
+			SubsystemConfig saved_cfg;
+			if (ConfigStore::Instance().LoadSubsystemConfig(0, saved_cfg))
+			{
+				cfg.app_type = saved_cfg.app_type;
+				cfg.dio_input_mapping = saved_cfg.dio_input_mapping;
+			}
 			auto *sub = SubsystemManager::Instance().CreateSubsystem(cfg);
 			if (sub)
 				sub->Initialize();
@@ -503,10 +519,12 @@ namespace weighing
 
 		// 注册 DIO 输入回调（始终注册，因为输出始终是 EtherCAT）
 		OutputManager::Instance().SetDioInputCallback(
-			[](uint32_t io_pos, const DioInputSignals &signals)
+			[](uint32_t io_pos, uint16_t raw_inputs)
 			{
 				for (auto &[id, sub] : SubsystemManager::Instance().GetAllSubsystems())
 				{
+					// 应用子系统的离散输入自定义映射，将原始硬件字转换为逻辑信号
+					DioInputSignals signals = sub->ApplyDioMapping(raw_inputs);
 					sub->HandleDioInputs(signals);
 				}
 			});

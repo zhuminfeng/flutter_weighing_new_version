@@ -41,6 +41,10 @@ namespace weighing
 		bool LoadSubsystemConfig(uint32_t subsystem_id, SubsystemConfig &config);
 		std::vector<SubsystemConfig> LoadAllSubsystemConfigs();
 
+		// Subsystem DIO input mapping
+		bool SaveSubsystemDioMapping(uint32_t subsystem_id, const DioInputMapping &mapping);
+		bool LoadSubsystemDioMapping(uint32_t subsystem_id, DioInputMapping &mapping);
+
 	private:
 		ConfigStore() = default;
 	};

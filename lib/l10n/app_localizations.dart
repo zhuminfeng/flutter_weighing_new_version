@@ -114,6 +114,7 @@ class AppLocalizations {
       'enabled': 'Enabled',
       'auto': 'Automatic',
       'manual': 'Manual',
+      'recipeName': 'Recipe Name',
     },
     'zh': {
       'appTitle': '多功能称重系统',
@@ -216,6 +217,7 @@ class AppLocalizations {
       'enabled': '允许',
       'auto': '自动',
       'manual': '手动',
+      'recipeName': '配方名称',
     },
   };
 

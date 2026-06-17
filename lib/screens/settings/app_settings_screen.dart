@@ -67,6 +67,11 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   double _liwSamplePeriod = 60;
   double _liwSampleTolerance = 10;
   int _appType = 0; // 0=liw, 1=filling
+  // Subsystem / recipe identity
+  String _recipeName = '';
+  DioInputConfig _dioConfig = const DioInputConfig();
+  late final TextEditingController _recipeNameCtrl =
+      TextEditingController(text: _recipeName);
   int _liwMode = 0;
   int _liwSubMode = 0;
   int _fillingWorkMode = 0;
@@ -138,10 +143,18 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
     _load();
   }
 
+  @override
+  void dispose() {
+    _recipeNameCtrl.dispose();
+    super.dispose();
+  }
+
   Future<void> _load() async {
     final state = AppStateProvider.of(context);
     final subId = state.activeSubsystemId;
     _appType = state.selectedAppType;
+
+    await _loadSubsystemConfig(subId);
 
     try {
       if (_appType == 0) {
@@ -319,6 +332,20 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
     } catch (_) {}
 
     setState(() => _loading = false);
+  }
+
+  // ---- load recipe name and DIO config ----
+  Future<void> _loadSubsystemConfig(int subId) async {
+    try {
+      final name =
+          await WeighingPlatform.instance.getSubsystemName(subId);
+      _recipeNameCtrl.text = name;
+      _recipeName = name;
+    } catch (_) {}
+    try {
+      _dioConfig =
+          await WeighingPlatform.instance.getDioInputConfig(subId);
+    } catch (_) {}
   }
 
   Future<void> _save() async {
@@ -536,6 +563,12 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
 
     state.selectAppType(_appType);
 
+    // 保存配方名称和离散输入配置
+    await WeighingPlatform.instance
+        .updateSubsystemName(subId, _recipeNameCtrl.text);
+    await WeighingPlatform.instance
+        .updateDioInputConfig(subId, _dioConfig);
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(AppLocalizations.of(context).tr('save'))),
@@ -568,6 +601,19 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // 0. 配方名称
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16.0),
+            child: TextFormField(
+              controller: _recipeNameCtrl,
+              decoration: InputDecoration(
+                labelText: l.tr('recipeName'),
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.label_outline),
+              ),
+            ),
+          ),
+
           // 1. App type selection: 改用分段按钮直接点击切换
           Padding(
             padding: const EdgeInsets.only(bottom: 24.0),
@@ -1596,7 +1642,124 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             ),
           ],
         ],
+
+          // DIO 离散输入自定义映射（所有应用类型共用）
+          _buildDioInputConfigCard(context),
+        ],
       ),
+    );
+  }
+
+  Widget _buildDioInputConfigCard(BuildContext context) {
+    // 16个硬件位可供选择，-1 = 未映射
+    const bitOptions = [-1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+    String bitLabel(int bit) => bit < 0 ? 'None' : 'Bit $bit';
+
+    DropdownButtonFormField<int> bitDropdown(
+        String label, int value, ValueChanged<int?> onChanged) {
+      return DropdownButtonFormField<int>(
+        value: value,
+        decoration: InputDecoration(labelText: label),
+        items: bitOptions
+            .map((b) => DropdownMenuItem(value: b, child: Text(bitLabel(b))))
+            .toList(),
+        onChanged: onChanged,
+      );
+    }
+
+    return _buildExpandableCard(
+      context: context,
+      title: 'Discrete Input Mapping',
+      children: [
+        bitDropdown('Start', _dioConfig.start,
+            (v) => setState(() => _dioConfig = DioInputConfig(
+                  start: v ?? _dioConfig.start,
+                  stop: _dioConfig.stop,
+                  executeRefill: _dioConfig.executeRefill,
+                  triggerEmptying: _dioConfig.triggerEmptying,
+                  interlock: _dioConfig.interlock,
+                  tare: _dioConfig.tare,
+                  zero: _dioConfig.zero,
+                  jogTrigger: _dioConfig.jogTrigger,
+                ))),
+        bitDropdown('Stop', _dioConfig.stop,
+            (v) => setState(() => _dioConfig = DioInputConfig(
+                  start: _dioConfig.start,
+                  stop: v ?? _dioConfig.stop,
+                  executeRefill: _dioConfig.executeRefill,
+                  triggerEmptying: _dioConfig.triggerEmptying,
+                  interlock: _dioConfig.interlock,
+                  tare: _dioConfig.tare,
+                  zero: _dioConfig.zero,
+                  jogTrigger: _dioConfig.jogTrigger,
+                ))),
+        bitDropdown('Execute Refill', _dioConfig.executeRefill,
+            (v) => setState(() => _dioConfig = DioInputConfig(
+                  start: _dioConfig.start,
+                  stop: _dioConfig.stop,
+                  executeRefill: v ?? _dioConfig.executeRefill,
+                  triggerEmptying: _dioConfig.triggerEmptying,
+                  interlock: _dioConfig.interlock,
+                  tare: _dioConfig.tare,
+                  zero: _dioConfig.zero,
+                  jogTrigger: _dioConfig.jogTrigger,
+                ))),
+        bitDropdown('Trigger Emptying', _dioConfig.triggerEmptying,
+            (v) => setState(() => _dioConfig = DioInputConfig(
+                  start: _dioConfig.start,
+                  stop: _dioConfig.stop,
+                  executeRefill: _dioConfig.executeRefill,
+                  triggerEmptying: v ?? _dioConfig.triggerEmptying,
+                  interlock: _dioConfig.interlock,
+                  tare: _dioConfig.tare,
+                  zero: _dioConfig.zero,
+                  jogTrigger: _dioConfig.jogTrigger,
+                ))),
+        bitDropdown('Interlock', _dioConfig.interlock,
+            (v) => setState(() => _dioConfig = DioInputConfig(
+                  start: _dioConfig.start,
+                  stop: _dioConfig.stop,
+                  executeRefill: _dioConfig.executeRefill,
+                  triggerEmptying: _dioConfig.triggerEmptying,
+                  interlock: v ?? _dioConfig.interlock,
+                  tare: _dioConfig.tare,
+                  zero: _dioConfig.zero,
+                  jogTrigger: _dioConfig.jogTrigger,
+                ))),
+        bitDropdown('Tare', _dioConfig.tare,
+            (v) => setState(() => _dioConfig = DioInputConfig(
+                  start: _dioConfig.start,
+                  stop: _dioConfig.stop,
+                  executeRefill: _dioConfig.executeRefill,
+                  triggerEmptying: _dioConfig.triggerEmptying,
+                  interlock: _dioConfig.interlock,
+                  tare: v ?? _dioConfig.tare,
+                  zero: _dioConfig.zero,
+                  jogTrigger: _dioConfig.jogTrigger,
+                ))),
+        bitDropdown('Zero', _dioConfig.zero,
+            (v) => setState(() => _dioConfig = DioInputConfig(
+                  start: _dioConfig.start,
+                  stop: _dioConfig.stop,
+                  executeRefill: _dioConfig.executeRefill,
+                  triggerEmptying: _dioConfig.triggerEmptying,
+                  interlock: _dioConfig.interlock,
+                  tare: _dioConfig.tare,
+                  zero: v ?? _dioConfig.zero,
+                  jogTrigger: _dioConfig.jogTrigger,
+                ))),
+        bitDropdown('Jog Trigger', _dioConfig.jogTrigger,
+            (v) => setState(() => _dioConfig = DioInputConfig(
+                  start: _dioConfig.start,
+                  stop: _dioConfig.stop,
+                  executeRefill: _dioConfig.executeRefill,
+                  triggerEmptying: _dioConfig.triggerEmptying,
+                  interlock: _dioConfig.interlock,
+                  tare: _dioConfig.tare,
+                  zero: _dioConfig.zero,
+                  jogTrigger: v ?? _dioConfig.jogTrigger,
+                ))),
+      ],
     );
   }
 

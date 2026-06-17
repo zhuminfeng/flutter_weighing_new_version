@@ -431,11 +431,16 @@ namespace weighing
 			slave_ids_str << config.ethercat_slave_ids[i];
 		}
 
+		const auto &m = config.dio_input_mapping;
 		std::ostringstream sql;
-		sql << "INSERT OR REPLACE INTO subsystem_config (subsystem_id, name, app_type, scale_ids, slave_ids) VALUES ("
+		sql << "INSERT OR REPLACE INTO subsystem_config (subsystem_id, name, app_type, scale_ids, slave_ids,"
+			<< "dio_start_bit, dio_stop_bit, dio_execute_refill_bit, dio_trigger_emptying_bit,"
+			<< "dio_interlock_bit, dio_tare_bit, dio_zero_bit, dio_jog_trigger_bit) VALUES ("
 			<< config.id << ",'" << config.name << "',"
 			<< static_cast<int>(config.app_type) << ",'"
-			<< scale_ids_str.str() << "','" << slave_ids_str.str() << "')";
+			<< scale_ids_str.str() << "','" << slave_ids_str.str() << "',"
+			<< m.start << "," << m.stop << "," << m.execute_refill << "," << m.trigger_emptying << ","
+			<< m.interlock << "," << m.tare << "," << m.zero << "," << m.jog_trigger << ")";
 
 		return db.Execute(sql.str());
 	}
@@ -474,7 +479,21 @@ namespace weighing
             while (std::getline(ss, token, ',')) {
                 if (!token.empty()) config.ethercat_slave_ids.push_back(std::stoul(token));
             }
-        } });
+        }
+
+        // Load DIO input mapping
+        auto getI = [&](const std::string& key, int def) -> int {
+            auto i2 = row.find(key);
+            return (i2 != row.end() && !i2->second.empty()) ? std::stoi(i2->second) : def;
+        };
+        config.dio_input_mapping.start            = getI("dio_start_bit", 0);
+        config.dio_input_mapping.stop             = getI("dio_stop_bit", 1);
+        config.dio_input_mapping.execute_refill   = getI("dio_execute_refill_bit", 2);
+        config.dio_input_mapping.trigger_emptying = getI("dio_trigger_emptying_bit", 3);
+        config.dio_input_mapping.interlock        = getI("dio_interlock_bit", 4);
+        config.dio_input_mapping.tare             = getI("dio_tare_bit", 5);
+        config.dio_input_mapping.zero             = getI("dio_zero_bit", 6);
+        config.dio_input_mapping.jog_trigger      = getI("dio_jog_trigger_bit", 7); });
 
 		return found;
 	}
@@ -487,6 +506,11 @@ namespace weighing
 		db.Query("SELECT * FROM subsystem_config", [&](const std::map<std::string, std::string> &row)
 				 {
         SubsystemConfig cfg;
+        auto getI = [&](const std::string& key, int def) -> int {
+            auto i2 = row.find(key);
+            return (i2 != row.end() && !i2->second.empty()) ? std::stoi(i2->second) : def;
+        };
+
         auto it = row.find("subsystem_id");
         if (it != row.end()) cfg.id = std::stoul(it->second);
 
@@ -513,6 +537,15 @@ namespace weighing
                 if (!token.empty()) cfg.ethercat_slave_ids.push_back(std::stoul(token));
             }
         }
+
+        cfg.dio_input_mapping.start            = getI("dio_start_bit", 0);
+        cfg.dio_input_mapping.stop             = getI("dio_stop_bit", 1);
+        cfg.dio_input_mapping.execute_refill   = getI("dio_execute_refill_bit", 2);
+        cfg.dio_input_mapping.trigger_emptying = getI("dio_trigger_emptying_bit", 3);
+        cfg.dio_input_mapping.interlock        = getI("dio_interlock_bit", 4);
+        cfg.dio_input_mapping.tare             = getI("dio_tare_bit", 5);
+        cfg.dio_input_mapping.zero             = getI("dio_zero_bit", 6);
+        cfg.dio_input_mapping.jog_trigger      = getI("dio_jog_trigger_bit", 7);
 
         configs.push_back(cfg); });
 
@@ -560,6 +593,54 @@ namespace weighing
 					 } });
 
 		return type;
+	}
+
+	// ============================================================================
+	// 保存/加载子系统离散输入映射
+	// ============================================================================
+	bool ConfigStore::SaveSubsystemDioMapping(uint32_t subsystem_id, const DioInputMapping &m)
+	{
+		auto &db = DatabaseManager::Instance();
+		std::ostringstream sql;
+		sql << "UPDATE subsystem_config SET "
+			<< "dio_start_bit=" << m.start << ","
+			<< "dio_stop_bit=" << m.stop << ","
+			<< "dio_execute_refill_bit=" << m.execute_refill << ","
+			<< "dio_trigger_emptying_bit=" << m.trigger_emptying << ","
+			<< "dio_interlock_bit=" << m.interlock << ","
+			<< "dio_tare_bit=" << m.tare << ","
+			<< "dio_zero_bit=" << m.zero << ","
+			<< "dio_jog_trigger_bit=" << m.jog_trigger
+			<< " WHERE subsystem_id=" << subsystem_id;
+		return db.Execute(sql.str());
+	}
+
+	bool ConfigStore::LoadSubsystemDioMapping(uint32_t subsystem_id, DioInputMapping &mapping)
+	{
+		auto &db = DatabaseManager::Instance();
+		std::string sql = "SELECT dio_start_bit,dio_stop_bit,dio_execute_refill_bit,"
+						  "dio_trigger_emptying_bit,dio_interlock_bit,dio_tare_bit,"
+						  "dio_zero_bit,dio_jog_trigger_bit FROM subsystem_config WHERE subsystem_id=" +
+						  std::to_string(subsystem_id);
+		bool found = false;
+
+		db.Query(sql, [&](const std::map<std::string, std::string> &row)
+				 {
+        found = true;
+        auto getI = [&](const std::string& key, int def) -> int {
+            auto it = row.find(key);
+            return (it != row.end() && !it->second.empty()) ? std::stoi(it->second) : def;
+        };
+        mapping.start            = getI("dio_start_bit", 0);
+        mapping.stop             = getI("dio_stop_bit", 1);
+        mapping.execute_refill   = getI("dio_execute_refill_bit", 2);
+        mapping.trigger_emptying = getI("dio_trigger_emptying_bit", 3);
+        mapping.interlock        = getI("dio_interlock_bit", 4);
+        mapping.tare             = getI("dio_tare_bit", 5);
+        mapping.zero             = getI("dio_zero_bit", 6);
+        mapping.jog_trigger      = getI("dio_jog_trigger_bit", 7); });
+
+		return found;
 	}
 
 } // namespace weighing

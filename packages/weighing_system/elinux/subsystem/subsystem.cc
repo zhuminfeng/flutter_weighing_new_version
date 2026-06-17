@@ -114,4 +114,25 @@ namespace weighing
 		return DioOutputSignals{};
 	}
 
+	DioInputSignals Subsystem::ApplyDioMapping(uint16_t raw_inputs) const
+	{
+		DioInputSignals sig;
+		const auto &m = config_.dio_input_mapping;
+		auto bit = [&](int idx) -> bool
+		{
+			if (idx < 0 || idx > 15)
+				return false;
+			return (raw_inputs & (1u << static_cast<unsigned>(idx))) != 0;
+		};
+		sig.start = bit(m.start);
+		sig.stop = bit(m.stop);
+		sig.execute_refill = bit(m.execute_refill);
+		sig.trigger_emptying = bit(m.trigger_emptying);
+		sig.interlock = bit(m.interlock);
+		sig.tare = bit(m.tare);
+		sig.zero = bit(m.zero);
+		sig.jog_trigger = bit(m.jog_trigger);
+		return sig;
+	}
+
 } // namespace weighing

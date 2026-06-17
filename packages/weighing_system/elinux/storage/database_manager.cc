@@ -194,7 +194,15 @@ namespace weighing
             name TEXT DEFAULT '',
             app_type INTEGER DEFAULT 0,
             scale_ids TEXT DEFAULT '',
-            slave_ids TEXT DEFAULT ''
+            slave_ids TEXT DEFAULT '',
+            dio_start_bit INTEGER DEFAULT 0,
+            dio_stop_bit INTEGER DEFAULT 1,
+            dio_execute_refill_bit INTEGER DEFAULT 2,
+            dio_trigger_emptying_bit INTEGER DEFAULT 3,
+            dio_interlock_bit INTEGER DEFAULT 4,
+            dio_tare_bit INTEGER DEFAULT 5,
+            dio_zero_bit INTEGER DEFAULT 6,
+            dio_jog_trigger_bit INTEGER DEFAULT 7
         );
 
         CREATE TABLE IF NOT EXISTS liw_config (
@@ -306,7 +314,28 @@ namespace weighing
         );
     )SQL";
 
-		return Execute(schema);
+		if (!Execute(schema))
+			return false;
+
+		// --- Schema migration: add DIO mapping columns if they don't exist yet ---
+		// ALTER TABLE fails silently if column already exists (we ignore the error)
+		const char *dio_migrations[] = {
+			"ALTER TABLE subsystem_config ADD COLUMN dio_start_bit INTEGER DEFAULT 0",
+			"ALTER TABLE subsystem_config ADD COLUMN dio_stop_bit INTEGER DEFAULT 1",
+			"ALTER TABLE subsystem_config ADD COLUMN dio_execute_refill_bit INTEGER DEFAULT 2",
+			"ALTER TABLE subsystem_config ADD COLUMN dio_trigger_emptying_bit INTEGER DEFAULT 3",
+			"ALTER TABLE subsystem_config ADD COLUMN dio_interlock_bit INTEGER DEFAULT 4",
+			"ALTER TABLE subsystem_config ADD COLUMN dio_tare_bit INTEGER DEFAULT 5",
+			"ALTER TABLE subsystem_config ADD COLUMN dio_zero_bit INTEGER DEFAULT 6",
+			"ALTER TABLE subsystem_config ADD COLUMN dio_jog_trigger_bit INTEGER DEFAULT 7",
+		};
+		for (const auto *sql : dio_migrations)
+		{
+			// Ignore errors (e.g. "duplicate column name")
+			Execute(sql);
+		}
+
+		return true;
 	}
 
 } // namespace weighing

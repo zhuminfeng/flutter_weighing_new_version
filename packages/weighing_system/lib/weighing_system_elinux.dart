@@ -11,3 +11,4 @@ export 'src/models/weight_data.dart';
 export 'src/models/liw_config.dart';
 export 'src/models/filling_config.dart';
 export 'src/models/system_status.dart';
+export 'src/models/subsystem_config.dart';
