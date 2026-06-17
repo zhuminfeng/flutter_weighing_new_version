@@ -100,6 +100,11 @@ namespace weighing
 		subsystem_io_map_[sub_id] = io_pos;
 	}
 
+	void OutputManager::SetSubsystemOutputMapping(uint32_t sub_id, const DioOutputMapping &mapping)
+	{
+		subsystem_output_mapping_[sub_id] = mapping;
+	}
+
 	void OutputManager::SetControlRate(uint32_t sub_id, float rate)
 	{
 		auto it = subsystem_servo_map_.find(sub_id);
@@ -114,36 +119,88 @@ namespace weighing
 	void OutputManager::SetValveOutputs(uint32_t sub_id, uint16_t channel,
 										bool fast, bool slow, bool refill, bool emptying)
 	{
-		auto it = subsystem_io_map_.find(sub_id);
-		if (it != subsystem_io_map_.end())
+		auto io_it = subsystem_io_map_.find(sub_id);
+		if (io_it == subsystem_io_map_.end())
+			return;
+		auto dit = digital_ios_.find(io_it->second);
+		if (dit == digital_ios_.end())
+			return;
+
+		// Resolve bit positions from the output mapping (fall back to hardware defaults)
+		DioOutputMapping m;
+		auto map_it = subsystem_output_mapping_.find(sub_id);
+		if (map_it != subsystem_output_mapping_.end())
+			m = map_it->second;
+
+		int bit_fast, bit_slow, bit_refill, bit_empty;
+		if (channel == 0)
 		{
-			auto dit = digital_ios_.find(it->second);
-			if (dit != digital_ios_.end())
-			{
-				dit->second->ApplyDioOutputs(channel, fast, slow, refill, emptying);
-			}
+			bit_fast = m.feed_fast_0;
+			bit_slow = m.feed_slow_0;
+			bit_refill = m.refill_valve_0;
+			bit_empty = m.emptying_valve_0;
 		}
+		else
+		{
+			bit_fast = m.feed_fast_1;
+			bit_slow = m.feed_slow_1;
+			bit_refill = m.refill_valve_1;
+			bit_empty = m.emptying_valve_1;
+		}
+
+		dit->second->ApplyDioOutputs(bit_fast, bit_slow, bit_refill, bit_empty,
+									 fast, slow, refill, emptying);
 	}
 
-	void OutputManager::SetAlarm(uint32_t io_pos, bool active)
+	void OutputManager::SetAlarm(uint32_t sub_id, bool active)
 	{
-		auto it = digital_ios_.find(static_cast<uint16_t>(io_pos));
-		if (it != digital_ios_.end())
-			it->second->SetAlarm(active);
+		auto io_it = subsystem_io_map_.find(sub_id);
+		if (io_it == subsystem_io_map_.end())
+			return;
+		auto dit = digital_ios_.find(io_it->second);
+		if (dit == digital_ios_.end())
+			return;
+
+		int bit_pos = DioOutputMapping{}.alarm; // default = 8
+		auto map_it = subsystem_output_mapping_.find(sub_id);
+		if (map_it != subsystem_output_mapping_.end())
+			bit_pos = map_it->second.alarm;
+
+		dit->second->SetOutputBit(bit_pos, active);
 	}
 
-	void OutputManager::SetRunning(uint32_t io_pos, bool running)
+	void OutputManager::SetRunning(uint32_t sub_id, bool running)
 	{
-		auto it = digital_ios_.find(static_cast<uint16_t>(io_pos));
-		if (it != digital_ios_.end())
-			it->second->SetRunningIndicator(running);
+		auto io_it = subsystem_io_map_.find(sub_id);
+		if (io_it == subsystem_io_map_.end())
+			return;
+		auto dit = digital_ios_.find(io_it->second);
+		if (dit == digital_ios_.end())
+			return;
+
+		int bit_pos = DioOutputMapping{}.running; // default = 9
+		auto map_it = subsystem_output_mapping_.find(sub_id);
+		if (map_it != subsystem_output_mapping_.end())
+			bit_pos = map_it->second.running;
+
+		dit->second->SetOutputBit(bit_pos, running);
 	}
 
-	void OutputManager::SetWarning(uint32_t io_pos, bool warning)
+	void OutputManager::SetWarning(uint32_t sub_id, bool warning)
 	{
-		auto it = digital_ios_.find(static_cast<uint16_t>(io_pos));
-		if (it != digital_ios_.end())
-			it->second->SetWarningIndicator(warning);
+		auto io_it = subsystem_io_map_.find(sub_id);
+		if (io_it == subsystem_io_map_.end())
+			return;
+		auto dit = digital_ios_.find(io_it->second);
+		if (dit == digital_ios_.end())
+			return;
+
+		int bit_pos = DioOutputMapping{}.warning; // default = 11
+		auto map_it = subsystem_output_mapping_.find(sub_id);
+		if (map_it != subsystem_output_mapping_.end())
+			bit_pos = map_it->second.warning;
+
+		dit->second->SetOutputBit(bit_pos, warning);
 	}
 
 	ServoController *OutputManager::GetServo(uint16_t pos)

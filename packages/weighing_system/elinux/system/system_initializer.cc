@@ -307,6 +307,12 @@ namespace weighing
 			om.MapSubsystemIO(m.sub_id, m.io_position);
 		}
 
+		// 将已加载的离散输出映射推送到 OutputManager
+		for (const auto &[id, sub] : SubsystemManager::Instance().GetAllSubsystems())
+		{
+			om.SetSubsystemOutputMapping(id, sub->GetConfig().dio_output_mapping);
+		}
+
 		// 注册 output callback 到 EtherCATMaster
 		if (!om.Start())
 			return false;

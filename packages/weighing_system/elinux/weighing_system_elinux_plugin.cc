@@ -283,6 +283,10 @@ namespace
 									 std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 		void HandleUpdateDioInputConfig(const flutter::EncodableMap &args,
 										std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+		void HandleGetDioOutputConfig(const flutter::EncodableMap &args,
+									  std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+		void HandleUpdateDioOutputConfig(const flutter::EncodableMap &args,
+										 std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 
 		// flutter::PluginRegistrar *registrar_;
 		std::unique_ptr<InputSource> input_source_;
@@ -707,6 +711,14 @@ namespace
 		else if (method == "updateDioInputConfig")
 		{
 			HandleUpdateDioInputConfig(args, std::move(result));
+		}
+		else if (method == "getDioOutputConfig")
+		{
+			HandleGetDioOutputConfig(args, std::move(result));
+		}
+		else if (method == "updateDioOutputConfig")
+		{
+			HandleUpdateDioOutputConfig(args, std::move(result));
 		}
 		else
 		{
@@ -2332,6 +2344,61 @@ namespace
 
 		sub->UpdateDioInputMapping(mapping);
 		ConfigStore::Instance().SaveSubsystemDioMapping(static_cast<uint32_t>(sub_id), mapping);
+		result->Success(flutter::EncodableValue(true));
+	}
+
+	void WeighingSystemPlugin::HandleGetDioOutputConfig(const flutter::EncodableMap &args,
+														std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		int sub_id = GetInt(args, "subsystemId");
+		auto *sub = SubsystemManager::Instance().GetSubsystem(sub_id);
+		if (!sub)
+		{
+			result->Error("NOT_FOUND", "Subsystem not found");
+			return;
+		}
+		const auto &o = sub->GetConfig().dio_output_mapping;
+		flutter::EncodableMap map;
+		map[flutter::EncodableValue("alarm")]           = flutter::EncodableValue(o.alarm);
+		map[flutter::EncodableValue("running")]         = flutter::EncodableValue(o.running);
+		map[flutter::EncodableValue("warning")]         = flutter::EncodableValue(o.warning);
+		map[flutter::EncodableValue("feedFast0")]       = flutter::EncodableValue(o.feed_fast_0);
+		map[flutter::EncodableValue("feedSlow0")]       = flutter::EncodableValue(o.feed_slow_0);
+		map[flutter::EncodableValue("refillValve0")]    = flutter::EncodableValue(o.refill_valve_0);
+		map[flutter::EncodableValue("emptyingValve0")]  = flutter::EncodableValue(o.emptying_valve_0);
+		map[flutter::EncodableValue("feedFast1")]       = flutter::EncodableValue(o.feed_fast_1);
+		map[flutter::EncodableValue("feedSlow1")]       = flutter::EncodableValue(o.feed_slow_1);
+		map[flutter::EncodableValue("refillValve1")]    = flutter::EncodableValue(o.refill_valve_1);
+		map[flutter::EncodableValue("emptyingValve1")]  = flutter::EncodableValue(o.emptying_valve_1);
+		result->Success(flutter::EncodableValue(map));
+	}
+
+	void WeighingSystemPlugin::HandleUpdateDioOutputConfig(const flutter::EncodableMap &args,
+														   std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		int sub_id = GetInt(args, "subsystemId");
+		auto *sub = SubsystemManager::Instance().GetSubsystem(sub_id);
+		if (!sub)
+		{
+			result->Error("NOT_FOUND", "Subsystem not found");
+			return;
+		}
+		DioOutputMapping mapping;
+		mapping.alarm            = GetInt(args, "alarm", 8);
+		mapping.running          = GetInt(args, "running", 9);
+		mapping.warning          = GetInt(args, "warning", 11);
+		mapping.feed_fast_0      = GetInt(args, "feedFast0", 0);
+		mapping.feed_slow_0      = GetInt(args, "feedSlow0", 1);
+		mapping.refill_valve_0   = GetInt(args, "refillValve0", 2);
+		mapping.emptying_valve_0 = GetInt(args, "emptyingValve0", 3);
+		mapping.feed_fast_1      = GetInt(args, "feedFast1", 4);
+		mapping.feed_slow_1      = GetInt(args, "feedSlow1", 5);
+		mapping.refill_valve_1   = GetInt(args, "refillValve1", 6);
+		mapping.emptying_valve_1 = GetInt(args, "emptyingValve1", 7);
+
+		sub->UpdateDioOutputMapping(mapping);
+		OutputManager::Instance().SetSubsystemOutputMapping(static_cast<uint32_t>(sub_id), mapping);
+		ConfigStore::Instance().SaveSubsystemDioOutputMapping(static_cast<uint32_t>(sub_id), mapping);
 		result->Success(flutter::EncodableValue(true));
 	}
 

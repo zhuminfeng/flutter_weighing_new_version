@@ -20,7 +20,8 @@ namespace weighing
 		AppType app_type = AppType::kLossInWeight;
 		std::vector<uint32_t> scale_ids;
 		std::vector<uint32_t> ethercat_slave_ids;
-		DioInputMapping dio_input_mapping; // 离散输入自定义映射
+		DioInputMapping dio_input_mapping;   // 离散输入自定义映射
+		DioOutputMapping dio_output_mapping; // 离散输出自定义映射
 	};
 
 	class Subsystem
@@ -52,6 +53,7 @@ namespace weighing
 
 		SubsystemConfig GetConfig() const { return config_; }
 		void UpdateDioInputMapping(const DioInputMapping &mapping) { config_.dio_input_mapping = mapping; }
+		void UpdateDioOutputMapping(const DioOutputMapping &mapping) { config_.dio_output_mapping = mapping; }
 		void UpdateName(const std::string &name) { config_.name = name; }
 
 	private:

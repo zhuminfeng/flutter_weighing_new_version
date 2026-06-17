@@ -70,6 +70,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   // Subsystem / recipe identity
   String _recipeName = '';
   DioInputConfig _dioConfig = const DioInputConfig();
+  DioOutputConfig _dioOutputConfig = const DioOutputConfig();
   late final TextEditingController _recipeNameCtrl =
       TextEditingController(text: _recipeName);
   int _liwMode = 0;
@@ -346,6 +347,10 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       _dioConfig =
           await WeighingPlatform.instance.getDioInputConfig(subId);
     } catch (_) {}
+    try {
+      _dioOutputConfig =
+          await WeighingPlatform.instance.getDioOutputConfig(subId);
+    } catch (_) {}
   }
 
   Future<void> _save() async {
@@ -563,11 +568,13 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
 
     state.selectAppType(_appType);
 
-    // 保存配方名称和离散输入配置
+    // 保存配方名称和离散输入/输出配置
     await WeighingPlatform.instance
         .updateSubsystemName(subId, _recipeNameCtrl.text);
     await WeighingPlatform.instance
         .updateDioInputConfig(subId, _dioConfig);
+    await WeighingPlatform.instance
+        .updateDioOutputConfig(subId, _dioOutputConfig);
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1645,6 +1652,8 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
 
           // DIO 离散输入自定义映射（所有应用类型共用）
           _buildDioInputConfigCard(context),
+          // DIO 离散输出自定义映射（所有应用类型共用）
+          _buildDioOutputConfigCard(context),
         ],
       ),
     );
@@ -1687,6 +1696,53 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             (v) => setState(() => _dioConfig = _dioConfig.copyWith(zero: v))),
         bitDropdown('Jog Trigger', _dioConfig.jogTrigger,
             (v) => setState(() => _dioConfig = _dioConfig.copyWith(jogTrigger: v))),
+      ],
+    );
+  }
+
+  Widget _buildDioOutputConfigCard(BuildContext context) {
+    // 16个硬件位可供选择，-1 = 未映射
+    const bitOptions = [-1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+    String bitLabel(int bit) => bit < 0 ? 'None' : 'Bit $bit';
+
+    DropdownButtonFormField<int> bitDropdown(
+        String label, int value, ValueChanged<int?> onChanged) {
+      return DropdownButtonFormField<int>(
+        value: value,
+        decoration: InputDecoration(labelText: label),
+        items: bitOptions
+            .map((b) => DropdownMenuItem(value: b, child: Text(bitLabel(b))))
+            .toList(),
+        onChanged: onChanged,
+      );
+    }
+
+    return _buildExpandableCard(
+      context: context,
+      title: 'Discrete Output Mapping',
+      children: [
+        bitDropdown('Alarm', _dioOutputConfig.alarm,
+            (v) => setState(() => _dioOutputConfig = _dioOutputConfig.copyWith(alarm: v))),
+        bitDropdown('Running', _dioOutputConfig.running,
+            (v) => setState(() => _dioOutputConfig = _dioOutputConfig.copyWith(running: v))),
+        bitDropdown('Warning', _dioOutputConfig.warning,
+            (v) => setState(() => _dioOutputConfig = _dioOutputConfig.copyWith(warning: v))),
+        bitDropdown('Feed Fast (Ch0)', _dioOutputConfig.feedFast0,
+            (v) => setState(() => _dioOutputConfig = _dioOutputConfig.copyWith(feedFast0: v))),
+        bitDropdown('Feed Slow (Ch0)', _dioOutputConfig.feedSlow0,
+            (v) => setState(() => _dioOutputConfig = _dioOutputConfig.copyWith(feedSlow0: v))),
+        bitDropdown('Refill Valve (Ch0)', _dioOutputConfig.refillValve0,
+            (v) => setState(() => _dioOutputConfig = _dioOutputConfig.copyWith(refillValve0: v))),
+        bitDropdown('Emptying Valve (Ch0)', _dioOutputConfig.emptyingValve0,
+            (v) => setState(() => _dioOutputConfig = _dioOutputConfig.copyWith(emptyingValve0: v))),
+        bitDropdown('Feed Fast (Ch1)', _dioOutputConfig.feedFast1,
+            (v) => setState(() => _dioOutputConfig = _dioOutputConfig.copyWith(feedFast1: v))),
+        bitDropdown('Feed Slow (Ch1)', _dioOutputConfig.feedSlow1,
+            (v) => setState(() => _dioOutputConfig = _dioOutputConfig.copyWith(feedSlow1: v))),
+        bitDropdown('Refill Valve (Ch1)', _dioOutputConfig.refillValve1,
+            (v) => setState(() => _dioOutputConfig = _dioOutputConfig.copyWith(refillValve1: v))),
+        bitDropdown('Emptying Valve (Ch1)', _dioOutputConfig.emptyingValve1,
+            (v) => setState(() => _dioOutputConfig = _dioOutputConfig.copyWith(emptyingValve1: v))),
       ],
     );
   }

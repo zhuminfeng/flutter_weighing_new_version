@@ -144,31 +144,19 @@ namespace weighing
 	void AppBase::SetAlarmOutput(bool active)
 	{
 		dio_outputs_.alarm = active;
-		uint16_t io_pos = OutputManager::Instance().GetSubsystemIOPosition(subsystem_id_);
-		if (io_pos != 0)
-		{
-			OutputManager::Instance().SetAlarm(io_pos, active);
-		}
+		OutputManager::Instance().SetAlarm(subsystem_id_, active);
 	}
 
 	void AppBase::SetRunningOutput(bool running)
 	{
 		dio_outputs_.running = running;
-		uint16_t io_pos = OutputManager::Instance().GetSubsystemIOPosition(subsystem_id_);
-		if (io_pos != 0)
-		{
-			OutputManager::Instance().SetRunning(io_pos, running);
-		}
+		OutputManager::Instance().SetRunning(subsystem_id_, running);
 	}
 
 	void AppBase::SetWarningOutput(bool warning)
 	{
 		dio_outputs_.warning = warning;
-		uint16_t io_pos = OutputManager::Instance().GetSubsystemIOPosition(subsystem_id_);
-		if (io_pos != 0)
-		{
-			OutputManager::Instance().SetWarning(io_pos, warning);
-		}
+		OutputManager::Instance().SetWarning(subsystem_id_, warning);
 	}
 
 } // namespace weighing

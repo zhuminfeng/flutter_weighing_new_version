@@ -397,6 +397,25 @@ namespace weighing
 		int jog_trigger = 7;
 	};
 
+	// 离散输出自定义映射：每个逻辑功能对应的硬件位索引（0–15），-1 表示未映射
+	struct DioOutputMapping
+	{
+		// 状态指示输出
+		int alarm = 8;
+		int running = 9;
+		int warning = 11;
+		// 阀门控制输出 – 通道 0
+		int feed_fast_0 = 0;
+		int feed_slow_0 = 1;
+		int refill_valve_0 = 2;
+		int emptying_valve_0 = 3;
+		// 阀门控制输出 – 通道 1
+		int feed_fast_1 = 4;
+		int feed_slow_1 = 5;
+		int refill_valve_1 = 6;
+		int emptying_valve_1 = 7;
+	};
+
 	// DIO 输出信号（写入 EtherCAT IO 模块）
 	// 注意：阀门类输出由 DigitalIOController::ApplyDioOutputs() 独立控制
 	//       以下仅为状态指示类输出

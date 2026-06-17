@@ -469,4 +469,21 @@ class ELinuxWeighingSystem extends WeighingPlatform {
         await _channel.invokeMethod<bool>('updateDioInputConfig', args);
     return result ?? false;
   }
+
+  @override
+  Future<DioOutputConfig> getDioOutputConfig(int subsystemId) async {
+    final result = await _channel
+        .invokeMethod<Map>('getDioOutputConfig', {'subsystemId': subsystemId});
+    return DioOutputConfig.fromMap(Map<String, dynamic>.from(result!));
+  }
+
+  @override
+  Future<bool> updateDioOutputConfig(
+      int subsystemId, DioOutputConfig config) async {
+    final args = <String, dynamic>{'subsystemId': subsystemId};
+    args.addAll(config.toMap());
+    final result =
+        await _channel.invokeMethod<bool>('updateDioOutputConfig', args);
+    return result ?? false;
+  }
 }

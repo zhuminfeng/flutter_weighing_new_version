@@ -30,16 +30,17 @@ namespace weighing
 		void SetValveOutputs(uint32_t subsystem_id, uint16_t channel,
 							 bool fast, bool slow, bool refill, bool emptying);
 
-		// 指示灯/报警输出（直接操作指定 IO 从站位置）
-		void SetAlarm(uint32_t io_pos, bool active);
-		void SetRunning(uint32_t io_pos, bool running);
-		void SetWarning(uint32_t io_pos, bool warning);
+		// 指示灯/报警输出（通过子系统 ID 查找 IO 从站及输出映射）
+		void SetAlarm(uint32_t sub_id, bool active);
+		void SetRunning(uint32_t sub_id, bool running);
+		void SetWarning(uint32_t sub_id, bool warning);
 
 		void SetDioInputCallback(DioInputCallback cb) { dio_callback_ = cb; }
 
 		// 子系统映射
 		void MapSubsystemServo(uint32_t sub_id, uint16_t servo_pos);
 		void MapSubsystemIO(uint32_t sub_id, uint16_t io_pos);
+		void SetSubsystemOutputMapping(uint32_t sub_id, const DioOutputMapping &mapping);
 
 		// 查询映射
 		uint16_t GetSubsystemIOPosition(uint32_t sub_id) const
@@ -69,6 +70,7 @@ namespace weighing
 
 		std::map<uint32_t, uint16_t> subsystem_servo_map_;
 		std::map<uint32_t, uint16_t> subsystem_io_map_;
+		std::map<uint32_t, DioOutputMapping> subsystem_output_mapping_;
 
 		DioInputCallback dio_callback_;
 		bool initialized_ = false;

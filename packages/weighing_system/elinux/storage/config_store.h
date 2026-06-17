@@ -45,6 +45,10 @@ namespace weighing
 		bool SaveSubsystemDioMapping(uint32_t subsystem_id, const DioInputMapping &mapping);
 		bool LoadSubsystemDioMapping(uint32_t subsystem_id, DioInputMapping &mapping);
 
+		// Subsystem DIO output mapping
+		bool SaveSubsystemDioOutputMapping(uint32_t subsystem_id, const DioOutputMapping &mapping);
+		bool LoadSubsystemDioOutputMapping(uint32_t subsystem_id, DioOutputMapping &mapping);
+
 	private:
 		ConfigStore() = default;
 	};

@@ -19,7 +19,11 @@ namespace weighing
 		void SetBit(uint16_t bit_mask);
 		void ClearBit(uint16_t bit_mask);
 		void SetOutput(uint16_t value);
-		void ApplyDioOutputs(uint16_t channel, bool fast, bool slow, bool refill, bool emptying);
+		/// 通过硬件位索引（0–15）设置或清除单个输出位
+		void SetOutputBit(int bit_pos, bool active);
+		/// 应用阀门输出：各信号的硬件位索引由调用方传入
+		void ApplyDioOutputs(int bit_fast, int bit_slow, int bit_refill, int bit_empty,
+							 bool fast, bool slow, bool refill, bool emptying);
 		void SetAlarm(bool active);
 		void SetRunningIndicator(bool running);
 		void SetWarningIndicator(bool warning);

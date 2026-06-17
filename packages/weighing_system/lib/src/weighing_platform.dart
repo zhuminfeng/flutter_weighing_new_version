@@ -134,4 +134,6 @@ abstract class WeighingPlatform extends PlatformInterface {
   Future<bool> updateSubsystemName(int subsystemId, String name);
   Future<DioInputConfig> getDioInputConfig(int subsystemId);
   Future<bool> updateDioInputConfig(int subsystemId, DioInputConfig config);
+  Future<DioOutputConfig> getDioOutputConfig(int subsystemId);
+  Future<bool> updateDioOutputConfig(int subsystemId, DioOutputConfig config);
 }

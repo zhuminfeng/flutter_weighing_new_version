@@ -38,69 +38,60 @@ namespace weighing
 		output_value_ = value;
 	}
 
-	void DigitalIOController::ApplyDioOutputs(uint16_t channel_offset,
-											  bool feed_fast, bool feed_slow,
-											  bool refill, bool emptying)
+	void DigitalIOController::SetOutputBit(int bit_pos, bool active)
 	{
-		using namespace ec3a_io1632;
+		if (bit_pos < 0 || bit_pos > 15)
+			return;
+		uint16_t mask = static_cast<uint16_t>(1u << static_cast<unsigned>(bit_pos));
+		if (active)
+			SetBit(mask);
+		else
+			ClearBit(mask);
+	}
+
+	void DigitalIOController::ApplyDioOutputs(int bit_fast, int bit_slow, int bit_refill, int bit_empty,
+											  bool fast, bool slow, bool refill, bool emptying)
+	{
+		// Build masks for the four channel bits; skip any out-of-range index
+		auto mask_of = [](int idx) -> uint16_t
+		{
+			if (idx < 0 || idx > 15)
+				return 0;
+			return static_cast<uint16_t>(1u << static_cast<unsigned>(idx));
+		};
+
+		uint16_t m_fast = mask_of(bit_fast);
+		uint16_t m_slow = mask_of(bit_slow);
+		uint16_t m_refill = mask_of(bit_refill);
+		uint16_t m_empty = mask_of(bit_empty);
+		uint16_t channel_mask = m_fast | m_slow | m_refill | m_empty;
 
 		uint16_t current = output_value_.load();
-
-		// Select channel-specific bits (channel 0 or channel 1)
-		uint16_t fast_bit, slow_bit, refill_bit, empty_bit;
-		if (channel_offset == 0)
-		{
-			fast_bit = DO_Bit::FEED_FAST_0;
-			slow_bit = DO_Bit::FEED_SLOW_0;
-			refill_bit = DO_Bit::REFILL_VALVE_0;
-			empty_bit = DO_Bit::EMPTYING_VALVE_0;
-		}
-		else
-		{
-			fast_bit = DO_Bit::FEED_FAST_1;
-			slow_bit = DO_Bit::FEED_SLOW_1;
-			refill_bit = DO_Bit::REFILL_VALVE_1;
-			empty_bit = DO_Bit::EMPTYING_VALVE_1;
-		}
-
-		// Clear all channel bits first
-		current &= ~(fast_bit | slow_bit | refill_bit | empty_bit);
-
-		// Set active bits
-		if (feed_fast)
-			current |= fast_bit;
-		if (feed_slow)
-			current |= slow_bit;
+		current &= ~channel_mask;
+		if (fast)
+			current |= m_fast;
+		if (slow)
+			current |= m_slow;
 		if (refill)
-			current |= refill_bit;
+			current |= m_refill;
 		if (emptying)
-			current |= empty_bit;
-
+			current |= m_empty;
 		output_value_ = current;
 	}
 
 	void DigitalIOController::SetAlarm(bool active)
 	{
-		if (active)
-			SetBit(ec3a_io1632::DO_Bit::ALARM_OUT);
-		else
-			ClearBit(ec3a_io1632::DO_Bit::ALARM_OUT);
+		SetOutputBit(8, active); // default: ALARM_OUT = bit 8
 	}
 
 	void DigitalIOController::SetRunningIndicator(bool running)
 	{
-		if (running)
-			SetBit(ec3a_io1632::DO_Bit::RUNNING_IND);
-		else
-			ClearBit(ec3a_io1632::DO_Bit::RUNNING_IND);
+		SetOutputBit(9, running); // default: RUNNING_IND = bit 9
 	}
 
 	void DigitalIOController::SetWarningIndicator(bool warning)
 	{
-		if (warning)
-			SetBit(ec3a_io1632::DO_Bit::WARNING_IND);
-		else
-			ClearBit(ec3a_io1632::DO_Bit::WARNING_IND);
+		SetOutputBit(11, warning); // default: WARNING_IND = bit 11
 	}
 
 	void DigitalIOController::ParseDioInputs(

@@ -202,7 +202,18 @@ namespace weighing
             dio_interlock_bit INTEGER DEFAULT 4,
             dio_tare_bit INTEGER DEFAULT 5,
             dio_zero_bit INTEGER DEFAULT 6,
-            dio_jog_trigger_bit INTEGER DEFAULT 7
+            dio_jog_trigger_bit INTEGER DEFAULT 7,
+            do_alarm_bit INTEGER DEFAULT 8,
+            do_running_bit INTEGER DEFAULT 9,
+            do_warning_bit INTEGER DEFAULT 11,
+            do_feed_fast_0_bit INTEGER DEFAULT 0,
+            do_feed_slow_0_bit INTEGER DEFAULT 1,
+            do_refill_valve_0_bit INTEGER DEFAULT 2,
+            do_emptying_valve_0_bit INTEGER DEFAULT 3,
+            do_feed_fast_1_bit INTEGER DEFAULT 4,
+            do_feed_slow_1_bit INTEGER DEFAULT 5,
+            do_refill_valve_1_bit INTEGER DEFAULT 6,
+            do_emptying_valve_1_bit INTEGER DEFAULT 7
         );
 
         CREATE TABLE IF NOT EXISTS liw_config (
@@ -328,6 +339,18 @@ namespace weighing
 			"ALTER TABLE subsystem_config ADD COLUMN dio_tare_bit INTEGER DEFAULT 5",
 			"ALTER TABLE subsystem_config ADD COLUMN dio_zero_bit INTEGER DEFAULT 6",
 			"ALTER TABLE subsystem_config ADD COLUMN dio_jog_trigger_bit INTEGER DEFAULT 7",
+			// DIO output mapping columns
+			"ALTER TABLE subsystem_config ADD COLUMN do_alarm_bit INTEGER DEFAULT 8",
+			"ALTER TABLE subsystem_config ADD COLUMN do_running_bit INTEGER DEFAULT 9",
+			"ALTER TABLE subsystem_config ADD COLUMN do_warning_bit INTEGER DEFAULT 11",
+			"ALTER TABLE subsystem_config ADD COLUMN do_feed_fast_0_bit INTEGER DEFAULT 0",
+			"ALTER TABLE subsystem_config ADD COLUMN do_feed_slow_0_bit INTEGER DEFAULT 1",
+			"ALTER TABLE subsystem_config ADD COLUMN do_refill_valve_0_bit INTEGER DEFAULT 2",
+			"ALTER TABLE subsystem_config ADD COLUMN do_emptying_valve_0_bit INTEGER DEFAULT 3",
+			"ALTER TABLE subsystem_config ADD COLUMN do_feed_fast_1_bit INTEGER DEFAULT 4",
+			"ALTER TABLE subsystem_config ADD COLUMN do_feed_slow_1_bit INTEGER DEFAULT 5",
+			"ALTER TABLE subsystem_config ADD COLUMN do_refill_valve_1_bit INTEGER DEFAULT 6",
+			"ALTER TABLE subsystem_config ADD COLUMN do_emptying_valve_1_bit INTEGER DEFAULT 7",
 		};
 		for (const auto *sql : dio_migrations)
 		{

@@ -432,15 +432,22 @@ namespace weighing
 		}
 
 		const auto &m = config.dio_input_mapping;
+		const auto &o = config.dio_output_mapping;
 		std::ostringstream sql;
 		sql << "INSERT OR REPLACE INTO subsystem_config (subsystem_id, name, app_type, scale_ids, slave_ids,"
 			<< "dio_start_bit, dio_stop_bit, dio_execute_refill_bit, dio_trigger_emptying_bit,"
-			<< "dio_interlock_bit, dio_tare_bit, dio_zero_bit, dio_jog_trigger_bit) VALUES ("
+			<< "dio_interlock_bit, dio_tare_bit, dio_zero_bit, dio_jog_trigger_bit,"
+			<< "do_alarm_bit, do_running_bit, do_warning_bit,"
+			<< "do_feed_fast_0_bit, do_feed_slow_0_bit, do_refill_valve_0_bit, do_emptying_valve_0_bit,"
+			<< "do_feed_fast_1_bit, do_feed_slow_1_bit, do_refill_valve_1_bit, do_emptying_valve_1_bit) VALUES ("
 			<< config.id << ",'" << config.name << "',"
 			<< static_cast<int>(config.app_type) << ",'"
 			<< scale_ids_str.str() << "','" << slave_ids_str.str() << "',"
 			<< m.start << "," << m.stop << "," << m.execute_refill << "," << m.trigger_emptying << ","
-			<< m.interlock << "," << m.tare << "," << m.zero << "," << m.jog_trigger << ")";
+			<< m.interlock << "," << m.tare << "," << m.zero << "," << m.jog_trigger << ","
+			<< o.alarm << "," << o.running << "," << o.warning << ","
+			<< o.feed_fast_0 << "," << o.feed_slow_0 << "," << o.refill_valve_0 << "," << o.emptying_valve_0 << ","
+			<< o.feed_fast_1 << "," << o.feed_slow_1 << "," << o.refill_valve_1 << "," << o.emptying_valve_1 << ")";
 
 		return db.Execute(sql.str());
 	}
@@ -493,7 +500,18 @@ namespace weighing
         config.dio_input_mapping.interlock        = getI("dio_interlock_bit", 4);
         config.dio_input_mapping.tare             = getI("dio_tare_bit", 5);
         config.dio_input_mapping.zero             = getI("dio_zero_bit", 6);
-        config.dio_input_mapping.jog_trigger      = getI("dio_jog_trigger_bit", 7); });
+        config.dio_input_mapping.jog_trigger      = getI("dio_jog_trigger_bit", 7);
+        config.dio_output_mapping.alarm            = getI("do_alarm_bit", 8);
+        config.dio_output_mapping.running          = getI("do_running_bit", 9);
+        config.dio_output_mapping.warning          = getI("do_warning_bit", 11);
+        config.dio_output_mapping.feed_fast_0      = getI("do_feed_fast_0_bit", 0);
+        config.dio_output_mapping.feed_slow_0      = getI("do_feed_slow_0_bit", 1);
+        config.dio_output_mapping.refill_valve_0   = getI("do_refill_valve_0_bit", 2);
+        config.dio_output_mapping.emptying_valve_0 = getI("do_emptying_valve_0_bit", 3);
+        config.dio_output_mapping.feed_fast_1      = getI("do_feed_fast_1_bit", 4);
+        config.dio_output_mapping.feed_slow_1      = getI("do_feed_slow_1_bit", 5);
+        config.dio_output_mapping.refill_valve_1   = getI("do_refill_valve_1_bit", 6);
+        config.dio_output_mapping.emptying_valve_1 = getI("do_emptying_valve_1_bit", 7); });
 
 		return found;
 	}
@@ -546,6 +564,17 @@ namespace weighing
         cfg.dio_input_mapping.tare             = getI("dio_tare_bit", 5);
         cfg.dio_input_mapping.zero             = getI("dio_zero_bit", 6);
         cfg.dio_input_mapping.jog_trigger      = getI("dio_jog_trigger_bit", 7);
+        cfg.dio_output_mapping.alarm            = getI("do_alarm_bit", 8);
+        cfg.dio_output_mapping.running          = getI("do_running_bit", 9);
+        cfg.dio_output_mapping.warning          = getI("do_warning_bit", 11);
+        cfg.dio_output_mapping.feed_fast_0      = getI("do_feed_fast_0_bit", 0);
+        cfg.dio_output_mapping.feed_slow_0      = getI("do_feed_slow_0_bit", 1);
+        cfg.dio_output_mapping.refill_valve_0   = getI("do_refill_valve_0_bit", 2);
+        cfg.dio_output_mapping.emptying_valve_0 = getI("do_emptying_valve_0_bit", 3);
+        cfg.dio_output_mapping.feed_fast_1      = getI("do_feed_fast_1_bit", 4);
+        cfg.dio_output_mapping.feed_slow_1      = getI("do_feed_slow_1_bit", 5);
+        cfg.dio_output_mapping.refill_valve_1   = getI("do_refill_valve_1_bit", 6);
+        cfg.dio_output_mapping.emptying_valve_1 = getI("do_emptying_valve_1_bit", 7);
 
         configs.push_back(cfg); });
 
@@ -639,6 +668,61 @@ namespace weighing
         mapping.tare             = getI("dio_tare_bit", 5);
         mapping.zero             = getI("dio_zero_bit", 6);
         mapping.jog_trigger      = getI("dio_jog_trigger_bit", 7); });
+
+		return found;
+	}
+
+	// ============================================================================
+	// 保存/加载子系统离散输出映射
+	// ============================================================================
+	bool ConfigStore::SaveSubsystemDioOutputMapping(uint32_t subsystem_id, const DioOutputMapping &o)
+	{
+		auto &db = DatabaseManager::Instance();
+		std::ostringstream sql;
+		sql << "UPDATE subsystem_config SET "
+			<< "do_alarm_bit=" << o.alarm << ","
+			<< "do_running_bit=" << o.running << ","
+			<< "do_warning_bit=" << o.warning << ","
+			<< "do_feed_fast_0_bit=" << o.feed_fast_0 << ","
+			<< "do_feed_slow_0_bit=" << o.feed_slow_0 << ","
+			<< "do_refill_valve_0_bit=" << o.refill_valve_0 << ","
+			<< "do_emptying_valve_0_bit=" << o.emptying_valve_0 << ","
+			<< "do_feed_fast_1_bit=" << o.feed_fast_1 << ","
+			<< "do_feed_slow_1_bit=" << o.feed_slow_1 << ","
+			<< "do_refill_valve_1_bit=" << o.refill_valve_1 << ","
+			<< "do_emptying_valve_1_bit=" << o.emptying_valve_1
+			<< " WHERE subsystem_id=" << subsystem_id;
+		return db.Execute(sql.str());
+	}
+
+	bool ConfigStore::LoadSubsystemDioOutputMapping(uint32_t subsystem_id, DioOutputMapping &mapping)
+	{
+		auto &db = DatabaseManager::Instance();
+		std::string sql = "SELECT do_alarm_bit,do_running_bit,do_warning_bit,"
+						  "do_feed_fast_0_bit,do_feed_slow_0_bit,do_refill_valve_0_bit,do_emptying_valve_0_bit,"
+						  "do_feed_fast_1_bit,do_feed_slow_1_bit,do_refill_valve_1_bit,do_emptying_valve_1_bit"
+						  " FROM subsystem_config WHERE subsystem_id=" +
+						  std::to_string(subsystem_id);
+		bool found = false;
+
+		db.Query(sql, [&](const std::map<std::string, std::string> &row)
+				 {
+        found = true;
+        auto getI = [&](const std::string& key, int def) -> int {
+            auto it = row.find(key);
+            return (it != row.end() && !it->second.empty()) ? std::stoi(it->second) : def;
+        };
+        mapping.alarm            = getI("do_alarm_bit", 8);
+        mapping.running          = getI("do_running_bit", 9);
+        mapping.warning          = getI("do_warning_bit", 11);
+        mapping.feed_fast_0      = getI("do_feed_fast_0_bit", 0);
+        mapping.feed_slow_0      = getI("do_feed_slow_0_bit", 1);
+        mapping.refill_valve_0   = getI("do_refill_valve_0_bit", 2);
+        mapping.emptying_valve_0 = getI("do_emptying_valve_0_bit", 3);
+        mapping.feed_fast_1      = getI("do_feed_fast_1_bit", 4);
+        mapping.feed_slow_1      = getI("do_feed_slow_1_bit", 5);
+        mapping.refill_valve_1   = getI("do_refill_valve_1_bit", 6);
+        mapping.emptying_valve_1 = getI("do_emptying_valve_1_bit", 7); });
 
 		return found;
 	}
