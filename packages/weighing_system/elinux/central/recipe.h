@@ -42,6 +42,16 @@ namespace weighing
 		std::map<uint32_t, double> subsystem_accumulated; // subsystem_id -> weight
 	};
 
+	/// 物料配方元数据（记录针对特定物料调试好的参数快照）
+	struct MaterialRecipe
+	{
+		uint32_t recipe_id = 0;
+		std::string name;		   // 配方名称，如 "物料A - 细粉"
+		int app_type = 0;		   // 0=失重秤(LIW), 1=罐装秤(Filling)
+		uint32_t subsystem_id = 0; // 参考子系统（保存时来源）
+		std::string created_at;
+	};
+
 } // namespace weighing
 
 #endif // RECIPE_H

@@ -778,4 +778,70 @@ class ELinuxWeighingSystem extends WeighingPlatform {
       return false;
     }
   }
+
+  // ============ Material Recipe API ============
+
+  /// 保存当前子系统参数为物料配方
+  @override
+  Future<bool> saveMaterialRecipe(
+      int subsystemId, String name, int appType) async {
+    try {
+      final result = await _channel.invokeMethod<bool>('saveMaterialRecipe', {
+        'subsystemId': subsystemId,
+        'name': name,
+        'appType': appType,
+      });
+      return result ?? false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// 将物料配方参数加载到指定子系统
+  @override
+  Future<bool> loadMaterialRecipe(
+      int subsystemId, int recipeId, int appType) async {
+    try {
+      final result = await _channel.invokeMethod<bool>('loadMaterialRecipe', {
+        'subsystemId': subsystemId,
+        'recipeId': recipeId,
+        'appType': appType,
+      });
+      return result ?? false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// 获取所有物料配方（按应用类型过滤）
+  @override
+  Future<List<Map<String, dynamic>>> getAllMaterialRecipes(int appType) async {
+    try {
+      final result = await _channel.invokeMethod('getAllMaterialRecipes', {
+        'appType': appType,
+      });
+      if (result is List) {
+        return result.cast<Map<dynamic, dynamic>>().map((e) {
+          return Map<String, dynamic>.from(e);
+        }).toList();
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  /// 删除物料配方
+  @override
+  Future<bool> deleteMaterialRecipe(int recipeId, int appType) async {
+    try {
+      final result = await _channel.invokeMethod<bool>('deleteMaterialRecipe', {
+        'recipeId': recipeId,
+        'appType': appType,
+      });
+      return result ?? false;
+    } catch (e) {
+      return false;
+    }
+  }
 }

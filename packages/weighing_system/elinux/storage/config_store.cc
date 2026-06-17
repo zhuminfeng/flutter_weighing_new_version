@@ -886,4 +886,394 @@ namespace weighing
 		return batches;
 	}
 
+	// ============================================================================
+	// 物料配方管理
+	// ============================================================================
+
+	uint32_t ConfigStore::SaveLiwMaterialRecipe(uint32_t subsystem_id,
+												const std::string &name,
+												const LiwApplication *app)
+	{
+		auto &db = DatabaseManager::Instance();
+
+		// 1. 在 material_recipe 插入元数据，获取 recipe_id（name 使用参数绑定防注入）
+		std::ostringstream meta_sql;
+		meta_sql << "INSERT INTO material_recipe (name, app_type, subsystem_id) VALUES (?, 0, "
+				 << subsystem_id << ")";
+		if (!db.ExecuteWithParams(meta_sql.str(), {name}))
+			return 0;
+
+		uint32_t recipe_id = 0;
+		db.Query("SELECT last_insert_rowid() as id",
+				 [&](const std::map<std::string, std::string> &row)
+				 {
+					 auto it = row.find("id");
+					 if (it != row.end() && !it->second.empty())
+						 recipe_id = std::stoul(it->second);
+				 });
+		if (recipe_id == 0)
+			return 0;
+
+		// 2. 从应用对象读取所有 LIW 配置，写入 material_recipe_liw
+		auto base = app->GetBaseConfig();
+		auto sys = app->GetSystemConfig();
+		auto sysid = app->GetSystemIdConfig();
+		auto ctrl = app->GetControllerConfig();
+		auto refill = app->GetRefillConfig();
+		auto target = app->GetTargetValuesConfig();
+		auto tol = app->GetToleranceCheckConfig();
+		auto empty = app->GetEmptyingConfig();
+		auto warn = app->GetWarningConfig();
+		auto flow_mon = app->GetFlowMonitorConfig();
+		auto adv = app->GetAdvancedConfig();
+		auto stats = app->GetStatsConfig();
+
+		std::ostringstream sql;
+		sql << "INSERT INTO material_recipe_liw VALUES ("
+			<< recipe_id << ","
+			<< static_cast<int>(base.mode) << "," << static_cast<int>(base.sub_mode) << ","
+			<< sys.safety_limit << "," << sys.hopper_min << "," << sys.hopper_max << ","
+			<< sys.target_flow << "," << sys.target_control_rate << "," << (sys.pre_refill ? 1 : 0) << ","
+			<< sysid.adjust_range_lower << "," << sysid.adjust_range_upper << ","
+			<< (sysid.smart_step_control ? 1 : 0) << "," << sysid.step_duration << "," << sysid.filter_window << ","
+			<< static_cast<int>(ctrl.tuning_mode) << "," << ctrl.filter_window << ","
+			<< ctrl.Kp << "," << ctrl.Ki << "," << ctrl.Kd << "," << ctrl.max_flow << "," << ctrl.startup_time << ","
+			<< static_cast<int>(refill.mode) << "," << refill.lower_limit << "," << refill.upper_limit << ","
+			<< static_cast<int>(refill.control_mode) << "," << refill.control_setpoint << "," << refill.stabilize_time << ","
+			<< target.batch_target << "," << target.in_flight << "," << target.fine_feed_threshold << "," << target.fine_feed_flow << ","
+			<< tol.pre_check_delay << "," << tol.stability_timeout << "," << tol.tolerance << ","
+			<< (empty.auto_stop_at_alarm ? 1 : 0) << "," << empty.control_setpoint << ","
+			<< warn.control_rate_lower << "," << warn.control_rate_upper << "," << warn.refill_timeout << "," << (warn.stop_on_error ? 1 : 0) << ","
+			<< flow_mon.evaluation_window << "," << flow_mon.deviation_threshold << "," << flow_mon.surge_threshold << ","
+			<< (adv.interlock_enabled ? 1 : 0) << "," << adv.interlock_delay << ","
+			<< stats.sample_period << "," << stats.sample_tolerance
+			<< ")";
+
+		if (!db.Execute(sql.str()))
+		{
+			// 回滚元数据
+			db.Execute("DELETE FROM material_recipe WHERE recipe_id = " + std::to_string(recipe_id));
+			return 0;
+		}
+
+		return recipe_id;
+	}
+
+	uint32_t ConfigStore::SaveFillingMaterialRecipe(uint32_t subsystem_id,
+													const std::string &name,
+													const FillingApplication *app)
+	{
+		auto &db = DatabaseManager::Instance();
+
+		std::ostringstream meta_sql;
+		meta_sql << "INSERT INTO material_recipe (name, app_type, subsystem_id) VALUES (?, 1, "
+				 << subsystem_id << ")";
+		if (!db.ExecuteWithParams(meta_sql.str(), {name}))
+			return 0;
+
+		uint32_t recipe_id = 0;
+		db.Query("SELECT last_insert_rowid() as id",
+				 [&](const std::map<std::string, std::string> &row)
+				 {
+					 auto it = row.find("id");
+					 if (it != row.end() && !it->second.empty())
+						 recipe_id = std::stoul(it->second);
+				 });
+		if (recipe_id == 0)
+			return 0;
+
+		auto gen = app->GetGeneralConfig();
+		auto sys = app->GetSystemConfig();
+		auto tgt = app->GetTargetConfig();
+		auto tare = app->GetAutoTareConfig();
+		auto tol = app->GetToleranceConfig();
+		auto spill = app->GetSpillOptConfig();
+		auto cutoff = app->GetCutoffOptConfig();
+		auto jog = app->GetJogConfig();
+		auto refill = app->GetRefillConfig();
+		auto empty = app->GetEmptyingConfig();
+		auto evt = app->GetEventsConfig();
+		auto adv = app->GetAdvancedConfig();
+
+		std::ostringstream sql;
+		sql << "INSERT INTO material_recipe_filling VALUES ("
+			<< recipe_id << ","
+			<< static_cast<int>(gen.power_fail_recovery) << "," << static_cast<int>(gen.start_delay) << ","
+			<< static_cast<int>(sys.work_mode) << "," << static_cast<int>(sys.feed_speed) << ","
+			<< tgt.target_value << "," << tgt.in_flight << "," << tgt.feed << ","
+			<< tgt.feed_inhibit_time << "," << tgt.fast_feed_inhibit_time << ","
+			<< (tare.auto_tare_enabled ? 1 : 0) << "," << tare.container_tare_upper << "," << tare.container_tare_lower << ","
+			<< tol.pre_check_delay << "," << tol.stability_timeout << "," << tol.positive_tolerance << "," << tol.negative_tolerance << ","
+			<< static_cast<int>(spill.mode) << "," << spill.adjust_range << "," << spill.adjust_samples << "," << spill.adjust_factor << ","
+			<< static_cast<int>(cutoff.mode) << "," << cutoff.control_reliability_range << "," << cutoff.adjust_cycles << "," << cutoff.adjust_factor << ","
+			<< static_cast<int>(jog.mode) << "," << jog.jog_duration << "," << jog.jog_pause_time << "," << jog.max_cycles << ","
+			<< refill.upper_limit << "," << refill.lower_limit << ","
+			<< static_cast<int>(empty.complete_mode) << "," << empty.residual_weight << "," << empty.completion_time << ","
+			<< evt.initial_feed_timeout << "," << evt.emptying_timeout << "," << evt.refill_timeout << "," << evt.process_timeout << ","
+			<< static_cast<int>(adv.cycle_confirm) << "," << static_cast<int>(adv.fast_recovery) << ","
+			<< (adv.interlock_enabled ? 1 : 0) << "," << adv.fast_feed_speed << "," << adv.fine_feed_speed
+			<< ")";
+
+		if (!db.Execute(sql.str()))
+		{
+			db.Execute("DELETE FROM material_recipe WHERE recipe_id = " + std::to_string(recipe_id));
+			return 0;
+		}
+
+		return recipe_id;
+	}
+
+	bool ConfigStore::LoadLiwMaterialRecipe(uint32_t recipe_id, LiwApplication *app)
+	{
+		auto &db = DatabaseManager::Instance();
+		bool found = false;
+
+		std::string sql = "SELECT * FROM material_recipe_liw WHERE recipe_id = " +
+						  std::to_string(recipe_id);
+
+		db.Query(sql, [&](const std::map<std::string, std::string> &row)
+				 {
+			found = true;
+			auto get = [&](const std::string &key, double def) -> double {
+				auto it = row.find(key);
+				if (it != row.end() && !it->second.empty()) return std::stod(it->second);
+				return def;
+			};
+			auto getI = [&](const std::string &key, int def) -> int {
+				auto it = row.find(key);
+				if (it != row.end() && !it->second.empty()) return std::stoi(it->second);
+				return def;
+			};
+
+			LiwBaseConfig base;
+			base.mode = static_cast<LiwMode>(getI("mode", 0));
+			base.sub_mode = static_cast<LiwSubMode>(getI("sub_mode", 0));
+			app->SetBaseConfig(base);
+
+			LiwSystemConfig sys;
+			sys.safety_limit = static_cast<float>(get("safety_limit", 100.0));
+			sys.hopper_min = static_cast<float>(get("hopper_min", 0.0));
+			sys.hopper_max = static_cast<float>(get("hopper_max", 15.0));
+			sys.target_flow = static_cast<float>(get("target_flow", 10.0));
+			sys.target_control_rate = static_cast<float>(get("target_control_rate", 10.0));
+			sys.pre_refill = getI("pre_refill", 0) != 0;
+			app->SetSystemConfig(sys);
+
+			LiwSystemIdConfig sysid;
+			sysid.adjust_range_lower = static_cast<float>(get("sysid_lower", 0.0));
+			sysid.adjust_range_upper = static_cast<float>(get("sysid_upper", 90.0));
+			sysid.smart_step_control = getI("sysid_smart", 0) != 0;
+			sysid.step_duration = static_cast<float>(get("sysid_step_duration", 10.0));
+			sysid.filter_window = static_cast<float>(get("sysid_filter_window", 0.5));
+			app->SetSystemIdConfig(sysid);
+
+			LiwControllerConfig ctrl;
+			ctrl.tuning_mode = static_cast<PidTuningMode>(getI("pid_tuning_mode", 1));
+			ctrl.filter_window = static_cast<float>(get("pid_filter_window", 0.5));
+			ctrl.Kp = static_cast<float>(get("pid_kp", 1.0));
+			ctrl.Ki = static_cast<float>(get("pid_ki", 1.0));
+			ctrl.Kd = static_cast<float>(get("pid_kd", 0.0));
+			ctrl.max_flow = static_cast<float>(get("pid_max_flow", 100.0));
+			ctrl.startup_time = static_cast<float>(get("pid_startup_time", 0.0));
+			app->SetControllerConfig(ctrl);
+
+			LiwRefillConfig refill;
+			refill.mode = static_cast<RefillMode>(getI("refill_mode", 0));
+			refill.lower_limit = static_cast<float>(get("refill_lower", 1.0));
+			refill.upper_limit = static_cast<float>(get("refill_upper", 10.0));
+			refill.control_mode = static_cast<RefillControlMode>(getI("refill_control_mode", 1));
+			refill.control_setpoint = static_cast<float>(get("refill_setpoint", 10.0));
+			refill.stabilize_time = static_cast<float>(get("refill_stabilize_time", 10.0));
+			app->SetRefillConfig(refill);
+
+			LiwTargetValuesConfig target;
+			target.batch_target = static_cast<float>(get("batch_target", 1.0));
+			target.in_flight = static_cast<float>(get("batch_in_flight", 0.0));
+			target.fine_feed_threshold = static_cast<float>(get("batch_fine_threshold", 0.0));
+			target.fine_feed_flow = static_cast<float>(get("batch_fine_flow", 2.0));
+			app->SetTargetValuesConfig(target);
+
+			LiwToleranceCheckConfig tol;
+			tol.pre_check_delay = static_cast<float>(get("tolerance_delay", 0.0));
+			tol.stability_timeout = static_cast<float>(get("tolerance_timeout", 0.0));
+			tol.tolerance = static_cast<float>(get("tolerance_value", 0.0));
+			app->SetToleranceCheckConfig(tol);
+
+			LiwEmptyingConfig empty;
+			empty.auto_stop_at_alarm = getI("emptying_auto_stop", 1) != 0;
+			empty.control_setpoint = static_cast<float>(get("emptying_setpoint", 10.0));
+			app->SetEmptyingConfig(empty);
+
+			LiwWarningConfig warn;
+			warn.control_rate_lower = static_cast<float>(get("warning_rate_lower", 20.0));
+			warn.control_rate_upper = static_cast<float>(get("warning_rate_upper", 80.0));
+			warn.refill_timeout = static_cast<float>(get("warning_refill_timeout", 10.0));
+			warn.stop_on_error = getI("warning_stop_on_error", 0) != 0;
+			app->SetWarningConfig(warn);
+
+			LiwFlowMonitorConfig fm;
+			fm.evaluation_window = static_cast<float>(get("flow_eval_window", 3.0));
+			fm.deviation_threshold = static_cast<float>(get("flow_deviation", 10.0));
+			fm.surge_threshold = static_cast<float>(get("flow_surge", 150.0));
+			app->SetFlowMonitorConfig(fm);
+
+			LiwAdvancedConfig adv;
+			adv.interlock_enabled = getI("interlock_enabled", 0) != 0;
+			adv.interlock_delay = static_cast<float>(get("interlock_delay", 0.0));
+			app->SetAdvancedConfig(adv);
+
+			LiwStatsConfig stats;
+			stats.sample_period = static_cast<float>(get("stats_sample_period", 60.0));
+			stats.sample_tolerance = static_cast<float>(get("stats_sample_tolerance", 10.0));
+			app->SetStatsConfig(stats); });
+
+		return found;
+	}
+
+	bool ConfigStore::LoadFillingMaterialRecipe(uint32_t recipe_id, FillingApplication *app)
+	{
+		auto &db = DatabaseManager::Instance();
+		bool found = false;
+
+		std::string sql = "SELECT * FROM material_recipe_filling WHERE recipe_id = " +
+						  std::to_string(recipe_id);
+
+		db.Query(sql, [&](const std::map<std::string, std::string> &row)
+				 {
+			found = true;
+			auto get = [&](const std::string &key, double def) -> double {
+				auto it = row.find(key);
+				if (it != row.end() && !it->second.empty()) return std::stod(it->second);
+				return def;
+			};
+			auto getI = [&](const std::string &key, int def) -> int {
+				auto it = row.find(key);
+				if (it != row.end() && !it->second.empty()) return std::stoi(it->second);
+				return def;
+			};
+
+			FillingGeneralConfig gen;
+			gen.power_fail_recovery = static_cast<PowerFailRecovery>(getI("power_fail_recovery", 0));
+			gen.start_delay = static_cast<PowerFailStartDelay>(getI("start_delay", 0));
+			app->SetGeneralConfig(gen);
+
+			FillingSystemConfig sys;
+			sys.work_mode = static_cast<FillingWorkMode>(getI("work_mode", 0));
+			sys.feed_speed = static_cast<FeedSpeed>(getI("feed_speed", 1));
+			app->SetSystemConfig(sys);
+
+			FillingTargetConfig tgt;
+			tgt.target_value = get("target_value", 1.0);
+			tgt.in_flight = get("in_flight", 0.0);
+			tgt.feed = get("feed", 0.0);
+			tgt.feed_inhibit_time = get("feed_inhibit_time", 0.0);
+			tgt.fast_feed_inhibit_time = get("fast_feed_inhibit_time", 0.0);
+			app->SetTargetConfig(tgt);
+
+			FillingAutoTareConfig tare;
+			tare.auto_tare_enabled = getI("auto_tare_enabled", 0) != 0;
+			tare.container_tare_upper = get("container_tare_upper", 0.0);
+			tare.container_tare_lower = get("container_tare_lower", 0.0);
+			app->SetAutoTareConfig(tare);
+
+			FillingToleranceConfig tol;
+			tol.pre_check_delay = get("tolerance_delay", 0.0);
+			tol.stability_timeout = get("tolerance_timeout", 0.0);
+			tol.positive_tolerance = get("tolerance_positive", 0.0);
+			tol.negative_tolerance = get("tolerance_negative", 0.0);
+			app->SetToleranceConfig(tol);
+
+			FillingSpillOptConfig spill;
+			spill.mode = static_cast<SpillOptMode>(getI("spill_opt_mode", 0));
+			spill.adjust_range = get("spill_opt_range", 0.0);
+			spill.adjust_samples = getI("spill_opt_samples", 5);
+			spill.adjust_factor = get("spill_opt_factor", 0.5);
+			app->SetSpillOptConfig(spill);
+
+			FillingCutoffOptConfig cutoff;
+			cutoff.mode = static_cast<CutoffOptMode>(getI("cutoff_opt_mode", 0));
+			cutoff.control_reliability_range = get("cutoff_opt_range", 0.0);
+			cutoff.adjust_cycles = getI("cutoff_opt_cycles", 5);
+			cutoff.adjust_factor = get("cutoff_opt_factor", 0.5);
+			app->SetCutoffOptConfig(cutoff);
+
+			FillingJogConfig jog;
+			jog.mode = static_cast<JogMode>(getI("jog_mode", 0));
+			jog.jog_duration = get("jog_duration", 0.5);
+			jog.jog_pause_time = get("jog_pause", 1.0);
+			jog.max_cycles = getI("jog_max_cycles", 3);
+			app->SetJogConfig(jog);
+
+			FillingRefillConfig refill;
+			refill.upper_limit = get("refill_upper", 10.0);
+			refill.lower_limit = get("refill_lower", 1.0);
+			app->SetRefillConfig(refill);
+
+			FillingEmptyingConfig empty;
+			empty.complete_mode = static_cast<EmptyingCompleteMode>(getI("emptying_mode", 0));
+			empty.residual_weight = get("emptying_residual", 0.1);
+			empty.completion_time = get("emptying_time", 5.0);
+			app->SetEmptyingConfig(empty);
+
+			FillingEventsConfig evt;
+			evt.initial_feed_timeout = get("event_feed_timeout", 30.0);
+			evt.emptying_timeout = get("event_emptying_timeout", 60.0);
+			evt.refill_timeout = get("event_refill_timeout", 60.0);
+			evt.process_timeout = get("event_process_timeout", 120.0);
+			app->SetEventsConfig(evt);
+
+			FillingAdvancedConfig adv;
+			adv.cycle_confirm = static_cast<CycleResultConfirm>(getI("cycle_confirm", 0));
+			adv.fast_recovery = static_cast<FastRecovery>(getI("fast_recovery", 0));
+			adv.interlock_enabled = getI("interlock_enabled", 0) != 0;
+			adv.fast_feed_speed = get("fast_feed_speed", 100.0);
+			adv.fine_feed_speed = get("fine_feed_speed", 30.0);
+			app->SetAdvancedConfig(adv); });
+
+		return found;
+	}
+
+	std::vector<MaterialRecipe> ConfigStore::GetAllMaterialRecipes(int app_type)
+	{
+		std::vector<MaterialRecipe> recipes;
+		auto &db = DatabaseManager::Instance();
+
+		std::string sql;
+		if (app_type >= 0)
+			sql = "SELECT * FROM material_recipe WHERE app_type = " +
+				  std::to_string(app_type) + " ORDER BY recipe_id DESC";
+		else
+			sql = "SELECT * FROM material_recipe ORDER BY recipe_id DESC";
+
+		db.Query(sql, [&](const std::map<std::string, std::string> &row)
+				 {
+			MaterialRecipe r;
+			auto it = row.find("recipe_id");
+			if (it != row.end() && !it->second.empty())
+				r.recipe_id = std::stoul(it->second);
+			it = row.find("name");
+			if (it != row.end()) r.name = it->second;
+			it = row.find("app_type");
+			if (it != row.end() && !it->second.empty())
+				r.app_type = std::stoi(it->second);
+			it = row.find("subsystem_id");
+			if (it != row.end() && !it->second.empty())
+				r.subsystem_id = std::stoul(it->second);
+			it = row.find("created_at");
+			if (it != row.end()) r.created_at = it->second;
+			recipes.push_back(r); });
+
+		return recipes;
+	}
+
+	bool ConfigStore::DeleteMaterialRecipe(uint32_t recipe_id, int app_type)
+	{
+		auto &db = DatabaseManager::Instance();
+		// CASCADE will remove params from material_recipe_liw / material_recipe_filling
+		std::string sql = "DELETE FROM material_recipe WHERE recipe_id = " +
+						  std::to_string(recipe_id) + " AND app_type = " +
+						  std::to_string(app_type);
+		return db.Execute(sql);
+	}
+
 } // namespace weighing

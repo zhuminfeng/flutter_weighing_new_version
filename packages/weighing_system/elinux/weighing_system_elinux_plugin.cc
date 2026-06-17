@@ -635,6 +635,16 @@ namespace
 		void HandleSaveEthercatHardwareConfig(const flutter::EncodableMap &args,
 											  std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 
+		// ===== 物料配方管理 =====
+		void HandleSaveMaterialRecipe(const flutter::EncodableMap &args,
+									  std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+		void HandleLoadMaterialRecipe(const flutter::EncodableMap &args,
+									  std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+		void HandleGetAllMaterialRecipes(const flutter::EncodableMap &args,
+										 std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+		void HandleDeleteMaterialRecipe(const flutter::EncodableMap &args,
+										std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+
 		// flutter::PluginRegistrar *registrar_;
 		std::unique_ptr<InputSource> input_source_;
 		std::unique_ptr<flutter::EventSink<flutter::EncodableValue>> weight_event_sink_;
@@ -1153,6 +1163,22 @@ namespace
 		else if (method == "saveEthercatHardwareConfig")
 		{
 			HandleSaveEthercatHardwareConfig(args, std::move(result));
+		}
+		else if (method == "saveMaterialRecipe")
+		{
+			HandleSaveMaterialRecipe(args, std::move(result));
+		}
+		else if (method == "loadMaterialRecipe")
+		{
+			HandleLoadMaterialRecipe(args, std::move(result));
+		}
+		else if (method == "getAllMaterialRecipes")
+		{
+			HandleGetAllMaterialRecipes(args, std::move(result));
+		}
+		else if (method == "deleteMaterialRecipe")
+		{
+			HandleDeleteMaterialRecipe(args, std::move(result));
 		}
 		else
 		{
@@ -2864,6 +2890,128 @@ namespace
 		int recipe_id = GetInt(args, "recipeId");
 
 		bool ok = CentralController::Instance().DeleteRecipe(recipe_id);
+		result->Success(flutter::EncodableValue(ok));
+	}
+
+	// ============================================================================
+	// 物料配方管理实现
+	// ============================================================================
+
+	void WeighingSystemPlugin::HandleSaveMaterialRecipe(
+		const flutter::EncodableMap &args,
+		std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		int sub_id = GetInt(args, "subsystemId");
+		int app_type = GetInt(args, "appType"); // 0=liw, 1=filling
+		std::string name = GetString(args, "name", "未命名配方");
+
+		auto *sub = SubsystemManager::Instance().GetSubsystem(sub_id);
+		if (!sub)
+		{
+			result->Error("NOT_FOUND", "Subsystem not found");
+			return;
+		}
+
+		uint32_t recipe_id = 0;
+		if (app_type == 0)
+		{
+			auto *liw_app = sub->GetLiwApp();
+			if (!liw_app)
+			{
+				result->Error("NOT_FOUND", "LIW app not found");
+				return;
+			}
+			recipe_id = ConfigStore::Instance().SaveLiwMaterialRecipe(sub_id, name, liw_app);
+		}
+		else
+		{
+			auto *fill_app = sub->GetFillingApp();
+			if (!fill_app)
+			{
+				result->Error("NOT_FOUND", "Filling app not found");
+				return;
+			}
+			recipe_id = ConfigStore::Instance().SaveFillingMaterialRecipe(sub_id, name, fill_app);
+		}
+
+		result->Success(flutter::EncodableValue(recipe_id > 0));
+	}
+
+	void WeighingSystemPlugin::HandleLoadMaterialRecipe(
+		const flutter::EncodableMap &args,
+		std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		int sub_id = GetInt(args, "subsystemId");
+		int recipe_id = GetInt(args, "recipeId");
+		int app_type = GetInt(args, "appType"); // 0=liw, 1=filling
+
+		auto *sub = SubsystemManager::Instance().GetSubsystem(sub_id);
+		if (!sub)
+		{
+			result->Error("NOT_FOUND", "Subsystem not found");
+			return;
+		}
+
+		bool ok = false;
+		if (app_type == 0)
+		{
+			auto *liw_app = sub->GetLiwApp();
+			if (!liw_app)
+			{
+				result->Error("NOT_FOUND", "LIW app not found");
+				return;
+			}
+			ok = ConfigStore::Instance().LoadLiwMaterialRecipe(recipe_id, liw_app);
+			if (ok)
+				ConfigStore::Instance().SaveLiwConfig(sub_id, liw_app);
+		}
+		else
+		{
+			auto *fill_app = sub->GetFillingApp();
+			if (!fill_app)
+			{
+				result->Error("NOT_FOUND", "Filling app not found");
+				return;
+			}
+			ok = ConfigStore::Instance().LoadFillingMaterialRecipe(recipe_id, fill_app);
+			if (ok)
+				ConfigStore::Instance().SaveFillingConfig(sub_id, fill_app);
+		}
+
+		result->Success(flutter::EncodableValue(ok));
+	}
+
+	void WeighingSystemPlugin::HandleGetAllMaterialRecipes(
+		const flutter::EncodableMap &args,
+		std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		int app_type = GetInt(args, "appType", -1); // -1 = all
+
+		auto recipes = ConfigStore::Instance().GetAllMaterialRecipes(app_type);
+
+		flutter::EncodableList list;
+		for (const auto &r : recipes)
+		{
+			flutter::EncodableMap item;
+			item[flutter::EncodableValue("recipeId")] = flutter::EncodableValue(static_cast<int>(r.recipe_id));
+			item[flutter::EncodableValue("name")] = flutter::EncodableValue(r.name);
+			item[flutter::EncodableValue("appType")] = flutter::EncodableValue(r.app_type);
+			item[flutter::EncodableValue("subsystemId")] = flutter::EncodableValue(static_cast<int>(r.subsystem_id));
+			item[flutter::EncodableValue("createdAt")] = flutter::EncodableValue(r.created_at);
+			list.push_back(flutter::EncodableValue(item));
+		}
+
+		result->Success(flutter::EncodableValue(list));
+	}
+
+	void WeighingSystemPlugin::HandleDeleteMaterialRecipe(
+		const flutter::EncodableMap &args,
+		std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		int recipe_id = GetInt(args, "recipeId");
+		int app_type = GetInt(args, "appType");
+
+		bool ok = ConfigStore::Instance().DeleteMaterialRecipe(recipe_id, app_type);
 		result->Success(flutter::EncodableValue(ok));
 	}
 

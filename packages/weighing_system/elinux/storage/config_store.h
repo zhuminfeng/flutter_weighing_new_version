@@ -49,6 +49,18 @@ namespace weighing
 		std::vector<Recipe> LoadAllRecipes();
 		bool DeleteRecipe(uint32_t recipe_id);
 
+		// ===== 物料配方管理（单台秤参数快照）=====
+		uint32_t SaveLiwMaterialRecipe(uint32_t subsystem_id,
+									   const std::string &name,
+									   const LiwApplication *app);
+		uint32_t SaveFillingMaterialRecipe(uint32_t subsystem_id,
+										   const std::string &name,
+										   const FillingApplication *app);
+		bool LoadLiwMaterialRecipe(uint32_t recipe_id, LiwApplication *app);
+		bool LoadFillingMaterialRecipe(uint32_t recipe_id, FillingApplication *app);
+		std::vector<MaterialRecipe> GetAllMaterialRecipes(int app_type);
+		bool DeleteMaterialRecipe(uint32_t recipe_id, int app_type);
+
 		// ===== 批次追溯 =====
 		uint32_t StartBatch(uint32_t recipe_id, const std::string &operator_name);
 		bool EndBatch(uint32_t batch_id, double total_weight);
