@@ -161,11 +161,8 @@ namespace weighing
 		if (dit == digital_ios_.end())
 			return;
 
-		int bit_pos = DioOutputMapping{}.alarm; // default = 8
 		auto map_it = subsystem_output_mapping_.find(sub_id);
-		if (map_it != subsystem_output_mapping_.end())
-			bit_pos = map_it->second.alarm;
-
+		int bit_pos = (map_it != subsystem_output_mapping_.end()) ? map_it->second.alarm : 8;
 		dit->second->SetOutputBit(bit_pos, active);
 	}
 
@@ -178,11 +175,8 @@ namespace weighing
 		if (dit == digital_ios_.end())
 			return;
 
-		int bit_pos = DioOutputMapping{}.running; // default = 9
 		auto map_it = subsystem_output_mapping_.find(sub_id);
-		if (map_it != subsystem_output_mapping_.end())
-			bit_pos = map_it->second.running;
-
+		int bit_pos = (map_it != subsystem_output_mapping_.end()) ? map_it->second.running : 9;
 		dit->second->SetOutputBit(bit_pos, running);
 	}
 
@@ -195,11 +189,8 @@ namespace weighing
 		if (dit == digital_ios_.end())
 			return;
 
-		int bit_pos = DioOutputMapping{}.warning; // default = 11
 		auto map_it = subsystem_output_mapping_.find(sub_id);
-		if (map_it != subsystem_output_mapping_.end())
-			bit_pos = map_it->second.warning;
-
+		int bit_pos = (map_it != subsystem_output_mapping_.end()) ? map_it->second.warning : 11;
 		dit->second->SetOutputBit(bit_pos, warning);
 	}
 
