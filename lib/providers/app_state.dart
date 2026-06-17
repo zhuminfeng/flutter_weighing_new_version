@@ -12,6 +12,7 @@ class AppState extends ChangeNotifier {
   final Map<int, AppStatusData> _appStatusMap = {};
   Locale _locale = const Locale('zh');
   Map<String, dynamic> _configStatus = const {};
+  List<SubsystemMappingInfo> _subsystems = [];
 
   StreamSubscription<WeightData>? _weightSub;
   StreamSubscription<Map<String, dynamic>>? _statusSub;
@@ -21,6 +22,12 @@ class AppState extends ChangeNotifier {
   int get activeSubsystemId => _activeSubsystemId;
   Locale get locale => _locale;
   Map<String, dynamic> get configStatus => _configStatus;
+  List<SubsystemMappingInfo> get subsystems => _subsystems;
+
+  /// 是否已配置子系统（配置文件中有显式子系统条目）
+  bool get hasConfiguredSubsystems =>
+      (_configStatus['subsystem_count'] as int? ?? 0) > 0 ||
+      _subsystems.isNotEmpty;
 
   WeightData getWeightData(int scaleId) =>
       _weightDataMap[scaleId] ?? const WeightData();
@@ -33,6 +40,7 @@ class AppState extends ChangeNotifier {
       _initialized = await _platform.initialize();
       if (_initialized) {
         _configStatus = await _platform.getConfigStatus();
+        _subsystems = await _platform.getSubsystemMappings();
         _weightSub = _platform.weightStream.listen((data) {
           _weightDataMap[data.scaleId] = data;
           notifyListeners();
@@ -53,11 +61,20 @@ class AppState extends ChangeNotifier {
       _weightDataMap.clear();
       _appStatusMap.clear();
       _configStatus = const {};
+      _subsystems = [];
       await _platform.shutdown();
     } catch (_) {}
     _initialized = false;
     notifyListeners();
     await initialize();
+  }
+
+  Future<void> refreshSubsystems() async {
+    try {
+      _subsystems = await _platform.getSubsystemMappings();
+      _configStatus = await _platform.getConfigStatus();
+      notifyListeners();
+    } catch (_) {}
   }
 
   void selectAppType(int type) {
@@ -86,6 +103,14 @@ class AppState extends ChangeNotifier {
     try {
       final status = await _platform.getAppStatus(_activeSubsystemId);
       _appStatusMap[_activeSubsystemId] = status;
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  Future<void> refreshAppStatusForSubsystem(int subsystemId) async {
+    try {
+      final status = await _platform.getAppStatus(subsystemId);
+      _appStatusMap[subsystemId] = status;
       notifyListeners();
     } catch (_) {}
   }
@@ -134,3 +159,4 @@ class AppStateProvider extends InheritedNotifier<AppState> {
       .dependOnInheritedWidgetOfExactType<AppStateProvider>()!
       .onLocaleChange;
 }
+

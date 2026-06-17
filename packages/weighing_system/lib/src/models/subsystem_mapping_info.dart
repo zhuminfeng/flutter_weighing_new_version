@@ -1,14 +1,20 @@
+/// 子系统映射信息
+/// appType: 0 = 失重秤(LIW), 1 = 罐装秤(Filling)
 class SubsystemMappingInfo {
   final int subsystemId;
   final int scaleId;
   final int ioPosition;
   final String description;
+  final int appType;
+  final bool enabled;
 
   const SubsystemMappingInfo({
     required this.subsystemId,
     required this.scaleId,
     required this.ioPosition,
     required this.description,
+    this.appType = 0,
+    this.enabled = true,
   });
 
   factory SubsystemMappingInfo.fromMap(Map<String, dynamic> m) {
@@ -17,15 +23,24 @@ class SubsystemMappingInfo {
       scaleId: (m['scaleId'] as num?)?.toInt() ?? 0,
       ioPosition: (m['ioPosition'] as num?)?.toInt() ?? 0,
       description: m['description'] as String? ?? '',
+      appType: (m['appType'] as num?)?.toInt() ?? 0,
+      enabled: m['enabled'] as bool? ?? true,
     );
   }
 
-  SubsystemMappingInfo copyWith({int? scaleId}) {
+  SubsystemMappingInfo copyWith({
+    int? scaleId,
+    int? appType,
+    bool? enabled,
+    String? description,
+  }) {
     return SubsystemMappingInfo(
       subsystemId: subsystemId,
       scaleId: scaleId ?? this.scaleId,
       ioPosition: ioPosition,
-      description: description,
+      description: description ?? this.description,
+      appType: appType ?? this.appType,
+      enabled: enabled ?? this.enabled,
     );
   }
 }

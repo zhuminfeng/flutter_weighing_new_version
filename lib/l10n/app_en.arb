@@ -408,5 +408,41 @@
   "saveHardwareConfigSuccess": "Hardware config saved. Please apply config to reinitialize.",
   "saveHardwareConfigFailed": "Failed to save hardware config",
   "noSlavesScannedYet": "No devices scanned yet. Please scan first.",
-  "dismiss": "Dismiss"
+  "dismiss": "Dismiss",
+
+  "subsystemConfigTitle": "Subsystem Configuration",
+  "subsystemName": "Subsystem Name",
+  "appType": "Application Type",
+  "noSubsystemsSetupTitle": "Configure Subsystems",
+  "noSubsystemsSetupHint": "No subsystems are configured. Please go to the subsystem configuration page to add and enable at least one subsystem.",
+  "configureSubsystems": "Configure Subsystems",
+  "expandDetail": "Expand Detail",
+  "ethercatConflictError": "Enable failed: subsystem(s) {names} already use the same EtherCAT instrument. Please resolve the conflict first.",
+  "@ethercatConflictError": {
+    "placeholders": {
+      "names": {
+        "type": "String"
+      }
+    }
+  },
+  "materialRecipeTitle": "Recipe Settings",
+  "materialRecipeSubtitle": "Manage material recipes for this subsystem",
+  "digitalInputMapping": "Digital Input Mapping",
+  "diInputRouting": "DI bit routing / key mapping",
+  "subsystemEnabledHint": "Subsystem is enabled and will participate in system operation",
+  "subsystemDisabledHint": "Subsystem is disabled and will not participate in system operation",
+  "diBinding": "Input Binding",
+  "diStart": "Start Signal",
+  "diStop": "Stop Signal",
+  "diReset": "Reset Signal",
+  "diRefillRequest": "Refill Request",
+  "diEmergencyStop": "Emergency Stop",
+  "diCustomKey": "Custom Key {n}",
+  "@diCustomKey": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  }
 }

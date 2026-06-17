@@ -53,6 +53,8 @@ namespace weighing
 			uint16_t io_position;
 			uint32_t scale_id;
 			std::string description;
+			int app_type = 0;   // 0=LIW, 1=Filling
+			bool enabled = true;
 		};
 
 		// ── Config status accessors ──────────────────────────────────────────
@@ -71,11 +73,20 @@ namespace weighing
 			std::string *err);
 
 		bool AddSubsystemToConfig(uint32_t sub_id, uint16_t io_position, uint32_t scale_id,
-								  const std::string &description, std::string *err);
+								  const std::string &description, std::string *err,
+								  int app_type = 0, bool enabled = true);
 
 		bool RemoveSubsystemFromConfig(uint32_t sub_id, std::string *err);
 
 		bool SaveSlaveAliasToConfig(uint16_t position, const std::string &alias, std::string *err);
+
+		bool SetSubsystemAppType(uint32_t sub_id, int app_type, std::string *err);
+		bool SetSubsystemEnabled(uint32_t sub_id, bool enabled, std::string *err);
+
+		int GetSubsystemCount() const
+		{
+			return static_cast<int>(parsed_.subsystem_mappings.size());
+		}
 
 		// ── 2. 返回值直接使用公有的 SubMapping 类型 ──────────────────────────
 		const std::vector<SubMapping> &GetSubsystemMappings() const

@@ -224,6 +224,8 @@ namespace weighing
 					m.io_position = val.value("io_position", (uint16_t)0);
 					m.scale_id = val.value("scale_id", 0u);
 					m.description = val.value("description", "Subsystem " + key);
+					m.app_type = val.value("app_type", 0);
+					m.enabled = val.value("enabled", true);
 					parsed_.subsystem_mappings.push_back(m);
 				}
 			}
@@ -762,7 +764,7 @@ namespace weighing
 	// ============================================================================
 	bool SystemInitializer::AddSubsystemToConfig(uint32_t sub_id, uint16_t io_position,
 												 uint32_t scale_id, const std::string &description,
-												 std::string *err)
+												 std::string *err, int app_type, bool enabled)
 	{
 		try
 		{
@@ -786,7 +788,9 @@ namespace weighing
 			j["subsystem_mapping"][key] = {
 				{"scale_id", scale_id},
 				{"io_position", io_position},
-				{"description", description.empty() ? "Subsystem " + key : description}};
+				{"description", description.empty() ? "Subsystem " + key : description},
+				{"app_type", app_type},
+				{"enabled", enabled}};
 
 			std::ofstream ofs(config_path_, std::ios::trunc);
 			if (!ofs.is_open())
@@ -808,6 +812,8 @@ namespace weighing
 				it->scale_id = scale_id;
 				it->io_position = io_position;
 				it->description = description.empty() ? "Subsystem " + key : description;
+				it->app_type = app_type;
+				it->enabled = enabled;
 			}
 			else
 			{
@@ -816,6 +822,8 @@ namespace weighing
 				m.scale_id = scale_id;
 				m.io_position = io_position;
 				m.description = description.empty() ? "Subsystem " + key : description;
+				m.app_type = app_type;
+				m.enabled = enabled;
 				parsed_.subsystem_mappings.push_back(m);
 			}
 			return true;
@@ -875,6 +883,96 @@ namespace weighing
 		{
 			if (err)
 				*err = e.what();
+			return false;
+		}
+	}
+
+	// ============================================================================
+	// SetSubsystemAppType - 设置子系统应用类型并持久化
+	// ============================================================================
+	bool SystemInitializer::SetSubsystemAppType(uint32_t sub_id, int app_type, std::string *err)
+	{
+		try
+		{
+			auto it = std::find_if(parsed_.subsystem_mappings.begin(),
+								   parsed_.subsystem_mappings.end(),
+								   [sub_id](const SubMapping &m) { return m.sub_id == sub_id; });
+			if (it == parsed_.subsystem_mappings.end())
+			{
+				if (err) *err = "subsystem not found: " + std::to_string(sub_id);
+				return false;
+			}
+
+			std::ifstream ifs(config_path_);
+			if (!ifs.is_open()) { if (err) *err = "open config failed"; return false; }
+			nlohmann::json j;
+			ifs >> j;
+			ifs.close();
+
+			std::string key = std::to_string(sub_id);
+			if (!j.contains("subsystem_mapping") || !j["subsystem_mapping"].contains(key))
+			{
+				if (err) *err = "subsystem key not in config";
+				return false;
+			}
+			j["subsystem_mapping"][key]["app_type"] = app_type;
+
+			std::ofstream ofs(config_path_, std::ios::trunc);
+			if (!ofs.is_open()) { if (err) *err = "write config failed"; return false; }
+			ofs << j.dump(2);
+			ofs.close();
+
+			it->app_type = app_type;
+			return true;
+		}
+		catch (const std::exception &e)
+		{
+			if (err) *err = e.what();
+			return false;
+		}
+	}
+
+	// ============================================================================
+	// SetSubsystemEnabled - 启用/禁用子系统并持久化
+	// ============================================================================
+	bool SystemInitializer::SetSubsystemEnabled(uint32_t sub_id, bool enabled, std::string *err)
+	{
+		try
+		{
+			auto it = std::find_if(parsed_.subsystem_mappings.begin(),
+								   parsed_.subsystem_mappings.end(),
+								   [sub_id](const SubMapping &m) { return m.sub_id == sub_id; });
+			if (it == parsed_.subsystem_mappings.end())
+			{
+				if (err) *err = "subsystem not found: " + std::to_string(sub_id);
+				return false;
+			}
+
+			std::ifstream ifs(config_path_);
+			if (!ifs.is_open()) { if (err) *err = "open config failed"; return false; }
+			nlohmann::json j;
+			ifs >> j;
+			ifs.close();
+
+			std::string key = std::to_string(sub_id);
+			if (!j.contains("subsystem_mapping") || !j["subsystem_mapping"].contains(key))
+			{
+				if (err) *err = "subsystem key not in config";
+				return false;
+			}
+			j["subsystem_mapping"][key]["enabled"] = enabled;
+
+			std::ofstream ofs(config_path_, std::ios::trunc);
+			if (!ofs.is_open()) { if (err) *err = "write config failed"; return false; }
+			ofs << j.dump(2);
+			ofs.close();
+
+			it->enabled = enabled;
+			return true;
+		}
+		catch (const std::exception &e)
+		{
+			if (err) *err = e.what();
 			return false;
 		}
 	}

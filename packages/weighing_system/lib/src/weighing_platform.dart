@@ -8,6 +8,7 @@ import 'models/liw_config.dart';
 import 'models/filling_config.dart';
 import 'models/system_status.dart';
 import 'models/digital_output_map.dart';
+import 'models/digital_input_map.dart';
 import 'models/ethercat_slave_info.dart';
 import 'models/subsystem_mapping_info.dart';
 
@@ -125,31 +126,6 @@ abstract class WeighingPlatform extends PlatformInterface {
       int subsystemId, FillingAdvancedConfig config);
   Future<FillingAdvancedConfig> getFillingAdvancedConfig(int subsystemId);
 
-  // Digital output mapping
-  Future<bool> updateDigitalOutputMap(DigitalOutputMapConfig config);
-  Future<DigitalOutputMapConfig> getDigitalOutputMap();
-  Future<Map<String, dynamic>> validateDigitalOutputMap(
-      DigitalOutputMapConfig config);
-
-  // App control
-  Future<bool> startApp(int subsystemId);
-  Future<bool> stopApp(int subsystemId);
-  Future<bool> setManualControlRate(int subsystemId, double ratePct);
-  Future<AppStatusData> getAppStatus(int subsystemId);
-
-  // CentralController API
-  Future<bool> loadRecipe(int recipeId);
-  Future<bool> saveRecipe(Map<String, dynamic> recipe);
-  Future<List<Map<String, dynamic>>> getAllRecipes();
-  Future<bool> deleteRecipe(int recipeId);
-  Future<bool> setMasterFlow(double flow);
-  Future<double> getMasterFlow();
-  Future<double> getTotalActualFlow();
-  Future<Map<String, dynamic>?> getSubsystemStatus(int subsystemId);
-  Future<Map<int, Map<String, dynamic>>> getAllSubsystemStatuses();
-  Future<int> startBatch(String operatorName);
-  Future<bool> endBatch();
-  Future<int> getCurrentBatchId();
   // HMI Subsystem config
   Future<List<EthercatSlaveInfo>> scanEthercatSlaves();
   Future<String> getInputMode();
@@ -157,12 +133,26 @@ abstract class WeighingPlatform extends PlatformInterface {
   Future<bool> updateSubsystemMapping(int subsystemId, int scaleId);
   Future<bool> updateSlaveAlias(int position, String alias);
   Future<bool> addSubsystemMapping(int subsystemId, String description,
-      {int scaleId = 0, int ioPosition = 0});
+      {int scaleId = 0, int ioPosition = 0, int appType = 0});
   Future<bool> removeSubsystemMapping(int subsystemId);
+  Future<bool> setSubsystemAppType(int subsystemId, int appType);
+  Future<bool> setSubsystemEnabled(int subsystemId, bool enabled);
   // Hardware config status
   Future<Map<String, dynamic>> getConfigStatus();
   Future<bool> saveEthercatHardwareConfig(List<EthercatSlaveInfo> outputSlaves,
       List<EthercatSlaveInfo> inputSlaves);
+
+  // Digital output mapping
+  Future<bool> updateDigitalOutputMap(DigitalOutputMapConfig config);
+  Future<DigitalOutputMapConfig> getDigitalOutputMap();
+  Future<Map<String, dynamic>> validateDigitalOutputMap(
+      DigitalOutputMapConfig config);
+
+  // Digital input mapping
+  Future<bool> updateDigitalInputMap(DigitalInputMapConfig config);
+  Future<DigitalInputMapConfig> getDigitalInputMap();
+  Future<Map<String, dynamic>> validateDigitalInputMap(
+      DigitalInputMapConfig config);
 
   // Material Recipe API (per-subsystem parameter presets for different materials)
   Future<bool> saveMaterialRecipe(int subsystemId, String name, int appType);

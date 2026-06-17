@@ -2371,6 +2371,28 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Dismiss'**
   String get dismiss;
+
+  String get subsystemConfigTitle;
+  String get subsystemName;
+  String get appType;
+  String get noSubsystemsSetupTitle;
+  String get noSubsystemsSetupHint;
+  String get configureSubsystems;
+  String get expandDetail;
+  String ethercatConflictError(String names);
+  String get materialRecipeTitle;
+  String get materialRecipeSubtitle;
+  String get digitalInputMapping;
+  String get diInputRouting;
+  String get subsystemEnabledHint;
+  String get subsystemDisabledHint;
+  String get diBinding;
+  String get diStart;
+  String get diStop;
+  String get diReset;
+  String get diRefillRequest;
+  String get diEmergencyStop;
+  String diCustomKey(int n);
 }
 
 class _AppLocalizationsDelegate

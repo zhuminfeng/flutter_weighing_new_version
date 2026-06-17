@@ -1167,4 +1167,72 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dismiss => 'Dismiss';
+
+  @override
+  String get subsystemConfigTitle => 'Subsystem Configuration';
+
+  @override
+  String get subsystemName => 'Subsystem Name';
+
+  @override
+  String get appType => 'Application Type';
+
+  @override
+  String get noSubsystemsSetupTitle => 'Configure Subsystems';
+
+  @override
+  String get noSubsystemsSetupHint =>
+      'No subsystems are configured. Please go to the subsystem configuration page to add and enable at least one subsystem.';
+
+  @override
+  String get configureSubsystems => 'Configure Subsystems';
+
+  @override
+  String get expandDetail => 'Expand Detail';
+
+  @override
+  String ethercatConflictError(String names) =>
+      'Enable failed: subsystem(s) $names already use the same EtherCAT instrument. Please resolve the conflict first.';
+
+  @override
+  String get materialRecipeTitle => 'Recipe Settings';
+
+  @override
+  String get materialRecipeSubtitle =>
+      'Manage material recipes for this subsystem';
+
+  @override
+  String get digitalInputMapping => 'Digital Input Mapping';
+
+  @override
+  String get diInputRouting => 'DI bit routing / key mapping';
+
+  @override
+  String get subsystemEnabledHint =>
+      'Subsystem is enabled and will participate in system operation';
+
+  @override
+  String get subsystemDisabledHint =>
+      'Subsystem is disabled and will not participate in system operation';
+
+  @override
+  String get diBinding => 'Input Binding';
+
+  @override
+  String get diStart => 'Start Signal';
+
+  @override
+  String get diStop => 'Stop Signal';
+
+  @override
+  String get diReset => 'Reset Signal';
+
+  @override
+  String get diRefillRequest => 'Refill Request';
+
+  @override
+  String get diEmergencyStop => 'Emergency Stop';
+
+  @override
+  String diCustomKey(int n) => 'Custom Key $n';
 }

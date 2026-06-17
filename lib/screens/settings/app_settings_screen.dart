@@ -4,7 +4,8 @@ import '../../l10n/app_localizations.dart';
 import '../../providers/app_state.dart';
 
 class AppSettingsScreen extends StatefulWidget {
-  const AppSettingsScreen({super.key});
+  final int? subsystemId;
+  const AppSettingsScreen({super.key, this.subsystemId});
 
   @override
   State<AppSettingsScreen> createState() => _AppSettingsScreenState();
@@ -124,7 +125,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
 
   Future<void> _load() async {
     final state = AppStateProvider.of(context);
-    final subId = state.activeSubsystemId;
+    final subId = widget.subsystemId ?? state.activeSubsystemId;
     _appType = state.selectedAppType;
 
     try {
@@ -307,7 +308,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
 
   Future<void> _save() async {
     final state = AppStateProvider.of(context);
-    final subId = state.activeSubsystemId;
+    final subId = widget.subsystemId ?? state.activeSubsystemId;
 
     if (_appType == 0) {
       await WeighingPlatform.instance.updateLiwBaseConfig(
