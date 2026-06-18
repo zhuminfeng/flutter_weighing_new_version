@@ -42,6 +42,7 @@ set(CXX_SOURCES
   "input/ethercat_input.cc"
   "input/shmem_input.cc"
   "input/input_factory.cc"
+  "input/digital_input_mapping.cc"
   "output/output_manager.cc"
   "output/digital_output_mapping.cc"
   "output/digital_io_controller.cc"

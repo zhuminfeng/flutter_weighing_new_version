@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include "../output/digital_output_mapping.h"
+#include "../input/digital_input_mapping.h"
 
 namespace weighing
 {
@@ -34,6 +35,10 @@ namespace weighing
 		const std::string &GetInputMode() const { return input_mode_; }
 
 		bool SaveDigitalOutputMapToConfig(const DigitalOutputMapConfig &cfg, std::string *err);
+
+		bool SaveDigitalInputMapToConfig(const DigitalInputMapConfig &cfg, std::string *err);
+		bool UpdateDigitalInputMap(const DigitalInputMapConfig &cfg, std::string *err = nullptr);
+		const DigitalInputMapConfig &GetDigitalInputMapConfig() const { return parsed_.digital_input_map_cfg; }
 
 		bool SaveSubsystemMappingToConfig(uint32_t subsystem_id, uint32_t scale_id, std::string *err);
 
@@ -125,6 +130,9 @@ namespace weighing
 			// DIO 映射配置
 			DigitalOutputMapConfig dio_map_cfg;
 			bool has_dio_map_cfg = false;
+
+			// 离散输入映射配置
+			DigitalInputMapConfig digital_input_map_cfg;
 
 			// shmem config
 			std::string shm_path = "/dev/mem";
