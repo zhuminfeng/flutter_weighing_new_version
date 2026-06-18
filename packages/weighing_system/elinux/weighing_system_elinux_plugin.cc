@@ -3478,6 +3478,7 @@ namespace
 		if (ok)
 		{
 			// 同步清理数字输入映射中属于该子系统的绑定
+			// GetDigitalInputMapConfig() returns const ref; auto makes a copy for mutation
 			auto cfg = SystemInitializer::Instance().GetDigitalInputMapConfig();
 			auto &bindings = cfg.bindings;
 			bindings.erase(
@@ -3486,8 +3487,10 @@ namespace
 							   { return b.subsystem_id == sub_id; }),
 				bindings.end());
 			std::string save_err;
-			SystemInitializer::Instance().UpdateDigitalInputMap(cfg, &save_err);
-			SystemInitializer::Instance().SaveDigitalInputMapToConfig(cfg, &save_err);
+			if (!SystemInitializer::Instance().UpdateDigitalInputMap(cfg, &save_err))
+				fprintf(stderr, "HandleRemoveSubsystemMapping: update input map failed: %s\n", save_err.c_str());
+			else if (!SystemInitializer::Instance().SaveDigitalInputMapToConfig(cfg, &save_err))
+				fprintf(stderr, "HandleRemoveSubsystemMapping: save input map failed: %s\n", save_err.c_str());
 		}
 
 		result->Success(EV(BuildMapResult(ok, err)));
