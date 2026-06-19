@@ -88,7 +88,7 @@ class _ScaleSettingsScreenState extends State<ScaleSettingsScreen> {
     if (_loadFailed) {
       return Scaffold(
         appBar: AppBar(title: Text(l.scaleSettings)),
-        body: Center(child: Text(l.saveFailedMsg)),
+        body: const Center(child: Text('Failed to load scale settings')),
       );
     }
 
