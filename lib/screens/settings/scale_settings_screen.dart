@@ -54,7 +54,7 @@ class _ScaleSettingsScreenState extends State<ScaleSettingsScreen> {
     for (final mapping in mappings) {
       if (mapping.subsystemId == widget.subsystemId) return mapping.scaleId;
     }
-    throw StateError('Subsystem mapping not found');
+    throw StateError('Subsystem mapping not found: ${widget.subsystemId}');
   }
 
   Future<void> _saveAll() async {
@@ -88,7 +88,7 @@ class _ScaleSettingsScreenState extends State<ScaleSettingsScreen> {
     if (_loadFailed) {
       return Scaffold(
         appBar: AppBar(title: Text(l.scaleSettings)),
-        body: const Center(child: Text('Failed to load scale settings')),
+        body: Center(child: Text(l.loadScaleSettingsFailed)),
       );
     }
 

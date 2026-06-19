@@ -671,6 +671,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get saveFailedMsg => '保存失败';
 
   @override
+  String get loadScaleSettingsFailed => '秤台配置加载失败';
+
+  @override
   String get confirmDelete => '确认删除';
 
   @override

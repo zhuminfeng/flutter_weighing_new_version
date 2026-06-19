@@ -672,6 +672,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get saveFailedMsg => 'Save failed';
 
   @override
+  String get loadScaleSettingsFailed => 'Failed to load scale settings';
+
+  @override
   String get confirmDelete => 'Confirm Delete';
 
   @override
