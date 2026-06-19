@@ -38,8 +38,8 @@ class _ScaleSettingsScreenState extends State<ScaleSettingsScreen> {
         _params = await platform.getScaleParams(_scaleId);
         _zeroConfig = await platform.getZeroConfig(_scaleId);
         _tareConfig = await platform.getTareConfig(_scaleId);
-      } catch (_) {
-        // Use defaults
+      } catch (e) {
+        debugPrint('Failed to load scale settings for scale $_scaleId: $e');
       }
     } catch (_) {
       _loadFailed = true;
@@ -51,9 +51,10 @@ class _ScaleSettingsScreenState extends State<ScaleSettingsScreen> {
     if (widget.scaleId != null) return widget.scaleId!;
     if (widget.subsystemId == null) return 0;
     final mappings = await platform.getSubsystemMappings();
-    for (final mapping in mappings) {
-      if (mapping.subsystemId == widget.subsystemId) return mapping.scaleId;
-    }
+    final mappingIndex = mappings.indexWhere(
+      (mapping) => mapping.subsystemId == widget.subsystemId,
+    );
+    if (mappingIndex >= 0) return mappings[mappingIndex].scaleId;
     throw StateError('Subsystem mapping not found: ${widget.subsystemId}');
   }
 
