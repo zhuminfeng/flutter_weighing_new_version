@@ -3,18 +3,22 @@ import 'package:weighing_system_elinux/weighing_system_elinux.dart';
 import '../../l10n/app_localizations.dart';
 
 class ScaleSettingsScreen extends StatefulWidget {
-  const ScaleSettingsScreen({super.key});
+  final int? subsystemId;
+  final int? scaleId;
+
+  const ScaleSettingsScreen({super.key, this.subsystemId, this.scaleId});
 
   @override
   State<ScaleSettingsScreen> createState() => _ScaleSettingsScreenState();
 }
 
 class _ScaleSettingsScreenState extends State<ScaleSettingsScreen> {
-  final int _scaleId = 0;
+  int _scaleId = 0;
   ScaleParams _params = const ScaleParams();
   ZeroConfig _zeroConfig = const ZeroConfig();
   TareConfig _tareConfig = const TareConfig();
   bool _loading = true;
+  bool _loadFailed = false;
 
   // 单位通常是国际通用符号，无需翻译
   static const _unitOptions = ['g', 'kg', 'lb', 't', 'ton'];
@@ -26,15 +30,31 @@ class _ScaleSettingsScreenState extends State<ScaleSettingsScreen> {
   }
 
   Future<void> _loadConfig() async {
+    _loadFailed = false;
     try {
       final platform = WeighingPlatform.instance;
-      _params = await platform.getScaleParams(_scaleId);
-      _zeroConfig = await platform.getZeroConfig(_scaleId);
-      _tareConfig = await platform.getTareConfig(_scaleId);
+      _scaleId = await _resolveScaleId(platform);
+      try {
+        _params = await platform.getScaleParams(_scaleId);
+        _zeroConfig = await platform.getZeroConfig(_scaleId);
+        _tareConfig = await platform.getTareConfig(_scaleId);
+      } catch (_) {
+        // Use defaults
+      }
     } catch (_) {
-      // Use defaults
+      _loadFailed = true;
     }
     setState(() => _loading = false);
+  }
+
+  Future<int> _resolveScaleId(WeighingPlatform platform) async {
+    if (widget.scaleId != null) return widget.scaleId!;
+    if (widget.subsystemId == null) return 0;
+    final mappings = await platform.getSubsystemMappings();
+    for (final mapping in mappings) {
+      if (mapping.subsystemId == widget.subsystemId) return mapping.scaleId;
+    }
+    throw StateError('Subsystem mapping not found');
   }
 
   Future<void> _saveAll() async {
@@ -62,6 +82,13 @@ class _ScaleSettingsScreenState extends State<ScaleSettingsScreen> {
       return Scaffold(
         appBar: AppBar(title: Text(l.scaleSettings)),
         body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_loadFailed) {
+      return Scaffold(
+        appBar: AppBar(title: Text(l.scaleSettings)),
+        body: Center(child: Text(l.saveFailedMsg)),
       );
     }
 
