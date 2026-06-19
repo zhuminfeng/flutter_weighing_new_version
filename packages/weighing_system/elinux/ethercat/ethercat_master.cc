@@ -244,7 +244,7 @@ namespace weighing
 		};
 
 		// 4. 将 PDO 拓扑下发给 IgH 从站配置描述符
-		if (ecrt_slave_config_pdos(sc, ad2020eb_syncs) != 0)
+		if (ecrt_slave_config_pdos(sc, EC_END, ad2020eb_syncs))
 		{
 			fprintf(stderr, "ECMaster: Failed to configure PDOs for Weighing Slave at pos %u\n", rt.descriptor.position);
 			return false;
@@ -260,7 +260,7 @@ namespace weighing
 			0x9020,
 			0x04,
 			&rt.offsets.weighing.off_weight_raw};
-		domain_regs_.push_back(reg_raw); // 扔进全局注册向量
+		pdo_regs_.push_back(reg_raw); // 扔进全局注册向量
 
 		// 注册 0x9020:05 (状态字) -> 映射至 off_status
 		ec_pdo_entry_reg_t reg_status = {
@@ -271,7 +271,7 @@ namespace weighing
 			0x9020,
 			0x05,
 			&rt.offsets.weighing.off_status};
-		domain_regs_.push_back(reg_status);
+		pdo_regs_.push_back(reg_status);
 
 		rt.configured = true;
 		return true;

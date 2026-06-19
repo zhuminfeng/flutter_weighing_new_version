@@ -141,7 +141,8 @@ abstract class WeighingPlatform extends PlatformInterface {
   // App control
   Future<bool> startApp(int subsystemId);
   Future<bool> stopApp(int subsystemId);
-  Future<bool> setManualControlRate(int subsystemId, double ratePct);
+  Future<bool> setManualControlRate(
+      int subsystemId, int signalType, double ratePct);
   Future<AppStatusData> getAppStatus(int subsystemId);
 
   // CentralController API

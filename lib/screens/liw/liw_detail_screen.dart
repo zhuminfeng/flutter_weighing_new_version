@@ -136,26 +136,26 @@ class _LiwDetailScreenState extends State<LiwDetailScreen> {
             Row(
               children: [
                 _LargeActionButton(
-                  label: l.tr('start') == 'start' ? '启动' : l.tr('start'),
+                  label: l?.start ?? '启动',
                   icon: Icons.play_arrow,
                   color: Colors.green.shade700,
                   isPrimary: true,
                   onPressed: () => state.startApp(subId),
                 ),
                 _LargeActionButton(
-                  label: l.tr('stop') == 'stop' ? '停止' : l.tr('stop'),
+                  label: l?.stop ?? '停止',
                   icon: Icons.stop,
                   color: Colors.red.shade700,
                   isPrimary: true,
                   onPressed: () => state.stopApp(subId),
                 ),
                 _LargeActionButton(
-                  label: l.tr('zero') == 'zero' ? '清零' : l.tr('zero'),
+                  label: l?.zero ?? '清零',
                   icon: Icons.exposure_zero,
                   onPressed: () => state.doZero(subId),
                 ),
                 _LargeActionButton(
-                  label: l.tr('tare') == 'tare' ? '去皮' : l.tr('tare'),
+                  label: l?.tare ?? '去皮',
                   icon: Icons.remove_circle_outline,
                   onPressed: () => state.doTare(subId),
                 ),

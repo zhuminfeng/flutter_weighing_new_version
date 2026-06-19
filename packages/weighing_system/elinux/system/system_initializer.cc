@@ -271,6 +271,31 @@ namespace weighing
 					}
 				}
 			}
+
+			// ===== 解析 digital_input_map =====
+			parsed_.digital_input_map_cfg = DigitalInputMapConfig{};
+			if (j.contains("digital_input_map") && j["digital_input_map"].is_object())
+			{
+				const auto &dim = j["digital_input_map"];
+				parsed_.digital_input_map_cfg.version = dim.value("version", 1);
+
+				if (dim.contains("bindings") && dim["bindings"].is_array())
+				{
+					for (const auto &it : dim["bindings"])
+					{
+						DigitalInputBinding b;
+						b.subsystem_id = it.value("subsystem_id", 0u);
+						b.io_pos = static_cast<uint16_t>(it.value("io_pos", 0));
+						b.channel = static_cast<uint16_t>(it.value("channel", 0));
+						b.bit_index = static_cast<uint8_t>(it.value("bit_index", 0));
+						b.signal = static_cast<DigitalInputSignalType>(it.value("signal", 0));
+						b.active_high = it.value("active_high", true);
+						b.enabled = it.value("enabled", true);
+						b.app_scope = it.value("app_scope", -1);
+						parsed_.digital_input_map_cfg.bindings.push_back(b);
+					}
+				}
+			}
 		}
 		catch (const std::exception &e)
 		{
@@ -383,33 +408,33 @@ namespace weighing
 			om.MapSubsystemIO(m.sub_id, m.io_position);
 		}
 
-		std::string err;
+		// std::string err;
 
-		// 有配置就优先用配置
-		if (parsed_.has_dio_map_cfg)
-		{
-			if (om.UpdateDigitalOutputMap(parsed_.dio_map_cfg, &err))
-			{
-				printf("  DIO map loaded from input_mode.json (%zu bindings)\n",
-					   parsed_.dio_map_cfg.bindings.size());
-			}
-			fprintf(stderr, "SysInit: digital_output_map invalid: %s, fallback to defaults\n", err.c_str());
-		}
-		else
-		{
-			// 没有配置就根据子系统映射生成默认映射
-			DigitalOutputMapConfig default_cfg = DigitalOutputMap().BuildDefaultDigitalOutputMapForAll(om.GetSubsystemIOMap());
-			if (om.UpdateDigitalOutputMap(default_cfg, &err))
-			{
-				printf("  DIO map generated from subsystem mapping (%zu bindings)\n",
-					   default_cfg.bindings.size());
-			}
-			else
-			{
-				fprintf(stderr, "SysInit: Failed to set default digital output map: %s\n", err.c_str());
-				return false;
-			}
-		}
+		// // 有配置就优先用配置
+		// if (parsed_.has_dio_map_cfg)
+		// {
+		// 	if (om.UpdateDigitalOutputMap(parsed_.dio_map_cfg, &err))
+		// 	{
+		// 		printf("  DIO map loaded from input_mode.json (%zu bindings)\n",
+		// 			   parsed_.dio_map_cfg.bindings.size());
+		// 	}
+		// 	fprintf(stderr, "SysInit: digital_output_map invalid: %s, fallback to defaults\n", err.c_str());
+		// }
+		// else
+		// {
+		// 	// 没有配置就根据子系统映射生成默认映射
+		// 	DigitalOutputMapConfig default_cfg = DigitalOutputMap().BuildDefaultDigitalOutputMapForAll(om.GetSubsystemIOMap());
+		// 	if (om.UpdateDigitalOutputMap(default_cfg, &err))
+		// 	{
+		// 		printf("  DIO map generated from subsystem mapping (%zu bindings)\n",
+		// 			   default_cfg.bindings.size());
+		// 	}
+		// 	else
+		// 	{
+		// 		fprintf(stderr, "SysInit: Failed to set default digital output map: %s\n", err.c_str());
+		// 		return false;
+		// 	}
+		// }
 
 		// 注册 output callback 到 EtherCATMaster
 		if (!om.Start())
@@ -683,6 +708,71 @@ namespace weighing
 				*err = e.what();
 			return false;
 		}
+	}
+
+	// ============================================================================
+	// 保存离散输入映射配置到 JSON 文件
+	bool SystemInitializer::SaveDigitalInputMapToConfig(const DigitalInputMapConfig &cfg, std::string *err)
+	{
+		try
+		{
+			std::ifstream ifs(config_path_);
+			if (!ifs.is_open())
+			{
+				if (err)
+					*err = "open config failed";
+				return false;
+			}
+			nlohmann::json j;
+			ifs >> j;
+			ifs.close();
+
+			nlohmann::json dm;
+			dm["version"] = cfg.version;
+			dm["bindings"] = nlohmann::json::array();
+			for (const auto &b : cfg.bindings)
+			{
+				dm["bindings"].push_back({{"subsystem_id", b.subsystem_id},
+										  {"io_pos", b.io_pos},
+										  {"channel", b.channel},
+										  {"bit_index", b.bit_index},
+										  {"signal", static_cast<int>(b.signal)},
+										  {"active_high", b.active_high},
+										  {"enabled", b.enabled},
+										  {"app_scope", b.app_scope}});
+			}
+			j["digital_input_map"] = dm;
+
+			std::ofstream ofs(config_path_, std::ios::trunc);
+			if (!ofs.is_open())
+			{
+				if (err)
+					*err = "write config failed";
+				return false;
+			}
+			ofs << j.dump(2);
+			ofs.close();
+
+			parsed_.digital_input_map_cfg = cfg;
+			return true;
+		}
+		catch (const std::exception &e)
+		{
+			if (err)
+				*err = e.what();
+			return false;
+		}
+	}
+
+	// ============================================================================
+	// 更新内存中的离散输入映射配置（校验后更新）
+	bool SystemInitializer::UpdateDigitalInputMap(const DigitalInputMapConfig &cfg, std::string *err)
+	{
+		DigitalInputMap tmp;
+		if (!tmp.SetConfig(cfg, err))
+			return false;
+		parsed_.digital_input_map_cfg = cfg;
+		return true;
 	}
 
 	// ============================================================================

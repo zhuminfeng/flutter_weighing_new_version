@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include "../output/digital_output_mapping.h"
+#include "../input/digital_input_mapping.h"
 
 namespace weighing
 {
@@ -36,6 +37,10 @@ namespace weighing
 		bool SaveDigitalOutputMapToConfig(const DigitalOutputMapConfig &cfg, std::string *err);
 
 		bool SaveSubsystemMappingToConfig(uint32_t subsystem_id, uint32_t scale_id, std::string *err);
+
+		bool SaveDigitalInputMapToConfig(const DigitalInputMapConfig &cfg, std::string *err);
+		bool UpdateDigitalInputMap(const DigitalInputMapConfig &cfg, std::string *err = nullptr);
+		const DigitalInputMapConfig &GetDigitalInputMapConfig() const { return parsed_.digital_input_map_cfg; }
 
 		// ── 1. 将用作公共接口的结构体提前声明 ────────────────────────────────
 		struct SlaveEntry
@@ -125,11 +130,14 @@ namespace weighing
 			// DIO 映射配置
 			DigitalOutputMapConfig dio_map_cfg;
 			bool has_dio_map_cfg = false;
+			// Digital input map configuration
+			DigitalInputMapConfig digital_input_map_cfg;
 
 			// shmem config
 			std::string shm_path = "/dev/mem";
 			int shm_channels = 2;
 			int shm_poll_us = 500;
+
 		} parsed_;
 	};
 

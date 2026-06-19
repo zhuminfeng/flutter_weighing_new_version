@@ -91,7 +91,7 @@ class SettingsScreen extends StatelessWidget {
             subtitle: l.hmiConfigSubtitle,
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const SubSystemConfigScreen()),
+              MaterialPageRoute(builder: (_) => const SubsystemConfigScreen()),
             ),
           ),
 

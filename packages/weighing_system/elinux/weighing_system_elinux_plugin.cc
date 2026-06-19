@@ -186,7 +186,7 @@ namespace
 						   weighing::ServoOutputBinding *out,
 						   std::string *err)
 	{
-		int subsystem_id = 0, servo_pos = 0, channel = 0, signal = 0, app_scope = -1;
+		int subsystem_id = 0, servo_pos = 0, signal = 0, app_scope = -1;
 		bool enabled = true;
 
 		if (!GetIntField(item, "subsystem_id", &subsystem_id))
@@ -320,6 +320,115 @@ namespace
 		out[EV("ok")] = EV(ok);
 		out[EV("error")] = EV(error);
 		return out;
+	}
+
+	bool ParseDigitalInputBinding(const EMap &item,
+								  weighing::DigitalInputBinding *out,
+								  std::string *err)
+	{
+		int subsystem_id = 0, io_pos = 0, channel = 0, bit_index = 0, signal = 0, app_scope = -1;
+		bool active_high = true, enabled = true;
+
+		if (!GetIntField(item, "subsystem_id", &subsystem_id))
+		{
+			if (err)
+				*err = "binding missing subsystem_id";
+			return false;
+		}
+		if (!GetIntField(item, "io_pos", &io_pos))
+		{
+			if (err)
+				*err = "binding missing io_pos";
+			return false;
+		}
+		if (!GetIntField(item, "channel", &channel))
+		{
+			if (err)
+				*err = "binding missing channel";
+			return false;
+		}
+		if (!GetIntField(item, "bit_index", &bit_index))
+		{
+			if (err)
+				*err = "binding missing bit_index";
+			return false;
+		}
+		if (!GetIntField(item, "signal", &signal))
+		{
+			if (err)
+				*err = "binding missing signal";
+			return false;
+		}
+
+		(void)GetBoolField(item, "active_high", &active_high);
+		(void)GetBoolField(item, "enabled", &enabled);
+		(void)GetIntField(item, "app_scope", &app_scope);
+
+		const int kMaxSignal = static_cast<int>(weighing::DigitalInputSignalType::kCustomKey4);
+		if (signal < 0 || signal > kMaxSignal)
+		{
+			if (err)
+				*err = "binding signal out of range";
+			return false;
+		}
+
+		out->subsystem_id = static_cast<uint32_t>(subsystem_id);
+		out->io_pos = static_cast<uint16_t>(io_pos);
+		out->channel = static_cast<uint16_t>(channel);
+		out->bit_index = static_cast<uint8_t>(bit_index);
+		out->signal = static_cast<weighing::DigitalInputSignalType>(signal);
+		out->active_high = active_high;
+		out->enabled = enabled;
+		out->app_scope = app_scope;
+		return true;
+	}
+
+	bool ParseDigitalInputMapConfig(const EMap &args,
+									weighing::DigitalInputMapConfig *cfg,
+									std::string *err)
+	{
+		int version = 1;
+		(void)GetIntField(args, "version", &version);
+		cfg->version = version;
+		cfg->bindings.clear();
+
+		auto it = args.find(EV("bindings"));
+		if (it == args.end())
+		{
+			if (err)
+				*err = "missing bindings";
+			return false;
+		}
+
+		const auto *list = std::get_if<EList>(&it->second);
+		if (!list)
+		{
+			if (err)
+				*err = "bindings must be list";
+			return false;
+		}
+
+		for (size_t i = 0; i < list->size(); ++i)
+		{
+			const auto *item_map = std::get_if<EMap>(&(*list)[i]);
+			if (!item_map)
+			{
+				if (err)
+					*err = "bindings[" + std::to_string(i) + "] must be map";
+				return false;
+			}
+			weighing::DigitalInputBinding b;
+			std::string item_err;
+			if (!ParseDigitalInputBinding(*item_map, &b, &item_err))
+			{
+				if (err)
+					*err = "bindings[" + std::to_string(i) + "]: " + item_err;
+				return false;
+			}
+			cfg->bindings.push_back(b);
+		}
+
+		return true;
 	}
 
 	flutter::EncodableMap WeightDataToMap(const WeightData &data)
@@ -2711,6 +2820,7 @@ namespace
 														  std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
 	{
 		int sub_id = GetInt(args, "subsystemId");
+		int signal = GetInt(args, "signalType");
 		double rate = GetDouble(args, "ratePct", 0.0);
 
 		auto *sub = SubsystemManager::Instance().GetSubsystem(sub_id);
@@ -2725,7 +2835,7 @@ namespace
 		if (rate > 100.0)
 			rate = 100.0;
 
-		OutputManager::Instance().SetControlRate(static_cast<uint32_t>(sub_id), static_cast<float>(rate));
+		OutputManager::Instance().SetServoRateBySignal(static_cast<uint32_t>(sub_id), static_cast<DigitalSignalType>(signal), static_cast<float>(rate));
 		result->Success(flutter::EncodableValue(true));
 	}
 
@@ -3281,13 +3391,27 @@ namespace
 		const flutter::EncodableMap &args,
 		std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
 	{
-		// Stub — digital input map is not yet persisted to C++ config.
-		// Return an empty list so Dart can render an empty binding list.
-		// subsystemId is accepted for future use but not yet needed.
 		(void)args;
+		const auto &cfg = SystemInitializer::Instance().GetDigitalInputMapConfig();
+
+		flutter::EncodableList bindings;
+		for (const auto &b : cfg.bindings)
+		{
+			flutter::EncodableMap item;
+			item[EV("subsystem_id")] = EV(static_cast<int32_t>(b.subsystem_id));
+			item[EV("io_pos")] = EV(static_cast<int32_t>(b.io_pos));
+			item[EV("channel")] = EV(static_cast<int32_t>(b.channel));
+			item[EV("bit_index")] = EV(static_cast<int32_t>(b.bit_index));
+			item[EV("signal")] = EV(static_cast<int32_t>(b.signal));
+			item[EV("active_high")] = EV(b.active_high);
+			item[EV("enabled")] = EV(b.enabled);
+			item[EV("app_scope")] = EV(b.app_scope);
+			bindings.emplace_back(item);
+		}
+
 		flutter::EncodableMap response;
-		response[EV("success")] = EV(true);
-		response[EV("bindings")] = EV(flutter::EncodableList{});
+		response[EV("version")] = EV(cfg.version);
+		response[EV("bindings")] = EV(bindings);
 		result->Success(EV(response));
 	}
 
@@ -3295,8 +3419,28 @@ namespace
 		const flutter::EncodableMap &args,
 		std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
 	{
-		// Stub — accept and acknowledge; persistence not yet implemented.
 		(void)args;
+		weighing::DigitalInputMapConfig cfg;
+		std::string parse_err;
+		if (!ParseDigitalInputMapConfig(args, &cfg, &parse_err))
+		{
+			result->Success(EV(BuildMapResult(false, parse_err)));
+			return;
+		}
+
+		std::string err;
+		if (!SystemInitializer::Instance().UpdateDigitalInputMap(cfg, &err))
+		{
+			result->Success(EV(BuildMapResult(false, "apply: " + err)));
+			return;
+		}
+
+		if (!SystemInitializer::Instance().SaveDigitalInputMapToConfig(cfg, &err))
+		{
+			result->Success(EV(BuildMapResult(false, "save: " + err)));
+			return;
+		}
+
 		result->Success(EV(BuildMapResult(true, "")));
 	}
 
@@ -3304,12 +3448,22 @@ namespace
 		const flutter::EncodableMap &args,
 		std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
 	{
-		// Stub — always valid for now.
-		(void)args;
-		flutter::EncodableMap response;
-		response[EV("success")] = EV(true);
-		response[EV("valid")] = EV(true);
-		result->Success(EV(response));
+		weighing::DigitalInputMapConfig cfg;
+		std::string parse_err;
+		if (!ParseDigitalInputMapConfig(args, &cfg, &parse_err))
+		{
+			result->Success(EV(BuildMapResult(false, parse_err)));
+			return;
+		}
+
+		weighing::DigitalInputMap tmp;
+		std::string err;
+		bool ok = tmp.SetConfig(cfg, &err);
+
+		flutter::EncodableMap out;
+		out[EV("ok")] = EV(ok);
+		out[EV("error")] = EV(err);
+		result->Success(EV(out));
 	}
 
 	void WeighingSystemPlugin::HandleRemoveSubsystemMapping(
@@ -3317,12 +3471,28 @@ namespace
 		std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
 	{
 		int subsystem_id = GetInt(args, "subsystemId");
+		uint32_t sub_id = static_cast<uint32_t>(subsystem_id);
 
 		std::string err;
-		bool ok = SystemInitializer::Instance().RemoveSubsystemFromConfig(
-			static_cast<uint32_t>(subsystem_id),
-			&err);
+		bool ok = SystemInitializer::Instance().RemoveSubsystemFromConfig(sub_id, &err);
 
+		if (ok)
+		{
+			// 同步清理数字输入映射中属于该子系统的绑定
+			// GetDigitalInputMapConfig() returns const ref; auto makes a copy for mutation
+			auto cfg = SystemInitializer::Instance().GetDigitalInputMapConfig();
+			auto &bindings = cfg.bindings;
+			bindings.erase(
+				std::remove_if(bindings.begin(), bindings.end(),
+							   [sub_id](const weighing::DigitalInputBinding &b)
+							   { return b.subsystem_id == sub_id; }),
+				bindings.end());
+			std::string save_err;
+			if (!SystemInitializer::Instance().UpdateDigitalInputMap(cfg, &save_err))
+				fprintf(stderr, "HandleRemoveSubsystemMapping: update input map failed: %s\n", save_err.c_str());
+			else if (!SystemInitializer::Instance().SaveDigitalInputMapToConfig(cfg, &save_err))
+				fprintf(stderr, "HandleRemoveSubsystemMapping: save input map failed: %s\n", save_err.c_str());
+		}
 		result->Success(EV(BuildMapResult(ok, err)));
 	}
 

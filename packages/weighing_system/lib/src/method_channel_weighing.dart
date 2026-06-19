@@ -425,9 +425,11 @@ class ELinuxWeighingSystem extends WeighingPlatform {
   }
 
   @override
-  Future<bool> setManualControlRate(int subsystemId, double ratePct) async {
+  Future<bool> setManualControlRate(
+      int subsystemId, int signalType, double ratePct) async {
     final result = await _channel.invokeMethod<bool>('setManualControlRate', {
       'subsystemId': subsystemId,
+      'signalType': signalType,
       'ratePct': ratePct,
     });
     return result ?? false;
