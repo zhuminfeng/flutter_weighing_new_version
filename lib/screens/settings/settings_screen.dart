@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../l10n/app_localizations.dart';
 import '../../providers/app_state.dart';
-import 'calibration_screen.dart';
-import 'filter_screen.dart';
 import 'app_settings_screen.dart';
 import 'digital_output_settings_screen.dart'; // 新增
 import 'signal_analyzer_screen.dart';
@@ -20,24 +18,6 @@ class SettingsScreen extends StatelessWidget {
       appBar: AppBar(title: Text(l.settings)),
       body: ListView(
         children: [
-          _SettingsTile(
-            icon: Icons.tune,
-            title: l.calibration,
-            subtitle: '${l.calZero}, ${l.calSpan}, ${l.calStep}',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const CalibrationScreen()),
-            ),
-          ),
-          _SettingsTile(
-            icon: Icons.filter_alt,
-            title: l.filter,
-            subtitle: '${l.lowPassFilter}, ${l.notchFilter}, ${l.stability}',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const FilterScreen()),
-            ),
-          ),
           _SettingsTile(
             icon: Icons.settings_applications,
             title: l.appSettings,

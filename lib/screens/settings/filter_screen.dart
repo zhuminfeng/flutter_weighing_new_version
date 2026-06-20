@@ -3,16 +3,20 @@ import 'package:weighing_system_elinux/weighing_system_elinux.dart';
 import '../../l10n/app_localizations.dart';
 
 class FilterScreen extends StatefulWidget {
-  const FilterScreen({super.key});
+  final int? subsystemId;
+  final int? scaleId;
+
+  const FilterScreen({super.key, this.subsystemId, this.scaleId});
 
   @override
   State<FilterScreen> createState() => _FilterScreenState();
 }
 
 class _FilterScreenState extends State<FilterScreen> {
-  final int _scaleId = 0;
+  int _scaleId = 0;
   FilterStabilityConfig _config = const FilterStabilityConfig();
   bool _loading = true;
+  bool _loadFailed = false;
 
   @override
   void initState() {
@@ -21,10 +25,25 @@ class _FilterScreenState extends State<FilterScreen> {
   }
 
   Future<void> _load() async {
+    _loadFailed = false;
     try {
+      _scaleId = await _resolveScaleId();
       _config = await WeighingPlatform.instance.getFilterStability(_scaleId);
-    } catch (_) {}
+    } catch (_) {
+      _loadFailed = true;
+    }
     setState(() => _loading = false);
+  }
+
+  Future<int> _resolveScaleId() async {
+    if (widget.scaleId != null) return widget.scaleId!;
+    if (widget.subsystemId == null) return 0;
+    final mappings = await WeighingPlatform.instance.getSubsystemMappings();
+    final idx = mappings.indexWhere((m) => m.subsystemId == widget.subsystemId);
+    if (idx >= 0) return mappings[idx].scaleId;
+    throw StateError(
+      'Unable to locate scale configuration for subsystem: ${widget.subsystemId}',
+    );
   }
 
   Future<void> _save() async {
@@ -70,6 +89,13 @@ class _FilterScreenState extends State<FilterScreen> {
       return Scaffold(
         appBar: AppBar(title: Text(l.filter)),
         body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_loadFailed) {
+      return Scaffold(
+        appBar: AppBar(title: Text(l.filter)),
+        body: Center(child: Text(l.loadScaleSettingsFailed)),
       );
     }
 

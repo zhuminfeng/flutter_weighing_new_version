@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:weighing_system_elinux/weighing_system_elinux.dart';
 import '../../l10n/app_localizations.dart';
+import 'calibration_screen.dart';
+import 'filter_screen.dart';
 
 class ScaleSettingsScreen extends StatefulWidget {
   final int? subsystemId;
@@ -55,7 +57,9 @@ class _ScaleSettingsScreenState extends State<ScaleSettingsScreen> {
       (mapping) => mapping.subsystemId == widget.subsystemId,
     );
     if (mappingIndex >= 0) return mappings[mappingIndex].scaleId;
-    throw StateError('Subsystem mapping not found: ${widget.subsystemId}');
+    throw StateError(
+      'Unable to locate scale configuration for subsystem: ${widget.subsystemId}',
+    );
   }
 
   Future<void> _saveAll() async {
@@ -161,6 +165,50 @@ class _ScaleSettingsScreenState extends State<ScaleSettingsScreen> {
             isInt: true,
             onChanged: (v) => setState(
               () => _params = _params.copyWith(overloadRange: v.round()),
+            ),
+          ),
+
+          const Divider(height: 32),
+
+          _SectionHeader(l.filter),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.filter_alt),
+              title: Text(l.filter),
+              subtitle: Text(
+                '${l.lowPassFilter}, ${l.notchFilter}, ${l.stability}',
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => FilterScreen(
+                    subsystemId: widget.subsystemId,
+                    scaleId: _scaleId,
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          const Divider(height: 32),
+
+          _SectionHeader(l.calibration),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.tune),
+              title: Text(l.calibration),
+              subtitle: Text('${l.calZero}, ${l.calSpan}, ${l.calStep}'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => CalibrationScreen(
+                    subsystemId: widget.subsystemId,
+                    scaleId: _scaleId,
+                  ),
+                ),
+              ),
             ),
           ),
 

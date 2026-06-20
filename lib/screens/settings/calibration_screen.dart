@@ -3,14 +3,17 @@ import 'package:weighing_system_elinux/weighing_system_elinux.dart';
 import '../../l10n/app_localizations.dart';
 
 class CalibrationScreen extends StatefulWidget {
-  const CalibrationScreen({super.key});
+  final int? subsystemId;
+  final int? scaleId;
+
+  const CalibrationScreen({super.key, this.subsystemId, this.scaleId});
 
   @override
   State<CalibrationScreen> createState() => _CalibrationScreenState();
 }
 
 class _CalibrationScreenState extends State<CalibrationScreen> {
-  final int _scaleId = 0;
+  int _scaleId = 0;
   int _linearMode = 0;
   final List<TextEditingController> _loadControllers = List.generate(
     4,
@@ -19,6 +22,8 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
 
   String _calStatus = '';
   bool _calInProgress = false;
+  bool _loading = true;
+  bool _loadFailed = false;
   // 新增一个 flag，用于正确判断状态框颜色，避免依赖英文字符串匹配
   bool _isCalError = false;
 
@@ -28,10 +33,39 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
   );
 
   @override
+  void initState() {
+    super.initState();
+    _loadScaleContext();
+  }
+
+  @override
   void dispose() {
     for (var c in _loadControllers) c.dispose();
     _stepWeightController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadScaleContext() async {
+    _loadFailed = false;
+    try {
+      _scaleId = await _resolveScaleId();
+    } catch (_) {
+      _loadFailed = true;
+    }
+    if (mounted) {
+      setState(() => _loading = false);
+    }
+  }
+
+  Future<int> _resolveScaleId() async {
+    if (widget.scaleId != null) return widget.scaleId!;
+    if (widget.subsystemId == null) return 0;
+    final mappings = await WeighingPlatform.instance.getSubsystemMappings();
+    final idx = mappings.indexWhere((m) => m.subsystemId == widget.subsystemId);
+    if (idx >= 0) return mappings[idx].scaleId;
+    throw StateError(
+      'Unable to locate scale configuration for subsystem: ${widget.subsystemId}',
+    );
   }
 
   Future<void> _doZeroCal() async {
@@ -182,6 +216,20 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
+
+    if (_loading) {
+      return Scaffold(
+        appBar: AppBar(title: Text(l.calibration)),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_loadFailed) {
+      return Scaffold(
+        appBar: AppBar(title: Text(l.calibration)),
+        body: Center(child: Text(l.loadScaleSettingsFailed)),
+      );
+    }
 
     // 动态生成模式标签，支持国际化切换
     final linearModeLabels = [
