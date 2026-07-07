@@ -18,28 +18,28 @@ class SettingsScreen extends StatelessWidget {
       appBar: AppBar(title: Text(l.settings)),
       body: ListView(
         children: [
-          _SettingsTile(
-            icon: Icons.settings_applications,
-            title: l.appSettings,
-            subtitle: '${l.lossInWeight} / ${l.filling}',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AppSettingsScreen()),
-            ),
-          ),
+          // _SettingsTile(
+          //   icon: Icons.settings_applications,
+          //   title: l.appSettings,
+          //   subtitle: '${l.lossInWeight} / ${l.filling}',
+          //   onTap: () => Navigator.push(
+          //     context,
+          //     MaterialPageRoute(builder: (_) => const AppSettingsScreen()),
+          //   ),
+          // ),
 
           // 新增：Digital Output Mapping 入口
-          _SettingsTile(
-            icon: Icons.power,
-            title: l.digitalOutputMapping,
-            subtitle: l.doBitRouting,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const DigitalOutputSettingsScreen(),
-              ),
-            ),
-          ),
+          // _SettingsTile(
+          //   icon: Icons.power,
+          //   title: l.digitalOutputMapping,
+          //   subtitle: l.doBitRouting,
+          //   onTap: () => Navigator.push(
+          //     context,
+          //     MaterialPageRoute(
+          //       builder: (_) => const DigitalOutputSettingsScreen(),
+          //     ),
+          //   ),
+          // ),
 
           //中央控制器
           _SettingsTile(
