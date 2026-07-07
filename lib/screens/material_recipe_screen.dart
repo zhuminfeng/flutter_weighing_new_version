@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 
 /// 物料配方管理界面
@@ -29,7 +28,7 @@ class _MaterialRecipeScreenState extends State<MaterialRecipeScreen> {
   }
 
   Future<void> _loadRecipes() async {
-    final state = context.read<AppState>();
+    final state = AppStateProvider.read(context);
     setState(() => _loading = true);
     try {
       final list = await state.getAllMaterialRecipes(widget.appType);
@@ -76,7 +75,7 @@ class _MaterialRecipeScreenState extends State<MaterialRecipeScreen> {
 
     if (confirmed != true || nameCtrl.text.trim().isEmpty) return;
 
-    final state = context.read<AppState>();
+    final state = AppStateProvider.read(context);
     try {
       final ok = await state.saveMaterialRecipe(
         widget.subsystemId,
@@ -127,7 +126,7 @@ class _MaterialRecipeScreenState extends State<MaterialRecipeScreen> {
 
     if (confirmed != true) return;
 
-    final state = context.read<AppState>();
+    final state = AppStateProvider.read(context);
     try {
       final ok = await state.loadMaterialRecipe(
         widget.subsystemId,
@@ -173,7 +172,7 @@ class _MaterialRecipeScreenState extends State<MaterialRecipeScreen> {
 
     if (confirmed != true) return;
 
-    final state = context.read<AppState>();
+    final state = AppStateProvider.read(context);
     try {
       final ok = await state.deleteMaterialRecipe(
         recipe['recipeId'] as int,

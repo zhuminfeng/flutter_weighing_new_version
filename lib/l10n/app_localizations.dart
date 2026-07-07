@@ -1418,6 +1418,12 @@ abstract class AppLocalizations {
   /// **'Save failed'**
   String get saveFailedMsg;
 
+  /// No description provided for @loadScaleSettingsFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load scale settings'**
+  String get loadScaleSettingsFailed;
+
   /// No description provided for @confirmDelete.
   ///
   /// In en, this message translates to:

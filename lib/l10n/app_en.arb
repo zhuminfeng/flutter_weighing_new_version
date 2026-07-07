@@ -228,6 +228,7 @@
   "validationFailed": "Validation failed: ",
   "saveSuccess": "Save successful",
   "saveFailedMsg": "Save failed",
+  "loadScaleSettingsFailed": "Failed to load scale settings",
   "confirmDelete": "Confirm Delete",
   "confirmDeleteDOMsg": "Are you sure you want to delete this Digital Output mapping?",
   "delete": "Delete",

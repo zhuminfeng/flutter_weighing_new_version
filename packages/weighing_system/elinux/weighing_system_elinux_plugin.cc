@@ -88,6 +88,77 @@ namespace
 	using EMap = flutter::EncodableMap;
 	using EList = flutter::EncodableList;
 
+	bool ResolveScaleIdFromArgs(const flutter::EncodableMap &args, uint32_t *scale_id, std::string *err)
+	{
+		int provided_scale_id = GetInt(args, "scaleId", -1);
+		if (provided_scale_id >= 0)
+		{
+			*scale_id = static_cast<uint32_t>(provided_scale_id);
+			return true;
+		}
+
+		int subsystem_id = GetInt(args, "subsystemId", -1);
+		if (subsystem_id < 0)
+		{
+			if (err)
+				*err = "missing scaleId or subsystemId";
+			return false;
+		}
+
+		for (const auto &m : SystemInitializer::Instance().GetSubsystemMappings())
+		{
+			if (m.sub_id == static_cast<uint32_t>(subsystem_id))
+			{
+				*scale_id = m.scale_id;
+				return true;
+			}
+		}
+
+		if (err)
+			*err = "subsystem mapping not found";
+		return false;
+	}
+
+	ScalePlatform *ResolveScaleFromArgs(const flutter::EncodableMap &args, uint32_t *resolved_scale_id, std::string *err)
+	{
+		uint32_t scale_id = 0;
+		if (!ResolveScaleIdFromArgs(args, &scale_id, err))
+			return nullptr;
+
+		if (resolved_scale_id)
+			*resolved_scale_id = scale_id;
+
+		auto *scale = ScaleManager::Instance().GetScale(scale_id);
+		if (scale)
+			return scale;
+
+		scale = ScaleManager::Instance().CreateScale(scale_id);
+		if (!scale)
+		{
+			if (err)
+				*err = "failed to create scale";
+			return nullptr;
+		}
+
+		ScaleParams params;
+		ZeroConfig zero;
+		TareConfig tare;
+		FilterStabilityConfig filter;
+		if (!ConfigStore::Instance().LoadScaleConfig(scale_id, params, zero, tare, filter))
+		{
+			fprintf(stderr, "ResolveScaleFromArgs: scale %u config not found, using defaults\n", scale_id);
+		}
+		scale->Initialize(params, zero, tare, filter);
+
+		CalibrationData cal;
+		if (CalibrationStore::Instance().LoadCalibration(scale_id, cal) && cal.is_valid)
+		{
+			scale->LoadCalibrationData(cal);
+		}
+
+		return scale;
+	}
+
 	bool GetIntField(const EMap &m, const char *key, int *out)
 	{
 		auto it = m.find(EV(key));
@@ -1361,11 +1432,12 @@ namespace
 	void WeighingSystemPlugin::HandleUpdateScaleParams(const flutter::EncodableMap &args,
 													   std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
 	{
-		int scale_id = GetInt(args, "scaleId");
-		auto *scale = ScaleManager::Instance().GetScale(scale_id);
+		uint32_t scale_id = 0;
+		std::string scale_err;
+		auto *scale = ResolveScaleFromArgs(args, &scale_id, &scale_err);
 		if (!scale)
 		{
-			result->Error("NOT_FOUND", "Scale not found");
+			result->Error("NOT_FOUND", scale_err.empty() ? "Scale not found" : scale_err);
 			return;
 		}
 
@@ -1398,11 +1470,11 @@ namespace
 	void WeighingSystemPlugin::HandleGetScaleParams(const flutter::EncodableMap &args,
 													std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
 	{
-		int scale_id = GetInt(args, "scaleId");
-		auto *scale = ScaleManager::Instance().GetScale(scale_id);
+		std::string scale_err;
+		auto *scale = ResolveScaleFromArgs(args, nullptr, &scale_err);
 		if (!scale)
 		{
-			result->Error("NOT_FOUND", "Scale not found");
+			result->Error("NOT_FOUND", scale_err.empty() ? "Scale not found" : scale_err);
 			return;
 		}
 
@@ -1420,11 +1492,12 @@ namespace
 	void WeighingSystemPlugin::HandleUpdateZeroConfig(const flutter::EncodableMap &args,
 													  std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
 	{
-		int scale_id = GetInt(args, "scaleId");
-		auto *scale = ScaleManager::Instance().GetScale(scale_id);
+		uint32_t scale_id = 0;
+		std::string scale_err;
+		auto *scale = ResolveScaleFromArgs(args, &scale_id, &scale_err);
 		if (!scale)
 		{
-			result->Error("NOT_FOUND", "Scale not found");
+			result->Error("NOT_FOUND", scale_err.empty() ? "Scale not found" : scale_err);
 			return;
 		}
 
@@ -1451,11 +1524,11 @@ namespace
 	void WeighingSystemPlugin::HandleGetZeroConfig(const flutter::EncodableMap &args,
 												   std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
 	{
-		int scale_id = GetInt(args, "scaleId");
-		auto *scale = ScaleManager::Instance().GetScale(scale_id);
+		std::string scale_err;
+		auto *scale = ResolveScaleFromArgs(args, nullptr, &scale_err);
 		if (!scale)
 		{
-			result->Error("NOT_FOUND", "Scale not found");
+			result->Error("NOT_FOUND", scale_err.empty() ? "Scale not found" : scale_err);
 			return;
 		}
 
@@ -1476,11 +1549,12 @@ namespace
 	void WeighingSystemPlugin::HandleUpdateTareConfig(const flutter::EncodableMap &args,
 													  std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
 	{
-		int scale_id = GetInt(args, "scaleId");
-		auto *scale = ScaleManager::Instance().GetScale(scale_id);
+		uint32_t scale_id = 0;
+		std::string scale_err;
+		auto *scale = ResolveScaleFromArgs(args, &scale_id, &scale_err);
 		if (!scale)
 		{
-			result->Error("NOT_FOUND", "Scale not found");
+			result->Error("NOT_FOUND", scale_err.empty() ? "Scale not found" : scale_err);
 			return;
 		}
 
@@ -1499,11 +1573,11 @@ namespace
 	void WeighingSystemPlugin::HandleGetTareConfig(const flutter::EncodableMap &args,
 												   std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
 	{
-		int scale_id = GetInt(args, "scaleId");
-		auto *scale = ScaleManager::Instance().GetScale(scale_id);
+		std::string scale_err;
+		auto *scale = ResolveScaleFromArgs(args, nullptr, &scale_err);
 		if (!scale)
 		{
-			result->Error("NOT_FOUND", "Scale not found");
+			result->Error("NOT_FOUND", scale_err.empty() ? "Scale not found" : scale_err);
 			return;
 		}
 
@@ -1517,11 +1591,12 @@ namespace
 	void WeighingSystemPlugin::HandleUpdateFilterStability(const flutter::EncodableMap &args,
 														   std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
 	{
-		int scale_id = GetInt(args, "scaleId");
-		auto *scale = ScaleManager::Instance().GetScale(scale_id);
+		uint32_t scale_id = 0;
+		std::string scale_err;
+		auto *scale = ResolveScaleFromArgs(args, &scale_id, &scale_err);
 		if (!scale)
 		{
-			result->Error("NOT_FOUND", "Scale not found");
+			result->Error("NOT_FOUND", scale_err.empty() ? "Scale not found" : scale_err);
 			return;
 		}
 
@@ -1546,11 +1621,11 @@ namespace
 	void WeighingSystemPlugin::HandleGetFilterStability(const flutter::EncodableMap &args,
 														std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
 	{
-		int scale_id = GetInt(args, "scaleId");
-		auto *scale = ScaleManager::Instance().GetScale(scale_id);
+		std::string scale_err;
+		auto *scale = ResolveScaleFromArgs(args, nullptr, &scale_err);
 		if (!scale)
 		{
-			result->Error("NOT_FOUND", "Scale not found");
+			result->Error("NOT_FOUND", scale_err.empty() ? "Scale not found" : scale_err);
 			return;
 		}
 
@@ -1572,11 +1647,11 @@ namespace
 	void WeighingSystemPlugin::HandleDoZero(const flutter::EncodableMap &args,
 											std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
 	{
-		int scale_id = GetInt(args, "scaleId");
-		auto *scale = ScaleManager::Instance().GetScale(scale_id);
+		std::string scale_err;
+		auto *scale = ResolveScaleFromArgs(args, nullptr, &scale_err);
 		if (!scale)
 		{
-			result->Error("NOT_FOUND", "Scale not found");
+			result->Error("NOT_FOUND", scale_err.empty() ? "Scale not found" : scale_err);
 			return;
 		}
 		result->Success(flutter::EncodableValue(scale->DoPushbuttonZero()));
@@ -1585,11 +1660,11 @@ namespace
 	void WeighingSystemPlugin::HandleDoTare(const flutter::EncodableMap &args,
 											std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
 	{
-		int scale_id = GetInt(args, "scaleId");
-		auto *scale = ScaleManager::Instance().GetScale(scale_id);
+		std::string scale_err;
+		auto *scale = ResolveScaleFromArgs(args, nullptr, &scale_err);
 		if (!scale)
 		{
-			result->Error("NOT_FOUND", "Scale not found");
+			result->Error("NOT_FOUND", scale_err.empty() ? "Scale not found" : scale_err);
 			return;
 		}
 		result->Success(flutter::EncodableValue(scale->DoTare()));
@@ -1598,11 +1673,11 @@ namespace
 	void WeighingSystemPlugin::HandleClearTare(const flutter::EncodableMap &args,
 											   std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
 	{
-		int scale_id = GetInt(args, "scaleId");
-		auto *scale = ScaleManager::Instance().GetScale(scale_id);
+		std::string scale_err;
+		auto *scale = ResolveScaleFromArgs(args, nullptr, &scale_err);
 		if (!scale)
 		{
-			result->Error("NOT_FOUND", "Scale not found");
+			result->Error("NOT_FOUND", scale_err.empty() ? "Scale not found" : scale_err);
 			return;
 		}
 		scale->ClearTare();
@@ -1612,12 +1687,12 @@ namespace
 	void WeighingSystemPlugin::HandleSetPresetTare(const flutter::EncodableMap &args,
 												   std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
 	{
-		int scale_id = GetInt(args, "scaleId");
 		double value = GetDouble(args, "value", 0.0);
-		auto *scale = ScaleManager::Instance().GetScale(scale_id);
+		std::string scale_err;
+		auto *scale = ResolveScaleFromArgs(args, nullptr, &scale_err);
 		if (!scale)
 		{
-			result->Error("NOT_FOUND", "Scale not found");
+			result->Error("NOT_FOUND", scale_err.empty() ? "Scale not found" : scale_err);
 			return;
 		}
 		scale->SetPresetTare(value);
@@ -1629,11 +1704,11 @@ namespace
 	void WeighingSystemPlugin::HandleTriggerCalZero(const flutter::EncodableMap &args,
 													std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
 	{
-		int scale_id = GetInt(args, "scaleId");
-		auto *scale = ScaleManager::Instance().GetScale(scale_id);
+		std::string scale_err;
+		auto *scale = ResolveScaleFromArgs(args, nullptr, &scale_err);
 		if (!scale)
 		{
-			result->Error("NOT_FOUND", "Scale not found");
+			result->Error("NOT_FOUND", scale_err.empty() ? "Scale not found" : scale_err);
 			return;
 		}
 		scale->StartZeroCalibration();
@@ -1643,12 +1718,12 @@ namespace
 	void WeighingSystemPlugin::HandleTriggerCalSpan(const flutter::EncodableMap &args,
 													std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
 	{
-		int scale_id = GetInt(args, "scaleId");
 		int linear_mode = GetInt(args, "linearMode", 0);
-		auto *scale = ScaleManager::Instance().GetScale(scale_id);
+		std::string scale_err;
+		auto *scale = ResolveScaleFromArgs(args, nullptr, &scale_err);
 		if (!scale)
 		{
-			result->Error("NOT_FOUND", "Scale not found");
+			result->Error("NOT_FOUND", scale_err.empty() ? "Scale not found" : scale_err);
 			return;
 		}
 
@@ -1676,11 +1751,12 @@ namespace
 	void WeighingSystemPlugin::HandleTriggerSaveCalibration(const flutter::EncodableMap &args,
 															std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
 	{
-		int scale_id = GetInt(args, "scaleId");
-		auto *scale = ScaleManager::Instance().GetScale(scale_id);
+		uint32_t scale_id = 0;
+		std::string scale_err;
+		auto *scale = ResolveScaleFromArgs(args, &scale_id, &scale_err);
 		if (!scale)
 		{
-			result->Error("NOT_FOUND", "Scale not found");
+			result->Error("NOT_FOUND", scale_err.empty() ? "Scale not found" : scale_err);
 			return;
 		}
 
@@ -1698,11 +1774,11 @@ namespace
 	void WeighingSystemPlugin::HandleTriggerAbortCalibration(const flutter::EncodableMap &args,
 															 std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
 	{
-		int scale_id = GetInt(args, "scaleId");
-		auto *scale = ScaleManager::Instance().GetScale(scale_id);
+		std::string scale_err;
+		auto *scale = ResolveScaleFromArgs(args, nullptr, &scale_err);
 		if (!scale)
 		{
-			result->Error("NOT_FOUND", "Scale not found");
+			result->Error("NOT_FOUND", scale_err.empty() ? "Scale not found" : scale_err);
 			return;
 		}
 		scale->AbortCalibration();
@@ -1712,12 +1788,12 @@ namespace
 	void WeighingSystemPlugin::HandleTriggerStepCalibration(const flutter::EncodableMap &args,
 															std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
 	{
-		int scale_id = GetInt(args, "scaleId");
 		double test_weight = GetDouble(args, "testWeight", 1.0);
-		auto *scale = ScaleManager::Instance().GetScale(scale_id);
+		std::string scale_err;
+		auto *scale = ResolveScaleFromArgs(args, nullptr, &scale_err);
 		if (!scale)
 		{
-			result->Error("NOT_FOUND", "Scale not found");
+			result->Error("NOT_FOUND", scale_err.empty() ? "Scale not found" : scale_err);
 			return;
 		}
 		scale->StartStepCalibration(test_weight);

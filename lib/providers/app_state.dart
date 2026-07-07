@@ -153,6 +153,10 @@ class AppStateProvider extends InheritedNotifier<AppState> {
   static AppState of(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<AppStateProvider>()!.notifier!;
 
+  // 🚀 新增这一段：专门提供给 initState 或 异步回调中使用的“无监听获取”方法
+  static AppState read(BuildContext context) =>
+      context.getInheritedWidgetOfExactType<AppStateProvider>()!.notifier!;
+
   static void Function(Locale) localeChanger(BuildContext context) => context
       .dependOnInheritedWidgetOfExactType<AppStateProvider>()!
       .onLocaleChange;

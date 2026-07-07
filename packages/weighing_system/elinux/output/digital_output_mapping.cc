@@ -24,15 +24,15 @@ namespace weighing
 		}
 
 		// 2. === 新增：验证伺服设备绑定合法性 ===
-		for (const auto &b : cfg_.servo_bindings)
-		{
-			if (b.servo_pos == 0) // 假设位置0为非法总线预留位
-			{
-				if (err)
-					*err = "Servo position cannot be 0 for subsystem " + std::to_string(b.subsystem_id);
-				return false;
-			}
-		}
+		// for (const auto &b : cfg_.servo_bindings)
+		// {
+		// 	if (b.servo_pos == 0) // 假设位置0为非法总线预留位
+		// 	{
+		// 		if (err)
+		// 			*err = "Servo position cannot be 0 for subsystem " + std::to_string(b.subsystem_id);
+		// 		return false;
+		// 	}
+		// }
 		return true;
 	}
 

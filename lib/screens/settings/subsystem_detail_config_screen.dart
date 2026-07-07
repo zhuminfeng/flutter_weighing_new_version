@@ -5,6 +5,7 @@ import '../material_recipe_screen.dart';
 import 'app_settings_screen.dart';
 import 'digital_output_settings_screen.dart';
 import 'digital_input_settings_screen.dart';
+import 'scale_settings_screen.dart';
 import 'subsystem_config_screen.dart'
     show detectSlaveRole, slaveRoleIcon, slaveRoleColor, slaveRoleLabel;
 
@@ -327,6 +328,24 @@ class _SubsystemDetailConfigScreenState
               const SizedBox(height: 12),
             ],
           ],
+
+          _NavigationTile(
+            icon: Icons.scale,
+            title: l.scaleSettings,
+            subtitle: widget.inputMode == 'ethercat'
+                ? '${l.position}: ${_mapping.scaleId}'
+                : '${l.channel}: ${_mapping.scaleId}',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ScaleSettingsScreen(
+                  subsystemId: _mapping.subsystemId,
+                  scaleId: _mapping.scaleId,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
 
           // ── 配方设置 ──────────────────────────────────────────────────────
           _NavigationTile(

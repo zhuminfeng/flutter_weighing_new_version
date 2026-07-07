@@ -228,6 +228,7 @@
   "validationFailed": "校验失败: ",
   "saveSuccess": "保存成功",
   "saveFailedMsg": "保存失败",
+  "loadScaleSettingsFailed": "秤台配置加载失败",
   "confirmDelete": "确认删除",
   "confirmDeleteDOMsg": "确定删除这条 Digital Output 映射吗？",
   "delete": "删除",

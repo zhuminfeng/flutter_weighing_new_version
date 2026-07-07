@@ -1,5 +1,5 @@
 {
-  "input_mode": "shmem",
+  "input_mode": "ethercat",
   "cycle_time_us": 1000,
 
   "input_source": {
