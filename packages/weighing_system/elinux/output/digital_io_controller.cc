@@ -19,7 +19,7 @@ namespace weighing
 		if (!offsets_ || !domain_data)
 			return;
 		EC_WRITE_U16(domain_data + offsets_->off_do, output_value_.load());
-		last_inputs_ = EC_READ_U16(domain_data + offsets_->off_di);
+		// last_inputs_ = EC_READ_U16(domain_data + offsets_->off_di);
 	}
 
 	void DigitalIOController::SetBit(uint16_t bit_mask)
@@ -76,7 +76,7 @@ namespace weighing
 											  bool on,
 											  const DigitalOutputMap &map)
 	{
-		auto bit = map.ResolveBit(subsystem_id, slave_position_, channel, signal, app_type);
+		auto bit = map.ResolveBit(subsystem_id, slave_position_, signal, app_type);
 		if (!bit.has_value())
 			return;
 		if (on)
@@ -85,23 +85,23 @@ namespace weighing
 			ClearBit(*bit);
 	}
 
-	void DigitalIOController::ParseDioInputs(
-		bool &start, bool &stop, bool &execute_refill,
-		bool &emptying, bool &interlock, bool &tare,
-		bool &zero, bool &jog_trigger) const
-	{
+	// void DigitalIOController::ParseDioInputs(
+	// 	bool &start, bool &stop, bool &execute_refill,
+	// 	bool &emptying, bool &interlock, bool &tare,
+	// 	bool &zero, bool &jog_trigger) const
+	// {
 
-		uint16_t di = last_inputs_.load();
-		using namespace ec3a_io1632;
+	// 	uint16_t di = last_inputs_.load();
+	// 	using namespace ec3a_io1632;
 
-		start = (di & DI_Bit::START) != 0;
-		stop = (di & DI_Bit::STOP) != 0;
-		execute_refill = (di & DI_Bit::EXECUTE_REFILL) != 0;
-		emptying = (di & DI_Bit::EMPTYING) != 0;
-		interlock = (di & DI_Bit::INTERLOCK) != 0;
-		tare = (di & DI_Bit::TARE) != 0;
-		zero = (di & DI_Bit::ZERO) != 0;
-		jog_trigger = (di & DI_Bit::JOG_TRIGGER) != 0;
-	}
+	// 	start = (di & DI_Bit::START) != 0;
+	// 	stop = (di & DI_Bit::STOP) != 0;
+	// 	execute_refill = (di & DI_Bit::EXECUTE_REFILL) != 0;
+	// 	emptying = (di & DI_Bit::EMPTYING) != 0;
+	// 	interlock = (di & DI_Bit::INTERLOCK) != 0;
+	// 	tare = (di & DI_Bit::TARE) != 0;
+	// 	zero = (di & DI_Bit::ZERO) != 0;
+	// 	jog_trigger = (di & DI_Bit::JOG_TRIGGER) != 0;
+	// }
 
 } // namespace weighing

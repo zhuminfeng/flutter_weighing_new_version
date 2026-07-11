@@ -106,11 +106,12 @@ class _MaterialRecipeScreenState extends State<MaterialRecipeScreen> {
   }
 
   Future<void> _loadRecipe(Map<String, dynamic> recipe) async {
+    final recipeName = recipe['name'] as String? ?? '未命名';
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('加载配方'),
-        content: Text('将使用配方「${recipe['name']}」的参数覆盖当前设置，确认？'),
+        content: Text('将使用配方「$recipeName」的参数覆盖当前设置，确认？'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -131,12 +132,18 @@ class _MaterialRecipeScreenState extends State<MaterialRecipeScreen> {
       final ok = await state.loadMaterialRecipe(
         widget.subsystemId,
         recipe['recipeId'] as int,
+        recipeName,
         widget.appType,
       );
+
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(ok ? '配方已加载，参数已更新' : '加载失败')));
+        if (ok) {
+          // 🚀 核心修复1：加载成功后，主动调用 setState 强制刷新列表UI
+          setState(() {});
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(ok ? '配方「$recipeName」已加载' : '加载失败')),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -179,6 +186,11 @@ class _MaterialRecipeScreenState extends State<MaterialRecipeScreen> {
         widget.appType,
       );
       if (ok) {
+        // 如果删除的是当前正在使用的配方，清除活跃名称
+        if (state.getActiveRecipeName(widget.subsystemId) == recipe['name']) {
+          state.setActiveRecipeName(widget.subsystemId, null);
+        }
+
         await _loadRecipes();
         if (mounted) {
           ScaffoldMessenger.of(
@@ -198,6 +210,9 @@ class _MaterialRecipeScreenState extends State<MaterialRecipeScreen> {
   @override
   Widget build(BuildContext context) {
     final title = widget.appType == 0 ? '失重秤物料配方' : '罐装秤物料配方';
+
+    // 🚀 核心修复2：将 AppState 的监听提取到 build 方法的最顶端，确保全局状态改变时列表能够整体重绘
+    final state = AppStateProvider.of(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -241,35 +256,75 @@ class _MaterialRecipeScreenState extends State<MaterialRecipeScreen> {
               itemBuilder: (context, index) {
                 final recipe = _recipes[index];
                 final createdAt = recipe['createdAt'] as String? ?? '';
+
+                // 判断当前配方是否是处于活跃（使用中）状态
+                final isActive =
+                    state.getActiveRecipeName(widget.subsystemId) ==
+                    recipe['name'];
+
                 return ListTile(
+                  tileColor: isActive ? Colors.blue.withOpacity(0.05) : null,
                   leading: CircleAvatar(
-                    backgroundColor: widget.appType == 0
+                    backgroundColor: isActive
                         ? Colors.blue
-                        : Colors.green,
-                    child: Text(
-                      '${recipe['recipeId']}',
-                      style: const TextStyle(color: Colors.white, fontSize: 12),
-                    ),
+                        : (widget.appType == 0
+                              ? Colors.blue.shade200
+                              : Colors.green.shade200),
+                    child: isActive
+                        ? const Icon(Icons.check, color: Colors.white, size: 20)
+                        : Text(
+                            '${recipe['recipeId']}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                            ),
+                          ),
                   ),
-                  title: Text(
-                    recipe['name'] as String? ?? '未命名',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  title: Row(
+                    children: [
+                      Text(
+                        recipe['name'] as String? ?? '未命名',
+                        style: TextStyle(
+                          fontWeight: isActive
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                          color: isActive ? Colors.blue.shade700 : null,
+                        ),
+                      ),
+                      if (isActive)
+                        Container(
+                          margin: const EdgeInsets.only(left: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade100,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            '当前使用',
+                            style: TextStyle(fontSize: 10, color: Colors.blue),
+                          ),
+                        ),
+                    ],
                   ),
                   subtitle: Text('创建时间: $createdAt'),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      TextButton.icon(
-                        onPressed: () => _loadRecipe(recipe),
-                        icon: const Icon(
-                          Icons.download_rounded,
-                          color: Colors.blue,
+                      if (!isActive)
+                        TextButton.icon(
+                          onPressed: () => _loadRecipe(recipe),
+                          icon: const Icon(
+                            Icons.download_rounded,
+                            color: Colors.blue,
+                          ),
+                          label: const Text(
+                            '加载',
+                            style: TextStyle(color: Colors.blue),
+                          ),
                         ),
-                        label: const Text(
-                          '加载',
-                          style: TextStyle(color: Colors.blue),
-                        ),
-                      ),
                       IconButton(
                         icon: const Icon(
                           Icons.delete_outline,

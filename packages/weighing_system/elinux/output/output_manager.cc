@@ -82,24 +82,24 @@ namespace weighing
 		{
 			dio->CyclicTask(domain_data);
 
-			if (dio_callback_)
-			{
-				bool start, stop, refill, emptying, interlock, tare, zero, jog;
-				dio->ParseDioInputs(start, stop, refill, emptying, interlock, tare, zero, jog);
+			// if (dio_callback_)
+			// {
+			// 	bool start, stop, refill, emptying, interlock, tare, zero, jog;
+			// 	dio->ParseDioInputs(start, stop, refill, emptying, interlock, tare, zero, jog);
 
-				// 构造输入信号结构体（使用命名字段，避免聚合初始化顺序依赖）
-				DioInputSignals sig;
-				sig.start = start;
-				sig.stop = stop;
-				sig.execute_refill = refill;
-				sig.trigger_emptying = emptying;
-				sig.interlock = interlock;
-				sig.tare = tare;
-				sig.zero = zero;
-				sig.jog_trigger = jog;
+			// 	// 构造输入信号结构体（使用命名字段，避免聚合初始化顺序依赖）
+			// 	DioInputSignals sig;
+			// 	sig.start = start;
+			// 	sig.stop = stop;
+			// 	sig.execute_refill = refill;
+			// 	sig.trigger_emptying = emptying;
+			// 	sig.interlock = interlock;
+			// 	sig.tare = tare;
+			// 	sig.zero = zero;
+			// 	sig.jog_trigger = jog;
 
-				dio_callback_(pos, sig);
-			}
+			// 	dio_callback_(pos, sig);
+			// }
 		}
 	}
 

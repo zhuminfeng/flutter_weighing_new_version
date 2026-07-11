@@ -4,6 +4,7 @@
 #include "../input/ethercat_input.h"
 #include "../input/shmem_input.h"
 #include "../output/output_manager.h"
+#include "../input/input_manager.h"
 #include "../scale/scale_manager.h"
 #include "../subsystem/subsystem_manager.h"
 #include "../storage/database_manager.h"
@@ -74,6 +75,19 @@ namespace weighing
 		if (!InitOutputManager())
 			return false;
 
+		// ==========================================
+		// ===== 【新增】Step 6b: 启动 InputManager =====
+		// ==========================================
+		printf("[6b/11] Initializing Input Manager...\n");
+		if (!InputManager::Instance().Initialize())
+			return false;
+
+		std::string in_err;
+		if (!InputManager::Instance().UpdateDigitalInputMap(parsed_.digital_input_map_cfg, &in_err))
+		{
+			printf("Warning: Failed to set initial input map: %s\n", in_err.c_str());
+		}
+		InputManager::Instance().Start();
 		// Step 7-8: InputSource
 		printf("[7/11] Creating Input Source...\n");
 		if (!InitInputSource(config_path))
@@ -226,6 +240,7 @@ namespace weighing
 					m.description = val.value("description", "Subsystem " + key);
 					m.app_type = val.value("app_type", 0);
 					m.enabled = val.value("enabled", true);
+					m.active_recipe = val.value("active_recipe", ""); // 🚀 【新增】
 					parsed_.subsystem_mappings.push_back(m);
 				}
 			}
@@ -245,7 +260,7 @@ namespace weighing
 						DigitalOutputBinding b;
 						b.subsystem_id = it.value("subsystem_id", 0u);
 						b.io_pos = static_cast<uint16_t>(it.value("io_pos", 0));
-						b.channel = static_cast<uint16_t>(it.value("channel", 0));
+						// b.channel = static_cast<uint16_t>(it.value("channel", 0));
 						b.signal = static_cast<DigitalSignalType>(it.value("signal", 0));
 						b.bit_index = static_cast<uint8_t>(it.value("bit_index", 0));
 						b.active_high = it.value("active_high", true);
@@ -286,7 +301,7 @@ namespace weighing
 						DigitalInputBinding b;
 						b.subsystem_id = it.value("subsystem_id", 0u);
 						b.io_pos = static_cast<uint16_t>(it.value("io_pos", 0));
-						b.channel = static_cast<uint16_t>(it.value("channel", 0));
+						// b.channel = static_cast<uint16_t>(it.value("channel", 0));
 						b.bit_index = static_cast<uint8_t>(it.value("bit_index", 0));
 						b.signal = static_cast<DigitalInputSignalType>(it.value("signal", 0));
 						b.active_high = it.value("active_high", true);
@@ -630,11 +645,22 @@ namespace weighing
 			printf("  Created default subsystem 0\n");
 		}
 
-		// 注册 DIO 输入回调（始终注册，因为输出始终是 EtherCAT）
-		OutputManager::Instance().SetDioInputCallback(
-			[](uint32_t io_pos, const DioInputSignals &signals)
+		// // 注册 DIO 输入回调（始终注册，因为输出始终是 EtherCAT）
+		// OutputManager::Instance().SetDioInputCallback(
+		// 	[](uint32_t io_pos, const DioInputSignals &signals)
+		// 	{
+		// 		for (auto &[id, sub] : SubsystemManager::Instance().GetAllSubsystems())
+		// 		{
+		// 			sub->HandleDioInputs(signals);
+		// 		}
+		// 	});
+
+		// 注册 DIO 输入回调（由 InputManager 提供精准子系统分发）
+		InputManager::Instance().SetDioInputCallback(
+			[](uint32_t subsystem_id, const DioInputSignals &signals)
 			{
-				for (auto &[id, sub] : SubsystemManager::Instance().GetAllSubsystems())
+				auto *sub = SubsystemManager::Instance().GetSubsystem(subsystem_id);
+				if (sub)
 				{
 					sub->HandleDioInputs(signals);
 				}
@@ -667,7 +693,7 @@ namespace weighing
 			{
 				dm["bindings"].push_back({{"subsystem_id", b.subsystem_id},
 										  {"io_pos", b.io_pos},
-										  {"channel", b.channel},
+										  //   {"channel", b.channel},
 										  {"signal", static_cast<int>(b.signal)},
 										  {"bit_index", b.bit_index},
 										  {"active_high", b.active_high},
@@ -734,7 +760,7 @@ namespace weighing
 			{
 				dm["bindings"].push_back({{"subsystem_id", b.subsystem_id},
 										  {"io_pos", b.io_pos},
-										  {"channel", b.channel},
+										  //   {"channel", b.channel},
 										  {"bit_index", b.bit_index},
 										  {"signal", static_cast<int>(b.signal)},
 										  {"active_high", b.active_high},
@@ -880,7 +906,9 @@ namespace weighing
 				{"io_position", io_position},
 				{"description", description.empty() ? "Subsystem " + key : description},
 				{"app_type", app_type},
-				{"enabled", enabled}};
+				{"enabled", enabled},
+				{"active_recipe", ""} // 🚀 默认创建时为空
+			};
 
 			std::ofstream ofs(config_path_, std::ios::trunc);
 			if (!ofs.is_open())
@@ -1026,6 +1054,66 @@ namespace weighing
 			ofs.close();
 
 			it->app_type = app_type;
+			return true;
+		}
+		catch (const std::exception &e)
+		{
+			if (err)
+				*err = e.what();
+			return false;
+		}
+	}
+
+	// 🚀 【新增】：持久化激活的配方名到 input_mode.json 中
+	bool SystemInitializer::SetSubsystemActiveRecipe(uint32_t sub_id, const std::string &recipe_name, std::string *err)
+	{
+		try
+		{
+			auto it = std::find_if(parsed_.subsystem_mappings.begin(),
+								   parsed_.subsystem_mappings.end(),
+								   [sub_id](const SubMapping &m)
+								   { return m.sub_id == sub_id; });
+			if (it == parsed_.subsystem_mappings.end())
+			{
+				if (err)
+					*err = "subsystem not found: " + std::to_string(sub_id);
+				return false;
+			}
+
+			std::ifstream ifs(config_path_);
+			if (!ifs.is_open())
+			{
+				if (err)
+					*err = "open config failed";
+				return false;
+			}
+			nlohmann::json j;
+			ifs >> j;
+			ifs.close();
+
+			std::string key = std::to_string(sub_id);
+			if (!j.contains("subsystem_mapping") || !j["subsystem_mapping"].contains(key))
+			{
+				if (err)
+					*err = "subsystem key not in config";
+				return false;
+			}
+
+			// 单独刷新该子系统下的激活配方名
+			j["subsystem_mapping"][key]["active_recipe"] = recipe_name;
+
+			std::ofstream ofs(config_path_, std::ios::trunc);
+			if (!ofs.is_open())
+			{
+				if (err)
+					*err = "write config failed";
+				return false;
+			}
+			ofs << j.dump(2);
+			ofs.close();
+
+			// 同步更新内存缓存
+			it->active_recipe = recipe_name;
 			return true;
 		}
 		catch (const std::exception &e)

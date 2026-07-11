@@ -15,12 +15,12 @@ namespace weighing
 					*err = "bit_index out of range: " + std::to_string(b.bit_index);
 				return false;
 			}
-			if (b.channel > 1)
-			{
-				if (err)
-					*err = "channel out of range: " + std::to_string(b.channel);
-				return false;
-			}
+			// if (b.channel > 1)
+			// {
+			// 	if (err)
+			// 		*err = "channel out of range: " + std::to_string(b.channel);
+			// 	return false;
+			// }
 			if (static_cast<int>(b.signal) < 0 || static_cast<int>(b.signal) > kMaxSignal)
 			{
 				if (err)

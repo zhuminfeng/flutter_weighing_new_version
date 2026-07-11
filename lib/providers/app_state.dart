@@ -14,6 +14,9 @@ class AppState extends ChangeNotifier {
   Map<String, dynamic> _configStatus = const {};
   List<SubsystemMappingInfo> _subsystems = [];
 
+  // 🚀 新增：记录每个子系统当前加载的配方名称
+  final Map<int, String> _activeRecipeNames = {};
+
   StreamSubscription<WeightData>? _weightSub;
   StreamSubscription<Map<String, dynamic>>? _statusSub;
 
@@ -35,12 +38,32 @@ class AppState extends ChangeNotifier {
   AppStatusData getAppStatus(int subsystemId) =>
       _appStatusMap[subsystemId] ?? const AppStatusData();
 
+  // 🚀 新增：获取和设置当前活跃的配方名称
+  String? getActiveRecipeName(int subsystemId) =>
+      _activeRecipeNames[subsystemId];
+
+  void setActiveRecipeName(int subsystemId, String? recipeName) {
+    if (recipeName == null) {
+      _activeRecipeNames.remove(subsystemId);
+    } else {
+      _activeRecipeNames[subsystemId] = recipeName;
+    }
+    notifyListeners();
+  }
+
   Future<void> initialize() async {
     try {
       _initialized = await _platform.initialize();
       if (_initialized) {
         _configStatus = await _platform.getConfigStatus();
         _subsystems = await _platform.getSubsystemMappings();
+        // 🚀 【核心优化】：开机读取配置文件后，自动根据后端数据同步内存中的配方标记状态
+        _activeRecipeNames.clear();
+        for (var sub in _subsystems) {
+          if (sub.activeRecipe.isNotEmpty) {
+            _activeRecipeNames[sub.subsystemId] = sub.activeRecipe;
+          }
+        }
         _weightSub = _platform.weightStream.listen((data) {
           _weightDataMap[data.scaleId] = data;
           notifyListeners();
@@ -60,6 +83,7 @@ class AppState extends ChangeNotifier {
       _statusSub = null;
       _weightDataMap.clear();
       _appStatusMap.clear();
+      _activeRecipeNames.clear(); // 清理配方状态
       _configStatus = const {};
       _subsystems = [];
       await _platform.shutdown();
@@ -118,12 +142,37 @@ class AppState extends ChangeNotifier {
   // ============ Material Recipe API ============
 
   /// 将当前子系统参数保存为物料配方
-  Future<bool> saveMaterialRecipe(int subsystemId, String name, int appType) =>
-      _platform.saveMaterialRecipe(subsystemId, name, appType);
+  Future<bool> saveMaterialRecipe(
+    int subsystemId,
+    String name,
+    int appType,
+  ) async {
+    final ok = await _platform.saveMaterialRecipe(subsystemId, name, appType);
+    if (ok) {
+      setActiveRecipeName(subsystemId, name); // 保存成功后更新活跃名称
+    }
+    return ok;
+  }
 
   /// 将物料配方参数载入子系统
-  Future<bool> loadMaterialRecipe(int subsystemId, int recipeId, int appType) =>
-      _platform.loadMaterialRecipe(subsystemId, recipeId, appType);
+  Future<bool> loadMaterialRecipe(
+    int subsystemId,
+    int recipeId,
+    String recipeName,
+    int appType,
+  ) async {
+    // 这里底层接口只需要 recipeId，我们传入 recipeName 是为了在 UI 层显示
+    final ok = await _platform.loadMaterialRecipe(
+      subsystemId,
+      recipeId,
+      recipeName,
+      appType,
+    );
+    if (ok) {
+      setActiveRecipeName(subsystemId, recipeName); // 加载成功后更新活跃名称
+    }
+    return ok;
+  }
 
   /// 获取指定应用类型的所有物料配方
   Future<List<Map<String, dynamic>>> getAllMaterialRecipes(int appType) =>
@@ -153,7 +202,6 @@ class AppStateProvider extends InheritedNotifier<AppState> {
   static AppState of(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<AppStateProvider>()!.notifier!;
 
-  // 🚀 新增这一段：专门提供给 initState 或 异步回调中使用的“无监听获取”方法
   static AppState read(BuildContext context) =>
       context.getInheritedWidgetOfExactType<AppStateProvider>()!.notifier!;
 

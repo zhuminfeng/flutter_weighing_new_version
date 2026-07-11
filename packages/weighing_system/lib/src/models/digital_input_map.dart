@@ -16,7 +16,7 @@ enum DigitalInputSignalType {
 class DigitalInputBinding {
   final int subsystemId;
   final int ioPos;
-  final int channel;
+  // final int channel;
   final int bitIndex;
   final int appScope;
   final DigitalInputSignalType signal;
@@ -26,7 +26,7 @@ class DigitalInputBinding {
   const DigitalInputBinding({
     required this.subsystemId,
     required this.ioPos,
-    required this.channel,
+    // required this.channel,
     required this.bitIndex,
     required this.signal,
     this.activeHigh = true,
@@ -37,7 +37,7 @@ class DigitalInputBinding {
   Map<String, dynamic> toMap() => {
         'subsystem_id': subsystemId,
         'io_pos': ioPos,
-        'channel': channel,
+        // 'channel': channel,
         'bit_index': bitIndex,
         'signal': signal.index,
         'active_high': activeHigh,
@@ -48,7 +48,7 @@ class DigitalInputBinding {
   factory DigitalInputBinding.fromMap(Map m) => DigitalInputBinding(
         subsystemId: m['subsystem_id'] as int? ?? 0,
         ioPos: m['io_pos'] as int? ?? 0,
-        channel: m['channel'] as int? ?? 0,
+        // channel: m['channel'] as int? ?? 0,
         bitIndex: m['bit_index'] as int? ?? 0,
         signal: DigitalInputSignalType.values[(m['signal'] as int?) ?? 0],
         activeHigh: m['active_high'] as bool? ?? true,
@@ -58,7 +58,7 @@ class DigitalInputBinding {
 
   DigitalInputBinding copyWith({
     int? ioPos,
-    int? channel,
+    // int? channel,
     int? bitIndex,
     DigitalInputSignalType? signal,
     bool? activeHigh,
@@ -68,7 +68,7 @@ class DigitalInputBinding {
       DigitalInputBinding(
         subsystemId: subsystemId,
         ioPos: ioPos ?? this.ioPos,
-        channel: channel ?? this.channel,
+        // channel: channel ?? this.channel,
         bitIndex: bitIndex ?? this.bitIndex,
         signal: signal ?? this.signal,
         activeHigh: activeHigh ?? this.activeHigh,

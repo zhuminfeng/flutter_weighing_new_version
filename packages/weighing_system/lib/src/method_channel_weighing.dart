@@ -873,11 +873,12 @@ class ELinuxWeighingSystem extends WeighingPlatform {
   /// 将物料配方参数加载到指定子系统
   @override
   Future<bool> loadMaterialRecipe(
-      int subsystemId, int recipeId, int appType) async {
+      int subsystemId, int recipeId, String recipeName, int appType) async {
     try {
       final result = await _channel.invokeMethod<bool>('loadMaterialRecipe', {
         'subsystemId': subsystemId,
         'recipeId': recipeId,
+        'recipeName': recipeName,
         'appType': appType,
       });
       return result ?? false;

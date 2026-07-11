@@ -29,7 +29,7 @@ namespace weighing
 	{
 		uint32_t subsystem_id = 0;
 		uint16_t io_pos = 0;
-		uint16_t channel = 0;
+		// uint16_t channel = 0;
 		uint8_t bit_index = 0; // 0..15
 		DigitalInputSignalType signal = DigitalInputSignalType::kStartSignal;
 		bool active_high = true;

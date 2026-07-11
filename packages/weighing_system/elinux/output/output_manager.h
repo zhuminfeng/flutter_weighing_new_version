@@ -15,7 +15,7 @@ namespace weighing
 {
 
 	// 回调使用 DioInputSignals（只含输入）
-	using DioInputCallback = std::function<void(uint32_t io_pos, const DioInputSignals &signals)>;
+	// using DioInputCallback = std::function<void(uint32_t io_pos, const DioInputSignals &signals)>;
 
 	class OutputManager
 	{
@@ -46,7 +46,7 @@ namespace weighing
 		void SetRunning(uint32_t subsystem_id, AppType app_type, bool running);
 		void SetWarning(uint32_t subsystem_id, AppType app_type, bool warning);
 
-		void SetDioInputCallback(DioInputCallback cb) { dio_callback_ = cb; }
+		// void SetDioInputCallback(DioInputCallback cb) { dio_callback_ = cb; }
 
 		// 子系统映射
 		// void MapSubsystemServo(uint32_t sub_id, uint16_t channel, uint16_t servo_pos);
@@ -101,7 +101,7 @@ namespace weighing
 		std::map<uint32_t, std::map<DigitalSignalType, std::vector<uint16_t>>> subsystem_servo_route_;
 		std::map<uint32_t, uint16_t> subsystem_io_map_;
 
-		DioInputCallback dio_callback_;
+		// DioInputCallback dio_callback_;
 		bool initialized_ = false;
 	};
 

@@ -60,7 +60,11 @@ namespace weighing
 			std::string description;
 			int app_type = 0; // 0=LIW, 1=Filling
 			bool enabled = true;
+			std::string active_recipe = ""; // 🚀 【新增】：当前激活的物料配方名称
 		};
+
+		// 声明更新配方接口
+		bool SetSubsystemActiveRecipe(uint32_t sub_id, const std::string &recipe_name, std::string *err);
 
 		// ── Config status accessors ──────────────────────────────────────────
 		bool GetHasOutputSlaves() const { return !parsed_.output_slaves.empty(); }

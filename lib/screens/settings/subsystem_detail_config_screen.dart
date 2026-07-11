@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:weighing_system_elinux/weighing_system_elinux.dart';
 import '../../l10n/app_localizations.dart';
+import '../../providers/app_state.dart'; // === 新增：导入 AppState ===
 import '../material_recipe_screen.dart';
 import 'app_settings_screen.dart';
 import 'digital_output_settings_screen.dart';
@@ -9,7 +10,6 @@ import 'scale_settings_screen.dart';
 import 'subsystem_config_screen.dart'
     show detectSlaveRole, slaveRoleIcon, slaveRoleColor, slaveRoleLabel;
 
-/// 单个子系统的详细配置页面
 class SubsystemDetailConfigScreen extends StatefulWidget {
   final SubsystemMappingInfo mapping;
   final String inputMode;
@@ -54,7 +54,6 @@ class _SubsystemDetailConfigScreenState
     if (name == _mapping.description) return;
 
     setState(() => _saving = true);
-    // Re-add with same ID/scaleId but new description
     final ok = await _platform.addSubsystemMapping(
       _mapping.subsystemId,
       name,
@@ -122,7 +121,6 @@ class _SubsystemDetailConfigScreenState
     }
   }
 
-  /// 为该子系统分配 EtherCAT 称重设备
   Future<void> _assignWeighingDevice() async {
     final l = AppLocalizations.of(context)!;
     final weighingSlaves = widget.slaves
@@ -185,6 +183,13 @@ class _SubsystemDetailConfigScreenState
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final isLiw = _mapping.appType == 0;
+
+    // === 新增：获取持久化的当前配方，实时更新副标题 ===
+    final state = AppStateProvider.of(context);
+    final activeRecipe = state.getActiveRecipeName(_mapping.subsystemId);
+    final appSettingsSubtitle = activeRecipe != null
+        ? '已加载配方: $activeRecipe'
+        : (isLiw ? l.lossInWeight : l.filling);
 
     return Scaffold(
       appBar: AppBar(
@@ -368,12 +373,15 @@ class _SubsystemDetailConfigScreenState
           _NavigationTile(
             icon: Icons.settings_applications,
             title: l.appSettings,
-            subtitle: isLiw ? l.lossInWeight : l.filling,
+            // === 替换：副标题直接展示当前加载的配方名称 ===
+            subtitle: appSettingsSubtitle,
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) =>
-                    AppSettingsScreen(subsystemId: _mapping.subsystemId),
+                builder: (_) => AppSettingsScreen(
+                  subsystemId: _mapping.subsystemId,
+                  appType: _mapping.appType,
+                ),
               ),
             ),
           ),
@@ -524,7 +532,17 @@ class _NavigationTile extends StatelessWidget {
       child: ListTile(
         leading: Icon(icon),
         title: Text(title),
-        subtitle: subtitle != null ? Text(subtitle!) : null,
+        subtitle: subtitle != null
+            ? Text(
+                subtitle!,
+                style: subtitle!.startsWith('已加载配方')
+                    ? TextStyle(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                      )
+                    : null,
+              )
+            : null,
         trailing: const Icon(Icons.chevron_right),
         onTap: onTap,
       ),

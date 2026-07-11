@@ -5,13 +5,20 @@ import '../../providers/app_state.dart';
 
 class AppSettingsScreen extends StatefulWidget {
   final int? subsystemId;
-  const AppSettingsScreen({super.key, this.subsystemId});
+  final int appType;
+
+  const AppSettingsScreen({super.key, this.subsystemId, required this.appType});
 
   @override
   State<AppSettingsScreen> createState() => _AppSettingsScreenState();
 }
 
 class _AppSettingsScreenState extends State<AppSettingsScreen> {
+  final TextEditingController _recipeNameController = TextEditingController();
+  String? _currentRecipeName;
+  bool _isModified = false; // 记录配方加载后是否被修改过
+  bool _saving = false;
+
   // LIW configs
   double _liwSafetyLimit = 100;
   double _liwHopperMin = 0;
@@ -67,7 +74,8 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
 
   double _liwSamplePeriod = 60;
   double _liwSampleTolerance = 10;
-  int _appType = 0; // 0=liw, 1=filling
+
+  int _appType = 0;
   int _liwMode = 0;
   int _liwSubMode = 0;
   int _fillingWorkMode = 0;
@@ -120,13 +128,38 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   @override
   void initState() {
     super.initState();
+    _appType = widget.appType;
     _load();
   }
 
+  @override
+  void dispose() {
+    _recipeNameController.dispose();
+    super.dispose();
+  }
+
+  // 🚀 新增：当任何参数发生变化时触发，标记配方已修改
+  void _markAsModified() {
+    if (_currentRecipeName != null && !_isModified) {
+      setState(() {
+        _isModified = true;
+      });
+      // 一旦修改，就不再算是原汁原味的配方了，从全局状态中清除这个挂载标记
+      final state = AppStateProvider.read(context);
+      final subId = widget.subsystemId ?? state.activeSubsystemId;
+      state.setActiveRecipeName(subId, null);
+    }
+  }
+
   Future<void> _load() async {
-    final state = AppStateProvider.of(context);
+    final state = AppStateProvider.read(context);
     final subId = widget.subsystemId ?? state.activeSubsystemId;
-    _appType = state.selectedAppType;
+
+    // 🚀 初始化时读取当前活跃的配方名称
+    _currentRecipeName = state.getActiveRecipeName(subId);
+    if (_currentRecipeName != null) {
+      _recipeNameController.text = _currentRecipeName!;
+    }
 
     try {
       if (_appType == 0) {
@@ -306,8 +339,9 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
     setState(() => _loading = false);
   }
 
-  Future<void> _save() async {
-    final state = AppStateProvider.of(context);
+  Future<void> _save({bool showSnackbar = true}) async {
+    setState(() => _saving = true);
+    final state = AppStateProvider.read(context);
     final subId = widget.subsystemId ?? state.activeSubsystemId;
 
     if (_appType == 0) {
@@ -520,21 +554,53 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
     }
 
     state.selectAppType(_appType);
+    setState(() => _saving = false);
+
+    if (mounted && showSnackbar) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('保存成功')));
+    }
+  }
+
+  Future<void> _saveAsRecipe() async {
+    final name = _recipeNameController.text.trim();
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('请输入配方名称')));
+      return;
+    }
+
+    await _save(showSnackbar: false);
+
+    setState(() => _saving = true);
+    final state = AppStateProvider.read(context);
+    final subId = widget.subsystemId ?? state.activeSubsystemId;
+    final ok = await state.saveMaterialRecipe(subId, name, _appType);
+
+    setState(() {
+      _saving = false;
+      if (ok) {
+        _currentRecipeName = name;
+        _isModified = false; // 保存后重置修改状态
+      }
+    });
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context)!.save)),
+        SnackBar(
+          content: Text(ok ? '配方 "$name" 保存成功' : '配方保存失败'),
+          backgroundColor: ok ? Colors.green : Colors.red,
+        ),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // 强制声明解包获取生成的本地化实例
     final l = AppLocalizations.of(context)!;
 
-    // 动态生成多语言下拉菜单文本
-    final appTypeLabels = [l.lossInWeight, l.filling];
     final liwModeLabels = [l.continuous, l.batch, l.systemId];
     final liwSubModeLabels = [l.flowControl, l.fixedFrequency];
     final fillingWorkModeLabels = [
@@ -558,37 +624,107 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       appBar: AppBar(
         title: Text(l.appSettings),
         actions: [
-          TextButton.icon(
-            icon: const Icon(Icons.save),
-            label: Text(l.save),
-            onPressed: _save,
-          ),
+          _saving
+              ? const Center(
+                  child: Padding(
+                    padding: EdgeInsets.only(right: 16),
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                )
+              : TextButton.icon(
+                  icon: const Icon(Icons.save),
+                  label: Text(l.save),
+                  onPressed: () => _save(showSnackbar: true),
+                ),
         ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // 1. App type selection
-          Padding(
-            padding: const EdgeInsets.only(bottom: 24.0),
-            child: SizedBox(
-              width: double.infinity,
-              child: SegmentedButton<int>(
-                segments: List.generate(
-                  appTypeLabels.length,
-                  (i) => ButtonSegment(value: i, label: Text(appTypeLabels[i])),
-                ),
-                selected: {_appType},
-                onSelectionChanged: (Set<int> newSelection) {
-                  setState(() {
-                    _appType = newSelection.first;
-                  });
-                },
+          // ── 配方保存快捷区域 ──────────────────────────────────────────
+          Card(
+            color: Theme.of(
+              context,
+            ).colorScheme.primaryContainer.withOpacity(0.5),
+            margin: const EdgeInsets.only(bottom: 16),
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.science,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _currentRecipeName != null
+                              ? (_isModified
+                                    ? '当前配方: $_currentRecipeName (参数已修改)'
+                                    : '当前应用配方: $_currentRecipeName')
+                              : '当前参数未保存为配方，建议填写名称并保存以便快速调用',
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: _isModified
+                                    ? Colors.orange.shade700
+                                    : Theme.of(context).colorScheme.primary,
+                              ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _recipeNameController,
+                          decoration: const InputDecoration(
+                            labelText: '配方名称',
+                            hintText: '输入配方名称 (如: 颗粒物料_50kg)',
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      FilledButton.icon(
+                        icon: _saving
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.save),
+                        label: Text(_isModified ? '更新/另存配方' : '保存为配方'),
+                        onPressed: _saving ? null : _saveAsRecipe,
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ),
 
-          // 2. LIW 配置分组
+          // ── LIW 配置分组 ──────────────────────────────────────────
           if (_appType == 0) ...[
             _buildExpandableCard(
               context: context,
@@ -604,7 +740,10 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                       child: Text(liwModeLabels[i]),
                     ),
                   ),
-                  onChanged: (v) => setState(() => _liwMode = v!),
+                  onChanged: (v) {
+                    setState(() => _liwMode = v!);
+                    _markAsModified();
+                  },
                 ),
                 if (_liwMode == 0)
                   DropdownButtonFormField<int>(
@@ -617,7 +756,10 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                         child: Text(liwSubModeLabels[i]),
                       ),
                     ),
-                    onChanged: (v) => setState(() => _liwSubMode = v!),
+                    onChanged: (v) {
+                      setState(() => _liwSubMode = v!);
+                      _markAsModified();
+                    },
                   ),
               ],
             ),
@@ -629,49 +771,68 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                   initialValue: _liwSafetyLimit.toString(),
                   decoration: InputDecoration(labelText: l.safetyLimit),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () =>
-                        _liwSafetyLimit = double.tryParse(v) ?? _liwSafetyLimit,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _liwSafetyLimit =
+                          double.tryParse(v) ?? _liwSafetyLimit,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _liwHopperMin.toString(),
                   decoration: InputDecoration(labelText: l.hopperMin),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _liwHopperMin = double.tryParse(v) ?? _liwHopperMin,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _liwHopperMin = double.tryParse(v) ?? _liwHopperMin,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _liwHopperMax.toString(),
                   decoration: InputDecoration(labelText: l.hopperMax),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _liwHopperMax = double.tryParse(v) ?? _liwHopperMax,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _liwHopperMax = double.tryParse(v) ?? _liwHopperMax,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _liwTargetFlow.toString(),
                   decoration: InputDecoration(labelText: l.targetFlow),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _liwTargetFlow = double.tryParse(v) ?? _liwTargetFlow,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () =>
+                          _liwTargetFlow = double.tryParse(v) ?? _liwTargetFlow,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _liwTargetControlRate.toString(),
                   decoration: InputDecoration(labelText: l.targetControlRate),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _liwTargetControlRate =
-                        double.tryParse(v) ?? _liwTargetControlRate,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _liwTargetControlRate =
+                          double.tryParse(v) ?? _liwTargetControlRate,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 SwitchListTile(
                   title: Text(l.preRefill),
                   value: _liwPreRefill,
                   contentPadding: EdgeInsets.zero,
-                  onChanged: (v) => setState(() => _liwPreRefill = v),
+                  onChanged: (v) {
+                    setState(() => _liwPreRefill = v);
+                    _markAsModified();
+                  },
                 ),
               ],
             ),
@@ -683,43 +844,58 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                   initialValue: _liwAdjustRangeLower.toString(),
                   decoration: InputDecoration(labelText: l.adjustRangeLower),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _liwAdjustRangeLower =
-                        double.tryParse(v) ?? _liwAdjustRangeLower,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _liwAdjustRangeLower =
+                          double.tryParse(v) ?? _liwAdjustRangeLower,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _liwAdjustRangeUpper.toString(),
                   decoration: InputDecoration(labelText: l.adjustRangeUpper),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _liwAdjustRangeUpper =
-                        double.tryParse(v) ?? _liwAdjustRangeUpper,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _liwAdjustRangeUpper =
+                          double.tryParse(v) ?? _liwAdjustRangeUpper,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 SwitchListTile(
                   title: Text(l.smartStepControl),
                   value: _liwSmartStepControl,
                   contentPadding: EdgeInsets.zero,
-                  onChanged: (v) => setState(() => _liwSmartStepControl = v),
+                  onChanged: (v) {
+                    setState(() => _liwSmartStepControl = v);
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _liwStepDuration.toString(),
                   decoration: InputDecoration(labelText: l.stepDuration),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _liwStepDuration =
-                        double.tryParse(v) ?? _liwStepDuration,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _liwStepDuration =
+                          double.tryParse(v) ?? _liwStepDuration,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _liwFilterWindowSysId.toString(),
                   decoration: InputDecoration(labelText: l.filterWindowSysId),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _liwFilterWindowSysId =
-                        double.tryParse(v) ?? _liwFilterWindowSysId,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _liwFilterWindowSysId =
+                          double.tryParse(v) ?? _liwFilterWindowSysId,
+                    );
+                    _markAsModified();
+                  },
                 ),
               ],
             ),
@@ -734,54 +910,72 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                     DropdownMenuItem(value: 0, child: Text(l.auto)),
                     DropdownMenuItem(value: 1, child: Text(l.manual)),
                   ],
-                  onChanged: (v) => setState(() => _liwTuningMode = v!),
+                  onChanged: (v) {
+                    setState(() => _liwTuningMode = v!);
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _liwFilterWindowCtrl.toString(),
                   decoration: InputDecoration(labelText: l.filterWindowCtrl),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _liwFilterWindowCtrl =
-                        double.tryParse(v) ?? _liwFilterWindowCtrl,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _liwFilterWindowCtrl =
+                          double.tryParse(v) ?? _liwFilterWindowCtrl,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _liwKp.toString(),
                   decoration: InputDecoration(labelText: l.kp),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) =>
-                      setState(() => _liwKp = double.tryParse(v) ?? _liwKp),
+                  onChanged: (v) {
+                    setState(() => _liwKp = double.tryParse(v) ?? _liwKp);
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _liwKi.toString(),
                   decoration: InputDecoration(labelText: l.ki),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) =>
-                      setState(() => _liwKi = double.tryParse(v) ?? _liwKi),
+                  onChanged: (v) {
+                    setState(() => _liwKi = double.tryParse(v) ?? _liwKi);
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _liwKd.toString(),
                   decoration: InputDecoration(labelText: l.kd),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) =>
-                      setState(() => _liwKd = double.tryParse(v) ?? _liwKd),
+                  onChanged: (v) {
+                    setState(() => _liwKd = double.tryParse(v) ?? _liwKd);
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _liwMaxFlow.toString(),
                   decoration: InputDecoration(labelText: l.maxFlow),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _liwMaxFlow = double.tryParse(v) ?? _liwMaxFlow,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _liwMaxFlow = double.tryParse(v) ?? _liwMaxFlow,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _liwStartupTime.toString(),
                   decoration: InputDecoration(labelText: l.startupTime),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () =>
-                        _liwStartupTime = double.tryParse(v) ?? _liwStartupTime,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _liwStartupTime =
+                          double.tryParse(v) ?? _liwStartupTime,
+                    );
+                    _markAsModified();
+                  },
                 ),
               ],
             ),
@@ -796,23 +990,34 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                     DropdownMenuItem(value: 0, child: Text(l.auto)),
                     DropdownMenuItem(value: 1, child: Text(l.manual)),
                   ],
-                  onChanged: (v) => setState(() => _liwRefillMode = v!),
+                  onChanged: (v) {
+                    setState(() => _liwRefillMode = v!);
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _liwLowerLimit.toString(),
                   decoration: InputDecoration(labelText: l.lowerLimit),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _liwLowerLimit = double.tryParse(v) ?? _liwLowerLimit,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () =>
+                          _liwLowerLimit = double.tryParse(v) ?? _liwLowerLimit,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _liwUpperLimit.toString(),
                   decoration: InputDecoration(labelText: l.upperLimit),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _liwUpperLimit = double.tryParse(v) ?? _liwUpperLimit,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () =>
+                          _liwUpperLimit = double.tryParse(v) ?? _liwUpperLimit,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 DropdownButtonFormField<int>(
                   value: _liwRefillControlMode,
@@ -822,25 +1027,34 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                     DropdownMenuItem(value: 1, child: Text(l.lastFreq)),
                     DropdownMenuItem(value: 2, child: Text(l.smart)),
                   ],
-                  onChanged: (v) => setState(() => _liwRefillControlMode = v!),
+                  onChanged: (v) {
+                    setState(() => _liwRefillControlMode = v!);
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _liwRefillControlSetpoint.toString(),
                   decoration: InputDecoration(labelText: l.controlSetpoint),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _liwRefillControlSetpoint =
-                        double.tryParse(v) ?? _liwRefillControlSetpoint,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _liwRefillControlSetpoint =
+                          double.tryParse(v) ?? _liwRefillControlSetpoint,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _liwRefillStabilizeTime.toString(),
                   decoration: InputDecoration(labelText: l.stabilizeTime),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _liwRefillStabilizeTime =
-                        double.tryParse(v) ?? _liwRefillStabilizeTime,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _liwRefillStabilizeTime =
+                          double.tryParse(v) ?? _liwRefillStabilizeTime,
+                    );
+                    _markAsModified();
+                  },
                 ),
               ],
             ),
@@ -852,36 +1066,48 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                   initialValue: _liwBatchTarget.toString(),
                   decoration: InputDecoration(labelText: l.batchTarget),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () =>
-                        _liwBatchTarget = double.tryParse(v) ?? _liwBatchTarget,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _liwBatchTarget =
+                          double.tryParse(v) ?? _liwBatchTarget,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _liwInFlight.toString(),
                   decoration: InputDecoration(labelText: l.inFlight),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _liwInFlight = double.tryParse(v) ?? _liwInFlight,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _liwInFlight = double.tryParse(v) ?? _liwInFlight,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _liwFineFeedThreshold.toString(),
                   decoration: InputDecoration(labelText: l.fineFeedThreshold),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _liwFineFeedThreshold =
-                        double.tryParse(v) ?? _liwFineFeedThreshold,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _liwFineFeedThreshold =
+                          double.tryParse(v) ?? _liwFineFeedThreshold,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _liwFineFeedFlow.toString(),
                   decoration: InputDecoration(labelText: l.fineFeedFlow),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _liwFineFeedFlow =
-                        double.tryParse(v) ?? _liwFineFeedFlow,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _liwFineFeedFlow =
+                          double.tryParse(v) ?? _liwFineFeedFlow,
+                    );
+                    _markAsModified();
+                  },
                 ),
               ],
             ),
@@ -893,27 +1119,36 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                   initialValue: _liwPreCheckDelay.toString(),
                   decoration: InputDecoration(labelText: l.preCheckDelay),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _liwPreCheckDelay =
-                        double.tryParse(v) ?? _liwPreCheckDelay,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _liwPreCheckDelay =
+                          double.tryParse(v) ?? _liwPreCheckDelay,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _liwStabilityTimeout.toString(),
                   decoration: InputDecoration(labelText: l.stabilityTimeout),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _liwStabilityTimeout =
-                        double.tryParse(v) ?? _liwStabilityTimeout,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _liwStabilityTimeout =
+                          double.tryParse(v) ?? _liwStabilityTimeout,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _liwTolerance.toString(),
                   decoration: InputDecoration(labelText: l.tolerance),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _liwTolerance = double.tryParse(v) ?? _liwTolerance,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _liwTolerance = double.tryParse(v) ?? _liwTolerance,
+                    );
+                    _markAsModified();
+                  },
                 ),
               ],
             ),
@@ -925,16 +1160,22 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                   title: Text(l.autoStopAtAlarm),
                   value: _liwAutoStopAtAlarm,
                   contentPadding: EdgeInsets.zero,
-                  onChanged: (v) => setState(() => _liwAutoStopAtAlarm = v),
+                  onChanged: (v) {
+                    setState(() => _liwAutoStopAtAlarm = v);
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _liwEmptyingControlSetpoint.toString(),
                   decoration: InputDecoration(labelText: l.controlSetpoint),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _liwEmptyingControlSetpoint =
-                        double.tryParse(v) ?? _liwEmptyingControlSetpoint,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _liwEmptyingControlSetpoint =
+                          double.tryParse(v) ?? _liwEmptyingControlSetpoint,
+                    );
+                    _markAsModified();
+                  },
                 ),
               ],
             ),
@@ -946,34 +1187,46 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                   initialValue: _liwControlRateLower.toString(),
                   decoration: InputDecoration(labelText: l.controlRateLower),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _liwControlRateLower =
-                        double.tryParse(v) ?? _liwControlRateLower,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _liwControlRateLower =
+                          double.tryParse(v) ?? _liwControlRateLower,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _liwControlRateUpper.toString(),
                   decoration: InputDecoration(labelText: l.controlRateUpper),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _liwControlRateUpper =
-                        double.tryParse(v) ?? _liwControlRateUpper,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _liwControlRateUpper =
+                          double.tryParse(v) ?? _liwControlRateUpper,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _liwRefillTimeout.toString(),
                   decoration: InputDecoration(labelText: l.refillTimeout),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _liwRefillTimeout =
-                        double.tryParse(v) ?? _liwRefillTimeout,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _liwRefillTimeout =
+                          double.tryParse(v) ?? _liwRefillTimeout,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 SwitchListTile(
                   title: Text(l.stopOnError),
                   value: _liwStopOnError,
                   contentPadding: EdgeInsets.zero,
-                  onChanged: (v) => setState(() => _liwStopOnError = v),
+                  onChanged: (v) {
+                    setState(() => _liwStopOnError = v);
+                    _markAsModified();
+                  },
                 ),
               ],
             ),
@@ -985,28 +1238,37 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                   initialValue: _liwEvaluationWindow.toString(),
                   decoration: InputDecoration(labelText: l.evaluationWindow),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _liwEvaluationWindow =
-                        double.tryParse(v) ?? _liwEvaluationWindow,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _liwEvaluationWindow =
+                          double.tryParse(v) ?? _liwEvaluationWindow,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _liwDeviationThreshold.toString(),
                   decoration: InputDecoration(labelText: l.deviationThreshold),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _liwDeviationThreshold =
-                        double.tryParse(v) ?? _liwDeviationThreshold,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _liwDeviationThreshold =
+                          double.tryParse(v) ?? _liwDeviationThreshold,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _liwSurgeThreshold.toString(),
                   decoration: InputDecoration(labelText: l.surgeThreshold),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _liwSurgeThreshold =
-                        double.tryParse(v) ?? _liwSurgeThreshold,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _liwSurgeThreshold =
+                          double.tryParse(v) ?? _liwSurgeThreshold,
+                    );
+                    _markAsModified();
+                  },
                 ),
               ],
             ),
@@ -1018,16 +1280,22 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                   title: Text(l.interlockEnabled),
                   value: _liwInterlockEnabled,
                   contentPadding: EdgeInsets.zero,
-                  onChanged: (v) => setState(() => _liwInterlockEnabled = v),
+                  onChanged: (v) {
+                    setState(() => _liwInterlockEnabled = v);
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _liwInterlockDelay.toString(),
                   decoration: InputDecoration(labelText: l.interlockDelay),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _liwInterlockDelay =
-                        double.tryParse(v) ?? _liwInterlockDelay,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _liwInterlockDelay =
+                          double.tryParse(v) ?? _liwInterlockDelay,
+                    );
+                    _markAsModified();
+                  },
                 ),
               ],
             ),
@@ -1039,25 +1307,31 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                   initialValue: _liwSamplePeriod.toString(),
                   decoration: InputDecoration(labelText: l.samplePeriod),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _liwSamplePeriod =
-                        double.tryParse(v) ?? _liwSamplePeriod,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _liwSamplePeriod =
+                          double.tryParse(v) ?? _liwSamplePeriod,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _liwSampleTolerance.toString(),
                   decoration: InputDecoration(labelText: l.sampleTolerance),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _liwSampleTolerance =
-                        double.tryParse(v) ?? _liwSampleTolerance,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _liwSampleTolerance =
+                          double.tryParse(v) ?? _liwSampleTolerance,
+                    );
+                    _markAsModified();
+                  },
                 ),
               ],
             ),
           ],
 
-          // 3. Filling 配置分组
+          // ── Filling 配置分组 ──────────────────────────────────────────
           if (_appType == 1) ...[
             _buildExpandableCard(
               context: context,
@@ -1073,7 +1347,10 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                       child: Text(fillingWorkModeLabels[i]),
                     ),
                   ),
-                  onChanged: (v) => setState(() => _fillingWorkMode = v!),
+                  onChanged: (v) {
+                    setState(() => _fillingWorkMode = v!);
+                    _markAsModified();
+                  },
                 ),
                 DropdownButtonFormField<int>(
                   value: _powerFailRecovery,
@@ -1085,7 +1362,10 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                       child: Text(powerFailLabels[i]),
                     ),
                   ),
-                  onChanged: (v) => setState(() => _powerFailRecovery = v!),
+                  onChanged: (v) {
+                    setState(() => _powerFailRecovery = v!);
+                    _markAsModified();
+                  },
                 ),
                 DropdownButtonFormField<int>(
                   value: _startDelay,
@@ -1097,7 +1377,10 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                       child: Text(startDelayLabels[i]),
                     ),
                   ),
-                  onChanged: (v) => setState(() => _startDelay = v!),
+                  onChanged: (v) {
+                    setState(() => _startDelay = v!);
+                    _markAsModified();
+                  },
                 ),
                 DropdownButtonFormField<int>(
                   value: _fillingFeedSpeed,
@@ -1106,7 +1389,10 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                     DropdownMenuItem(value: 0, child: Text(l.single)),
                     DropdownMenuItem(value: 1, child: Text(l.dual)),
                   ],
-                  onChanged: (v) => setState(() => _fillingFeedSpeed = v!),
+                  onChanged: (v) {
+                    setState(() => _fillingFeedSpeed = v!);
+                    _markAsModified();
+                  },
                 ),
               ],
             ),
@@ -1118,45 +1404,60 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                   initialValue: _fillingTargetValue.toString(),
                   decoration: InputDecoration(labelText: l.targetValue),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _fillingTargetValue =
-                        double.tryParse(v) ?? _fillingTargetValue,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _fillingTargetValue =
+                          double.tryParse(v) ?? _fillingTargetValue,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _fillingInFlight.toString(),
                   decoration: InputDecoration(labelText: l.inFlight),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _fillingInFlight =
-                        double.tryParse(v) ?? _fillingInFlight,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _fillingInFlight =
+                          double.tryParse(v) ?? _fillingInFlight,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _fillingFeed.toString(),
                   decoration: InputDecoration(labelText: l.feed),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _fillingFeed = double.tryParse(v) ?? _fillingFeed,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _fillingFeed = double.tryParse(v) ?? _fillingFeed,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _fillingFeedInhibitTime.toString(),
                   decoration: InputDecoration(labelText: l.feedInhibitTime),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _fillingFeedInhibitTime =
-                        double.tryParse(v) ?? _fillingFeedInhibitTime,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _fillingFeedInhibitTime =
+                          double.tryParse(v) ?? _fillingFeedInhibitTime,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _fillingFastFeedInhibitTime.toString(),
                   decoration: InputDecoration(labelText: l.fastFeedInhibitTime),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _fillingFastFeedInhibitTime =
-                        double.tryParse(v) ?? _fillingFastFeedInhibitTime,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _fillingFastFeedInhibitTime =
+                          double.tryParse(v) ?? _fillingFastFeedInhibitTime,
+                    );
+                    _markAsModified();
+                  },
                 ),
               ],
             ),
@@ -1168,25 +1469,34 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                   title: Text(l.autoTareEnabled),
                   value: _fillingAutoTareEnabled,
                   contentPadding: EdgeInsets.zero,
-                  onChanged: (v) => setState(() => _fillingAutoTareEnabled = v),
+                  onChanged: (v) {
+                    setState(() => _fillingAutoTareEnabled = v);
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _fillingContainerTareUpper.toString(),
                   decoration: InputDecoration(labelText: l.containerTareUpper),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _fillingContainerTareUpper =
-                        double.tryParse(v) ?? _fillingContainerTareUpper,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _fillingContainerTareUpper =
+                          double.tryParse(v) ?? _fillingContainerTareUpper,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _fillingContainerTareLower.toString(),
                   decoration: InputDecoration(labelText: l.containerTareLower),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _fillingContainerTareLower =
-                        double.tryParse(v) ?? _fillingContainerTareLower,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _fillingContainerTareLower =
+                          double.tryParse(v) ?? _fillingContainerTareLower,
+                    );
+                    _markAsModified();
+                  },
                 ),
               ],
             ),
@@ -1198,37 +1508,49 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                   initialValue: _fillingPreCheckDelay.toString(),
                   decoration: InputDecoration(labelText: l.preCheckDelay),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _fillingPreCheckDelay =
-                        double.tryParse(v) ?? _fillingPreCheckDelay,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _fillingPreCheckDelay =
+                          double.tryParse(v) ?? _fillingPreCheckDelay,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _fillingStabilityTimeout.toString(),
                   decoration: InputDecoration(labelText: l.stabilityTimeout),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _fillingStabilityTimeout =
-                        double.tryParse(v) ?? _fillingStabilityTimeout,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _fillingStabilityTimeout =
+                          double.tryParse(v) ?? _fillingStabilityTimeout,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _fillingPositiveTolerance.toString(),
                   decoration: InputDecoration(labelText: l.positiveTolerance),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _fillingPositiveTolerance =
-                        double.tryParse(v) ?? _fillingPositiveTolerance,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _fillingPositiveTolerance =
+                          double.tryParse(v) ?? _fillingPositiveTolerance,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _fillingNegativeTolerance.toString(),
                   decoration: InputDecoration(labelText: l.negativeTolerance),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _fillingNegativeTolerance =
-                        double.tryParse(v) ?? _fillingNegativeTolerance,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _fillingNegativeTolerance =
+                          double.tryParse(v) ?? _fillingNegativeTolerance,
+                    );
+                    _markAsModified();
+                  },
                 ),
               ],
             ),
@@ -1244,34 +1566,46 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                     DropdownMenuItem(value: 1, child: Text(l.auto)),
                     DropdownMenuItem(value: 2, child: Text(l.manual)),
                   ],
-                  onChanged: (v) => setState(() => _fillingSpillMode = v!),
+                  onChanged: (v) {
+                    setState(() => _fillingSpillMode = v!);
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _fillingSpillAdjustRange.toString(),
                   decoration: InputDecoration(labelText: l.adjustRange),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _fillingSpillAdjustRange =
-                        double.tryParse(v) ?? _fillingSpillAdjustRange,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _fillingSpillAdjustRange =
+                          double.tryParse(v) ?? _fillingSpillAdjustRange,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _fillingSpillAdjustSamples.toString(),
                   decoration: InputDecoration(labelText: l.adjustSamples),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _fillingSpillAdjustSamples =
-                        int.tryParse(v) ?? _fillingSpillAdjustSamples,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _fillingSpillAdjustSamples =
+                          int.tryParse(v) ?? _fillingSpillAdjustSamples,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _fillingSpillAdjustFactor.toString(),
                   decoration: InputDecoration(labelText: l.adjustFactor),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _fillingSpillAdjustFactor =
-                        double.tryParse(v) ?? _fillingSpillAdjustFactor,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _fillingSpillAdjustFactor =
+                          double.tryParse(v) ?? _fillingSpillAdjustFactor,
+                    );
+                    _markAsModified();
+                  },
                 ),
               ],
             ),
@@ -1287,7 +1621,10 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                     DropdownMenuItem(value: 1, child: Text(l.auto)),
                     DropdownMenuItem(value: 2, child: Text(l.manual)),
                   ],
-                  onChanged: (v) => setState(() => _fillingCutoffMode = v!),
+                  onChanged: (v) {
+                    setState(() => _fillingCutoffMode = v!);
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _fillingCutoffReliabilityRange.toString(),
@@ -1295,28 +1632,37 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                     labelText: l.controlReliabilityRange,
                   ),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _fillingCutoffReliabilityRange =
-                        double.tryParse(v) ?? _fillingCutoffReliabilityRange,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _fillingCutoffReliabilityRange =
+                          double.tryParse(v) ?? _fillingCutoffReliabilityRange,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _fillingCutoffAdjustCycles.toString(),
                   decoration: InputDecoration(labelText: l.adjustCycles),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _fillingCutoffAdjustCycles =
-                        int.tryParse(v) ?? _fillingCutoffAdjustCycles,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _fillingCutoffAdjustCycles =
+                          int.tryParse(v) ?? _fillingCutoffAdjustCycles,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _fillingCutoffAdjustFactor.toString(),
                   decoration: InputDecoration(labelText: l.adjustFactor),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _fillingCutoffAdjustFactor =
-                        double.tryParse(v) ?? _fillingCutoffAdjustFactor,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _fillingCutoffAdjustFactor =
+                          double.tryParse(v) ?? _fillingCutoffAdjustFactor,
+                    );
+                    _markAsModified();
+                  },
                 ),
               ],
             ),
@@ -1333,34 +1679,46 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                     DropdownMenuItem(value: 2, child: Text(l.singlePulse)),
                     DropdownMenuItem(value: 3, child: Text(l.manual)),
                   ],
-                  onChanged: (v) => setState(() => _fillingJogMode = v!),
+                  onChanged: (v) {
+                    setState(() => _fillingJogMode = v!);
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _fillingJogDuration.toString(),
                   decoration: InputDecoration(labelText: l.jogDuration),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _fillingJogDuration =
-                        double.tryParse(v) ?? _fillingJogDuration,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _fillingJogDuration =
+                          double.tryParse(v) ?? _fillingJogDuration,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _fillingJogPauseTime.toString(),
                   decoration: InputDecoration(labelText: l.jogPauseTime),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _fillingJogPauseTime =
-                        double.tryParse(v) ?? _fillingJogPauseTime,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _fillingJogPauseTime =
+                          double.tryParse(v) ?? _fillingJogPauseTime,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _fillingJogMaxCycles.toString(),
                   decoration: InputDecoration(labelText: l.maxCycles),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _fillingJogMaxCycles =
-                        int.tryParse(v) ?? _fillingJogMaxCycles,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _fillingJogMaxCycles =
+                          int.tryParse(v) ?? _fillingJogMaxCycles,
+                    );
+                    _markAsModified();
+                  },
                 ),
               ],
             ),
@@ -1372,19 +1730,25 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                   initialValue: _fillingRefillUpperLimit.toString(),
                   decoration: InputDecoration(labelText: l.upperLimit),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _fillingRefillUpperLimit =
-                        double.tryParse(v) ?? _fillingRefillUpperLimit,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _fillingRefillUpperLimit =
+                          double.tryParse(v) ?? _fillingRefillUpperLimit,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _fillingRefillLowerLimit.toString(),
                   decoration: InputDecoration(labelText: l.lowerLimit),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _fillingRefillLowerLimit =
-                        double.tryParse(v) ?? _fillingRefillLowerLimit,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _fillingRefillLowerLimit =
+                          double.tryParse(v) ?? _fillingRefillLowerLimit,
+                    );
+                    _markAsModified();
+                  },
                 ),
               ],
             ),
@@ -1399,26 +1763,34 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                     DropdownMenuItem(value: 0, child: Text(l.residualWeight)),
                     DropdownMenuItem(value: 1, child: Text(l.time)),
                   ],
-                  onChanged: (v) =>
-                      setState(() => _fillingEmptyingCompleteMode = v!),
+                  onChanged: (v) {
+                    setState(() => _fillingEmptyingCompleteMode = v!);
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _fillingEmptyingResidualWeight.toString(),
                   decoration: InputDecoration(labelText: l.residualWeight),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _fillingEmptyingResidualWeight =
-                        double.tryParse(v) ?? _fillingEmptyingResidualWeight,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _fillingEmptyingResidualWeight =
+                          double.tryParse(v) ?? _fillingEmptyingResidualWeight,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _fillingEmptyingCompletionTime.toString(),
                   decoration: InputDecoration(labelText: l.completionTime),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _fillingEmptyingCompletionTime =
-                        double.tryParse(v) ?? _fillingEmptyingCompletionTime,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _fillingEmptyingCompletionTime =
+                          double.tryParse(v) ?? _fillingEmptyingCompletionTime,
+                    );
+                    _markAsModified();
+                  },
                 ),
               ],
             ),
@@ -1430,37 +1802,49 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                   initialValue: _fillingInitialFeedTimeout.toString(),
                   decoration: InputDecoration(labelText: l.initialFeedTimeout),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _fillingInitialFeedTimeout =
-                        double.tryParse(v) ?? _fillingInitialFeedTimeout,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _fillingInitialFeedTimeout =
+                          double.tryParse(v) ?? _fillingInitialFeedTimeout,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _fillingEmptyingTimeout.toString(),
                   decoration: InputDecoration(labelText: l.emptyingTimeout),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _fillingEmptyingTimeout =
-                        double.tryParse(v) ?? _fillingEmptyingTimeout,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _fillingEmptyingTimeout =
+                          double.tryParse(v) ?? _fillingEmptyingTimeout,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _fillingRefillTimeout.toString(),
                   decoration: InputDecoration(labelText: l.refillTimeout),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _fillingRefillTimeout =
-                        double.tryParse(v) ?? _fillingRefillTimeout,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _fillingRefillTimeout =
+                          double.tryParse(v) ?? _fillingRefillTimeout,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _fillingProcessTimeout.toString(),
                   decoration: InputDecoration(labelText: l.processTimeout),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _fillingProcessTimeout =
-                        double.tryParse(v) ?? _fillingProcessTimeout,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _fillingProcessTimeout =
+                          double.tryParse(v) ?? _fillingProcessTimeout,
+                    );
+                    _markAsModified();
+                  },
                 ),
               ],
             ),
@@ -1476,7 +1860,10 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                     DropdownMenuItem(value: 1, child: Text(l.every)),
                     DropdownMenuItem(value: 2, child: Text(l.outOfTolerance)),
                   ],
-                  onChanged: (v) => setState(() => _fillingCycleConfirm = v!),
+                  onChanged: (v) {
+                    setState(() => _fillingCycleConfirm = v!);
+                    _markAsModified();
+                  },
                 ),
                 DropdownButtonFormField<int>(
                   value: _fillingFastRecovery,
@@ -1486,32 +1873,43 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                     DropdownMenuItem(value: 1, child: Text(l.staticVal)),
                     DropdownMenuItem(value: 2, child: Text(l.disabled)),
                   ],
-                  onChanged: (v) => setState(() => _fillingFastRecovery = v!),
+                  onChanged: (v) {
+                    setState(() => _fillingFastRecovery = v!);
+                    _markAsModified();
+                  },
                 ),
                 SwitchListTile(
                   title: Text(l.interlockEnabled),
                   value: _fillingInterlockEnabled,
                   contentPadding: EdgeInsets.zero,
-                  onChanged: (v) =>
-                      setState(() => _fillingInterlockEnabled = v),
+                  onChanged: (v) {
+                    setState(() => _fillingInterlockEnabled = v);
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _fillingFastFeedSpeed.toString(),
                   decoration: InputDecoration(labelText: l.fastFeedSpeed),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _fillingFastFeedSpeed =
-                        double.tryParse(v) ?? _fillingFastFeedSpeed,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _fillingFastFeedSpeed =
+                          double.tryParse(v) ?? _fillingFastFeedSpeed,
+                    );
+                    _markAsModified();
+                  },
                 ),
                 TextFormField(
                   initialValue: _fillingFineFeedSpeed.toString(),
                   decoration: InputDecoration(labelText: l.fineFeedSpeed),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(
-                    () => _fillingFineFeedSpeed =
-                        double.tryParse(v) ?? _fillingFineFeedSpeed,
-                  ),
+                  onChanged: (v) {
+                    setState(
+                      () => _fillingFineFeedSpeed =
+                          double.tryParse(v) ?? _fillingFineFeedSpeed,
+                    );
+                    _markAsModified();
+                  },
                 ),
               ],
             ),

@@ -5,6 +5,7 @@ class SubsystemMappingInfo {
   final String description;
   final int appType;
   final bool enabled;
+  final String activeRecipe;
 
   const SubsystemMappingInfo({
     required this.subsystemId,
@@ -13,6 +14,7 @@ class SubsystemMappingInfo {
     required this.description,
     this.appType = 0,
     this.enabled = true,
+    this.activeRecipe = "",
   });
 
   factory SubsystemMappingInfo.fromMap(Map<String, dynamic> m) {
@@ -23,6 +25,7 @@ class SubsystemMappingInfo {
       description: m['description'] as String? ?? '',
       appType: (m['appType'] as num?)?.toInt() ?? 0,
       enabled: m['enabled'] as bool? ?? true,
+      activeRecipe: m['active_recipe'] as String? ?? '',
     );
   }
 
@@ -31,6 +34,7 @@ class SubsystemMappingInfo {
     int? appType,
     bool? enabled,
     String? description,
+    String? activeRecipe,
   }) {
     return SubsystemMappingInfo(
       subsystemId: subsystemId,
@@ -39,6 +43,7 @@ class SubsystemMappingInfo {
       description: description ?? this.description,
       appType: appType ?? this.appType,
       enabled: enabled ?? this.enabled,
+      activeRecipe: activeRecipe ?? this.activeRecipe,
     );
   }
 }

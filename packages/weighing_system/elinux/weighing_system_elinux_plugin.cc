@@ -15,6 +15,7 @@
 #include "subsystem/subsystem_manager.h"
 #include "input/input_factory.h"
 #include "output/output_manager.h"
+#include "input/input_manager.h"
 #include "storage/database_manager.h"
 #include "storage/config_store.h"
 #include "storage/calibration_store.h"
@@ -194,7 +195,7 @@ namespace
 					  weighing::DigitalOutputBinding *out,
 					  std::string *err)
 	{
-		int subsystem_id = 0, io_pos = 0, channel = 0, signal = 0, bit_index = 0, app_scope = -1;
+		int subsystem_id = 0, io_pos = 0, signal = 0, bit_index = 0, app_scope = -1;
 		bool active_high = true, enabled = true;
 
 		if (!GetIntField(item, "subsystem_id", &subsystem_id))
@@ -209,12 +210,12 @@ namespace
 				*err = "binding missing io_pos";
 			return false;
 		}
-		if (!GetIntField(item, "channel", &channel))
-		{
-			if (err)
-				*err = "binding missing channel";
-			return false;
-		}
+		// if (!GetIntField(item, "channel", &channel))
+		// {
+		// 	if (err)
+		// 		*err = "binding missing channel";
+		// 	return false;
+		// }
 		if (!GetIntField(item, "signal", &signal))
 		{
 			if (err)
@@ -243,7 +244,7 @@ namespace
 
 		out->subsystem_id = static_cast<uint32_t>(subsystem_id);
 		out->io_pos = static_cast<uint16_t>(io_pos);
-		out->channel = static_cast<uint16_t>(channel);
+		// out->channel = static_cast<uint16_t>(channel);
 		out->signal = static_cast<weighing::DigitalSignalType>(signal);
 		out->bit_index = static_cast<uint8_t>(bit_index);
 		out->active_high = active_high;
@@ -397,7 +398,7 @@ namespace
 								  weighing::DigitalInputBinding *out,
 								  std::string *err)
 	{
-		int subsystem_id = 0, io_pos = 0, channel = 0, bit_index = 0, signal = 0, app_scope = -1;
+		int subsystem_id = 0, io_pos = 0, bit_index = 0, signal = 0, app_scope = -1;
 		bool active_high = true, enabled = true;
 
 		if (!GetIntField(item, "subsystem_id", &subsystem_id))
@@ -412,12 +413,12 @@ namespace
 				*err = "binding missing io_pos";
 			return false;
 		}
-		if (!GetIntField(item, "channel", &channel))
-		{
-			if (err)
-				*err = "binding missing channel";
-			return false;
-		}
+		// if (!GetIntField(item, "channel", &channel))
+		// {
+		// 	if (err)
+		// 		*err = "binding missing channel";
+		// 	return false;
+		// }
 		if (!GetIntField(item, "bit_index", &bit_index))
 		{
 			if (err)
@@ -445,7 +446,7 @@ namespace
 
 		out->subsystem_id = static_cast<uint32_t>(subsystem_id);
 		out->io_pos = static_cast<uint16_t>(io_pos);
-		out->channel = static_cast<uint16_t>(channel);
+		// out->channel = static_cast<uint16_t>(channel);
 		out->bit_index = static_cast<uint8_t>(bit_index);
 		out->signal = static_cast<weighing::DigitalInputSignalType>(signal);
 		out->active_high = active_high;
@@ -2970,7 +2971,7 @@ namespace
 			flutter::EncodableMap item;
 			item[flutter::EncodableValue("subsystem_id")] = flutter::EncodableValue((int)b.subsystem_id);
 			item[flutter::EncodableValue("io_pos")] = flutter::EncodableValue((int)b.io_pos);
-			item[flutter::EncodableValue("channel")] = flutter::EncodableValue((int)b.channel);
+			// item[flutter::EncodableValue("channel")] = flutter::EncodableValue((int)b.channel);
 			item[flutter::EncodableValue("signal")] = flutter::EncodableValue((int)b.signal);
 			item[flutter::EncodableValue("bit_index")] = flutter::EncodableValue((int)b.bit_index);
 			item[flutter::EncodableValue("active_high")] = flutter::EncodableValue(b.active_high);
@@ -3160,6 +3161,7 @@ namespace
 	{
 		int sub_id = GetInt(args, "subsystemId");
 		int recipe_id = GetInt(args, "recipeId");
+		std::string recipe_name = GetString(args, "recipeName");
 		int app_type = GetInt(args, "appType"); // 0=liw, 1=filling
 
 		auto *sub = SubsystemManager::Instance().GetSubsystem(sub_id);
@@ -3179,8 +3181,17 @@ namespace
 				return;
 			}
 			ok = ConfigStore::Instance().LoadLiwMaterialRecipe(recipe_id, liw_app);
+
 			if (ok)
+			{
+				std::string err;
+				// 🚀 【新增】：加载配方成功后，通知初始化器写入配置文件
+				if (!weighing::SystemInitializer::Instance().SetSubsystemActiveRecipe(sub_id, recipe_name, &err))
+				{
+					printf("Warning: Failed to save active recipe name to json: %s\n", err.c_str());
+				}
 				ConfigStore::Instance().SaveLiwConfig(sub_id, liw_app);
+			}
 		}
 		else
 		{
@@ -3192,7 +3203,15 @@ namespace
 			}
 			ok = ConfigStore::Instance().LoadFillingMaterialRecipe(recipe_id, fill_app);
 			if (ok)
+			{
+				std::string err;
+				// 🚀 【新增】：加载配方成功后，通知初始化器写入配置文件
+				if (!weighing::SystemInitializer::Instance().SetSubsystemActiveRecipe(sub_id, recipe_name, &err))
+				{
+					printf("Warning: Failed to save active recipe name to json: %s\n", err.c_str());
+				}
 				ConfigStore::Instance().SaveFillingConfig(sub_id, fill_app);
+			}
 		}
 
 		result->Success(flutter::EncodableValue(ok));
@@ -3369,6 +3388,7 @@ namespace
 			item[EV("description")] = EV(m.description);
 			item[EV("appType")] = EV(m.app_type);
 			item[EV("enabled")] = EV(m.enabled);
+			item[EV("active_recipe")] = EV(m.active_recipe); // 🚀 【新增}
 			list.push_back(EV(item));
 		}
 		result->Success(EV(list));
@@ -3476,7 +3496,7 @@ namespace
 			flutter::EncodableMap item;
 			item[EV("subsystem_id")] = EV(static_cast<int32_t>(b.subsystem_id));
 			item[EV("io_pos")] = EV(static_cast<int32_t>(b.io_pos));
-			item[EV("channel")] = EV(static_cast<int32_t>(b.channel));
+			// item[EV("channel")] = EV(static_cast<int32_t>(b.channel));
 			item[EV("bit_index")] = EV(static_cast<int32_t>(b.bit_index));
 			item[EV("signal")] = EV(static_cast<int32_t>(b.signal));
 			item[EV("active_high")] = EV(b.active_high);
@@ -3505,6 +3525,17 @@ namespace
 		}
 
 		std::string err;
+
+		// =========================================================
+		// 【更新】：将映射下发给 InputManager 重建输入动态路由表
+		// =========================================================
+		if (!InputManager::Instance().UpdateDigitalInputMap(cfg, &err))
+		{
+			result->Success(EV(BuildMapResult(false, "apply to input manager: " + err)));
+			return;
+		}
+
+		// 同步更新系统配置缓存
 		if (!SystemInitializer::Instance().UpdateDigitalInputMap(cfg, &err))
 		{
 			result->Success(EV(BuildMapResult(false, "apply: " + err)));
