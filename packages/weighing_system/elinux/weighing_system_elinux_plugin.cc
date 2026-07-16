@@ -836,6 +836,8 @@ namespace
 										 std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 		void HandleDeleteMaterialRecipe(const flutter::EncodableMap &args,
 										std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+		void HandleSetSubsystemActiveRecipe(const flutter::EncodableMap &args,
+											std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 
 		// flutter::PluginRegistrar *registrar_;
 		std::unique_ptr<InputSource> input_source_;
@@ -1383,6 +1385,10 @@ namespace
 		else if (method == "loadMaterialRecipe")
 		{
 			HandleLoadMaterialRecipe(args, std::move(result));
+		}
+		else if (method == "setSubsystemActiveRecipe")
+		{
+			HandleSetSubsystemActiveRecipe(std::get<flutter::EncodableMap>(*call.arguments()), std::move(result));
 		}
 		else if (method == "getAllMaterialRecipes")
 		{
@@ -3240,6 +3246,27 @@ namespace
 		result->Success(flutter::EncodableValue(list));
 	}
 
+	void WeighingSystemPlugin::HandleSetSubsystemActiveRecipe(
+		const flutter::EncodableMap &args,
+		std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		int subsystem_id = GetInt(args, "subsystem_id");
+		std::string recipe_name = GetString(args, "recipe_name");
+		// GetInt(args, "subsystem_id", &subsystem_id);
+		// GetString(args, "recipe_name", &recipe_name);
+
+		std::string err;
+		// 调用上一问写好的更新文件接口
+		if (!weighing::SystemInitializer::Instance().SetSubsystemActiveRecipe(subsystem_id, recipe_name, &err))
+		{
+			result->Success(EV(BuildMapResult(false, err)));
+		}
+		else
+		{
+			result->Success(EV(BuildMapResult(true, "")));
+		}
+	}
+
 	void WeighingSystemPlugin::HandleDeleteMaterialRecipe(
 		const flutter::EncodableMap &args,
 		std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
@@ -3384,7 +3411,7 @@ namespace
 			flutter::EncodableMap item;
 			item[EV("subsystemId")] = EV(static_cast<int32_t>(m.sub_id));
 			item[EV("scaleId")] = EV(static_cast<int32_t>(m.scale_id));
-			item[EV("ioPosition")] = EV(static_cast<int32_t>(m.io_position));
+			// item[EV("ioPosition")] = EV(static_cast<int32_t>(m.io_position));
 			item[EV("description")] = EV(m.description);
 			item[EV("appType")] = EV(m.app_type);
 			item[EV("enabled")] = EV(m.enabled);
@@ -3429,7 +3456,7 @@ namespace
 		std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
 	{
 		int subsystem_id = GetInt(args, "subsystemId");
-		int io_position = GetInt(args, "ioPosition", 0);
+		// int io_position = GetInt(args, "ioPosition", 0);
 		int scale_id = GetInt(args, "scaleId", 0);
 		std::string description = GetString(args, "description");
 
@@ -3442,7 +3469,7 @@ namespace
 		std::string err;
 		bool ok = SystemInitializer::Instance().AddSubsystemToConfig(
 			static_cast<uint32_t>(subsystem_id),
-			static_cast<uint16_t>(io_position),
+			// static_cast<uint16_t>(io_position),
 			static_cast<uint32_t>(scale_id),
 			description,
 			&err,
@@ -3714,7 +3741,8 @@ namespace
 				// 【新增】：将补料状态下发给物理 IO 模块！
 				// 参数：(子系统ID, 通道, 快速加料, 慢速加料, 补料阀, 排料阀)
 				// ====================================================================
-				OutputManager::Instance().SetValveOutputs(0, 0, sub->GetApplication()->GetAppType(), false, false, is_refilling, false);
+				// OutputManager::Instance().SetValveOutputs(0, 0, sub->GetApplication()->GetAppType(), false, false, is_refilling, false);
+				OutputManager::Instance().SetOutputSignal(0, DigitalSignalType::kRefillValve, is_refilling);
 
 				mock_ui_weight_.store(current_weight); // 存给 API 读取
 

@@ -110,14 +110,19 @@ namespace weighing
 		}
 
 		// 3. 一键安全关断本子系统名下的所有伺服电机
-		void StopAllServos()
+		// void StopAllServos()
+		// {
+		// 	OutputManager::Instance().StopAllServos(subsystem_id_);
+		// }
+		void StopAllOutputs()
 		{
 			OutputManager::Instance().StopAllServos(subsystem_id_);
+			OutputManager::Instance().StopAllDigitalOutputs(subsystem_id_);
 		}
 
-		void SetValveOutputs(uint16_t channel, bool fast, bool slow, bool refill, bool emptying)
+		void SetOutputSignal(DigitalSignalType signal, bool active, uint16_t target_io_pos = 0)
 		{
-			OutputManager::Instance().SetValveOutputs(subsystem_id_, channel, app_type_, fast, slow, refill, emptying);
+			OutputManager::Instance().SetOutputSignal(subsystem_id_, signal, active, app_type_, target_io_pos);
 		}
 
 		void SetAlarmOutput(bool active);

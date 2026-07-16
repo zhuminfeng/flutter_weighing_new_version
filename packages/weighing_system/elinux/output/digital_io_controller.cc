@@ -5,7 +5,7 @@ namespace weighing
 {
 
 	DigitalIOController::DigitalIOController(uint16_t slave_position)
-		: slave_position_(slave_position)
+	// : slave_position_(slave_position)
 	{
 		const auto *rt = EtherCATMaster::Instance().GetSlaveRuntime(slave_position);
 		if (rt && rt->role == SlaveRole::kDigitalIO)
@@ -39,51 +39,51 @@ namespace weighing
 		output_value_ = value;
 	}
 
-	void DigitalIOController::ApplyDioOutputs(uint32_t subsystem_id,
-											  uint16_t channel,
-											  AppType app_type,
-											  bool fast,
-											  bool slow,
-											  bool refill,
-											  bool emptying,
-											  const DigitalOutputMap &map)
-	{
-		SetMappedSignal(subsystem_id, channel, app_type, DigitalSignalType::kFeedFast, fast, map);
-		SetMappedSignal(subsystem_id, channel, app_type, DigitalSignalType::kFeedSlow, slow, map);
-		SetMappedSignal(subsystem_id, channel, app_type, DigitalSignalType::kRefillValve, refill, map);
-		SetMappedSignal(subsystem_id, channel, app_type, DigitalSignalType::kEmptyingValve, emptying, map);
-	}
+	// void DigitalIOController::ApplyDioOutputs(uint32_t subsystem_id,
+	// 										  uint16_t channel,
+	// 										  AppType app_type,
+	// 										  bool fast,
+	// 										  bool slow,
+	// 										  bool refill,
+	// 										  bool emptying,
+	// 										  const DigitalOutputMap &map)
+	// {
+	// 	SetMappedSignal(subsystem_id, channel, app_type, DigitalSignalType::kFeedFast, fast, map);
+	// 	SetMappedSignal(subsystem_id, channel, app_type, DigitalSignalType::kFeedSlow, slow, map);
+	// 	SetMappedSignal(subsystem_id, channel, app_type, DigitalSignalType::kRefillValve, refill, map);
+	// 	SetMappedSignal(subsystem_id, channel, app_type, DigitalSignalType::kEmptyingValve, emptying, map);
+	// }
 
-	void DigitalIOController::SetAlarm(uint32_t subsystem_id, AppType app_type, bool active, const DigitalOutputMap &map)
-	{
-		SetMappedSignal(subsystem_id, 0, app_type, DigitalSignalType::kAlarmOut, active, map);
-	}
+	// void DigitalIOController::SetAlarm(uint32_t subsystem_id, AppType app_type, bool active, const DigitalOutputMap &map)
+	// {
+	// 	SetMappedSignal(subsystem_id, 0, app_type, DigitalSignalType::kAlarmOut, active, map);
+	// }
 
-	void DigitalIOController::SetRunningIndicator(uint32_t subsystem_id, AppType app_type, bool running, const DigitalOutputMap &map)
-	{
-		SetMappedSignal(subsystem_id, 0, app_type, DigitalSignalType::kRunningInd, running, map);
-	}
+	// void DigitalIOController::SetRunningIndicator(uint32_t subsystem_id, AppType app_type, bool running, const DigitalOutputMap &map)
+	// {
+	// 	SetMappedSignal(subsystem_id, 0, app_type, DigitalSignalType::kRunningInd, running, map);
+	// }
 
-	void DigitalIOController::SetWarningIndicator(uint32_t subsystem_id, AppType app_type, bool warning, const DigitalOutputMap &map)
-	{
-		SetMappedSignal(subsystem_id, 0, app_type, DigitalSignalType::kWarningInd, warning, map);
-	}
+	// void DigitalIOController::SetWarningIndicator(uint32_t subsystem_id, AppType app_type, bool warning, const DigitalOutputMap &map)
+	// {
+	// 	SetMappedSignal(subsystem_id, 0, app_type, DigitalSignalType::kWarningInd, warning, map);
+	// }
 
-	void DigitalIOController::SetMappedSignal(uint32_t subsystem_id,
-											  uint16_t channel,
-											  AppType app_type,
-											  DigitalSignalType signal,
-											  bool on,
-											  const DigitalOutputMap &map)
-	{
-		auto bit = map.ResolveBit(subsystem_id, slave_position_, signal, app_type);
-		if (!bit.has_value())
-			return;
-		if (on)
-			SetBit(*bit);
-		else
-			ClearBit(*bit);
-	}
+	// void DigitalIOController::SetMappedSignal(uint32_t subsystem_id,
+	// 										  uint16_t channel,
+	// 										  AppType app_type,
+	// 										  DigitalSignalType signal,
+	// 										  bool on,
+	// 										  const DigitalOutputMap &map)
+	// {
+	// 	auto bit = map.ResolveBit(subsystem_id, slave_position_, signal, app_type);
+	// 	if (!bit.has_value())
+	// 		return;
+	// 	if (on)
+	// 		SetBit(*bit);
+	// 	else
+	// 		ClearBit(*bit);
+	// }
 
 	// void DigitalIOController::ParseDioInputs(
 	// 	bool &start, bool &stop, bool &execute_refill,

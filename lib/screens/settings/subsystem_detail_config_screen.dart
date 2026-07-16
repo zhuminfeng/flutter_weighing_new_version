@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:weighing_system_elinux/weighing_system_elinux.dart';
 import '../../l10n/app_localizations.dart';
-import '../../providers/app_state.dart'; // === 新增：导入 AppState ===
+import '../../providers/app_state.dart';
 import '../material_recipe_screen.dart';
 import 'app_settings_screen.dart';
 import 'digital_output_settings_screen.dart';
@@ -58,7 +58,6 @@ class _SubsystemDetailConfigScreenState
       _mapping.subsystemId,
       name,
       scaleId: _mapping.scaleId,
-      ioPosition: _mapping.ioPosition,
       appType: _mapping.appType,
     );
     setState(() => _saving = false);
@@ -184,10 +183,11 @@ class _SubsystemDetailConfigScreenState
     final cs = Theme.of(context).colorScheme;
     final isLiw = _mapping.appType == 0;
 
-    // === 新增：获取持久化的当前配方，实时更新副标题 ===
+    // === 🚀 修复：更加严谨的判空逻辑 ===
     final state = AppStateProvider.of(context);
     final activeRecipe = state.getActiveRecipeName(_mapping.subsystemId);
-    final appSettingsSubtitle = activeRecipe != null
+    final appSettingsSubtitle =
+        (activeRecipe != null && activeRecipe.isNotEmpty)
         ? '已加载配方: $activeRecipe'
         : (isLiw ? l.lossInWeight : l.filling);
 
@@ -340,15 +340,17 @@ class _SubsystemDetailConfigScreenState
             subtitle: widget.inputMode == 'ethercat'
                 ? '${l.position}: ${_mapping.scaleId}'
                 : '${l.channel}: ${_mapping.scaleId}',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => ScaleSettingsScreen(
-                  subsystemId: _mapping.subsystemId,
-                  scaleId: _mapping.scaleId,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ScaleSettingsScreen(
+                    subsystemId: _mapping.subsystemId,
+                    scaleId: _mapping.scaleId,
+                  ),
                 ),
-              ),
-            ),
+              );
+            },
           ),
           const SizedBox(height: 12),
 
@@ -357,15 +359,20 @@ class _SubsystemDetailConfigScreenState
             icon: Icons.science,
             title: l.materialRecipeTitle,
             subtitle: l.materialRecipeSubtitle,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => MaterialRecipeScreen(
-                  appType: _mapping.appType,
-                  subsystemId: _mapping.subsystemId,
+            onTap: () async {
+              // 🚀 核心修复：使用 await 等待子页面返回
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => MaterialRecipeScreen(
+                    appType: _mapping.appType,
+                    subsystemId: _mapping.subsystemId,
+                  ),
                 ),
-              ),
-            ),
+              );
+              // 🚀 强制重绘，更新副标题文本
+              if (mounted) setState(() {});
+            },
           ),
           const SizedBox(height: 12),
 
@@ -373,17 +380,21 @@ class _SubsystemDetailConfigScreenState
           _NavigationTile(
             icon: Icons.settings_applications,
             title: l.appSettings,
-            // === 替换：副标题直接展示当前加载的配方名称 ===
             subtitle: appSettingsSubtitle,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => AppSettingsScreen(
-                  subsystemId: _mapping.subsystemId,
-                  appType: _mapping.appType,
+            onTap: () async {
+              // 🚀 核心修复：使用 await 等待子页面返回
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => AppSettingsScreen(
+                    subsystemId: _mapping.subsystemId,
+                    appType: _mapping.appType,
+                  ),
                 ),
-              ),
-            ),
+              );
+              // 🚀 强制重绘，更新副标题文本
+              if (mounted) setState(() {});
+            },
           ),
           const SizedBox(height: 12),
 
@@ -392,12 +403,14 @@ class _SubsystemDetailConfigScreenState
             icon: Icons.power,
             title: l.digitalOutputMapping,
             subtitle: l.doBitRouting,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const DigitalOutputSettingsScreen(),
-              ),
-            ),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const DigitalOutputSettingsScreen(),
+                ),
+              );
+            },
           ),
           const SizedBox(height: 12),
 
@@ -406,14 +419,16 @@ class _SubsystemDetailConfigScreenState
             icon: Icons.input,
             title: l.digitalInputMapping,
             subtitle: l.diInputRouting,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => DigitalInputSettingsScreen(
-                  subsystemId: _mapping.subsystemId,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => DigitalInputSettingsScreen(
+                    subsystemId: _mapping.subsystemId,
+                  ),
                 ),
-              ),
-            ),
+              );
+            },
           ),
           const SizedBox(height: 24),
 

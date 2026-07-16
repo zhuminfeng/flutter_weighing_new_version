@@ -572,27 +572,81 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       return;
     }
 
+    // 1. 先把当前页面的参数刷新保存到底层系统（静默保存）
     await _save(showSnackbar: false);
 
     setState(() => _saving = true);
     final state = AppStateProvider.read(context);
     final subId = widget.subsystemId ?? state.activeSubsystemId;
+
+    // 2. 仅仅保存到数据库（不再自动激活）
     final ok = await state.saveMaterialRecipe(subId, name, _appType);
 
-    setState(() {
-      _saving = false;
-      if (ok) {
-        _currentRecipeName = name;
-        _isModified = false; // 保存后重置修改状态
-      }
-    });
+    setState(() => _saving = false);
 
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(ok ? '配方 "$name" 保存成功' : '配方保存失败'),
-          backgroundColor: ok ? Colors.green : Colors.red,
+    if (!mounted) return;
+
+    if (ok) {
+      // 3. 弹窗询问用户：是否要将刚才保存的配方直接激活？
+      final load = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('配方保存成功'),
+          content: Text('配方 "$name" 已保存到数据库。\n\n是否将该配方设置为当前系统的激活配方？'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('仅保存'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('激活配方'),
+            ),
+          ],
         ),
+      );
+
+      if (load == true) {
+        setState(() => _saving = true);
+        // 4. 用户选择激活，调用新增的接口，通知 C++ 写入 json 并更新内存
+        final activeOk = await state.setSubsystemActiveRecipe(subId, name);
+        setState(() => _saving = false);
+
+        if (activeOk) {
+          setState(() {
+            _currentRecipeName = name;
+            _isModified = false; // 重置修改状态
+          });
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('已激活配方: $name'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('激活失败：无法写入系统配置'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+      } else {
+        // 用户选择仅保存
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('配方 "$name" 已保存 (未激活)'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('配方保存失败'), backgroundColor: Colors.red),
       );
     }
   }

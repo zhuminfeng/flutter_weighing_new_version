@@ -108,7 +108,8 @@ namespace weighing
 			if (is_pre_refilling_.load() && waiting_for_manual_pre_refill_.load())
 			{
 				// 接收到手动执行信号，打开阀门
-				SetValveOutputs(0, false, false, true, false);
+				// SetValveOutputs(0, false, false, true, false);
+				SetOutputSignal(DigitalSignalType::kRefillValve, true);
 				waiting_for_manual_pre_refill_.store(false);
 				ClearWarning();
 			}
@@ -695,7 +696,7 @@ namespace weighing
 		is_refilling_.store(true);
 		refill_start_ = std::chrono::steady_clock::now();
 		// 打开补料阀
-		SetValveOutputs(0, false, false, true, false);
+		SetOutputSignal(DigitalSignalType::kRefillValve, true);
 		// 如果补料是伺服，此处下发补料伺服速度
 		if (refill_config_.mode == RefillMode::kAutomatic)
 		{
@@ -708,7 +709,7 @@ namespace weighing
 	{
 		is_refilling_.store(false);
 		// 关闭补料阀
-		SetValveOutputs(0, false, false, false, false);
+		SetOutputSignal(DigitalSignalType::kRefillValve, false);
 		// 如果补料是伺服，此处关闭补料伺服
 		SetServoRate(DigitalSignalType::kRefillValve, 0.0f);
 		SetRunState(AppRunState::kRunning);
@@ -722,7 +723,7 @@ namespace weighing
 		if (refill_config_.mode == RefillMode::kAutomatic)
 		{
 			// 自动补料模式：直接打开补料阀
-			SetValveOutputs(0, false, false, true, false);
+			SetOutputSignal(DigitalSignalType::kRefillValve, true);
 			SetServoRate(DigitalSignalType::kRefillValve, refill_config_.control_setpoint);
 			waiting_for_manual_pre_refill_.store(false);
 		}
@@ -738,8 +739,8 @@ namespace weighing
 	{
 		is_pre_refilling_.store(false);
 		waiting_for_manual_pre_refill_.store(false);
-		SetValveOutputs(0, false, false, false, false); // 关闭补料阀
-														// 如果补料是伺服，此处关闭补料伺服
+		SetOutputSignal(DigitalSignalType::kRefillValve, false); // 关闭补料阀
+																 // 如果补料是伺服，此处关闭补料伺服
 		SetServoRate(DigitalSignalType::kRefillValve, 0.0f);
 
 		// 【关键】此时预补料完成，相当于系统才“真正”开始启动
@@ -759,7 +760,7 @@ namespace weighing
 	void LiwApplication::StartStabilization()
 	{
 		is_refilling_.store(false);
-		SetValveOutputs(0, false, false, false, false); // 物理上关闭补料阀
+		SetOutputSignal(DigitalSignalType::kRefillValve, false); // 物理上关闭补料阀
 
 		is_stabilizing_.store(true); // 进入稳定期
 		stabilize_start_ = std::chrono::steady_clock::now();
@@ -781,7 +782,7 @@ namespace weighing
 		}
 		is_emptying_.store(true);
 		// 打开排空阀
-		SetValveOutputs(0, false, false, false, true);
+		SetOutputSignal(DigitalSignalType::kEmptyingValve, true);
 		SetRunState(AppRunState::kEmptying);
 	}
 
@@ -789,7 +790,7 @@ namespace weighing
 	{
 		is_emptying_.store(false);
 		// 关闭排空阀
-		SetValveOutputs(0, false, false, false, false);
+		SetOutputSignal(DigitalSignalType::kEmptyingValve, false);
 		SetRunState(AppRunState::kRunning);
 	}
 

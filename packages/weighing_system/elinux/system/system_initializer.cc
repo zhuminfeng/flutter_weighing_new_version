@@ -235,7 +235,7 @@ namespace weighing
 				{
 					SubMapping m;
 					m.sub_id = std::stoul(key);
-					m.io_position = val.value("io_position", (uint16_t)0);
+					// m.io_position = val.value("io_position", (uint16_t)0);
 					m.scale_id = val.value("scale_id", 0u);
 					m.description = val.value("description", "Subsystem " + key);
 					m.app_type = val.value("app_type", 0);
@@ -418,10 +418,10 @@ namespace weighing
 		}
 
 		// 设置子系统映射
-		for (const auto &m : parsed_.subsystem_mappings)
-		{
-			om.MapSubsystemIO(m.sub_id, m.io_position);
-		}
+		// for (const auto &m : parsed_.subsystem_mappings)
+		// {
+		// 	om.MapSubsystemIO(m.sub_id, m.io_position);
+		// }
 
 		// std::string err;
 
@@ -838,7 +838,7 @@ namespace weighing
 				SubMapping m;
 				m.sub_id = subsystem_id;
 				m.scale_id = scale_id;
-				m.io_position = 0;
+				// m.io_position = 0;
 				m.description = "Subsystem " + key;
 				parsed_.subsystem_mappings.push_back(m);
 			}
@@ -878,7 +878,7 @@ namespace weighing
 	// ============================================================================
 	// 添加新的子系统条目并持久化
 	// ============================================================================
-	bool SystemInitializer::AddSubsystemToConfig(uint32_t sub_id, uint16_t io_position,
+	bool SystemInitializer::AddSubsystemToConfig(uint32_t sub_id,
 												 uint32_t scale_id, const std::string &description,
 												 std::string *err, int app_type, bool enabled)
 	{
@@ -903,7 +903,7 @@ namespace weighing
 			std::string key = std::to_string(sub_id);
 			j["subsystem_mapping"][key] = {
 				{"scale_id", scale_id},
-				{"io_position", io_position},
+				// {"io_position", io_position},
 				{"description", description.empty() ? "Subsystem " + key : description},
 				{"app_type", app_type},
 				{"enabled", enabled},
@@ -928,7 +928,7 @@ namespace weighing
 			if (it != parsed_.subsystem_mappings.end())
 			{
 				it->scale_id = scale_id;
-				it->io_position = io_position;
+				// it->io_position = io_position;
 				it->description = description.empty() ? "Subsystem " + key : description;
 				it->app_type = app_type;
 				it->enabled = enabled;
@@ -938,7 +938,7 @@ namespace weighing
 				SubMapping m;
 				m.sub_id = sub_id;
 				m.scale_id = scale_id;
-				m.io_position = io_position;
+				// m.io_position = io_position;
 				m.description = description.empty() ? "Subsystem " + key : description;
 				m.app_type = app_type;
 				m.enabled = enabled;

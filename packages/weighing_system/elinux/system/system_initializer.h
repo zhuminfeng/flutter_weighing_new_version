@@ -55,7 +55,7 @@ namespace weighing
 		struct SubMapping
 		{
 			uint32_t sub_id;
-			uint16_t io_position;
+			// uint16_t io_position;
 			uint32_t scale_id;
 			std::string description;
 			int app_type = 0; // 0=LIW, 1=Filling
@@ -81,7 +81,7 @@ namespace weighing
 			const std::vector<SlaveEntry> &input_slaves,
 			std::string *err);
 
-		bool AddSubsystemToConfig(uint32_t sub_id, uint16_t io_position, uint32_t scale_id,
+		bool AddSubsystemToConfig(uint32_t sub_id, uint32_t scale_id,
 								  const std::string &description, std::string *err,
 								  int app_type = 0, bool enabled = true);
 

@@ -108,10 +108,10 @@ namespace weighing
 	// 	subsystem_servo_map_[sub_id][channel] = servo_pos;
 	// }
 
-	void OutputManager::MapSubsystemIO(uint32_t sub_id, uint16_t io_pos)
-	{
-		subsystem_io_map_[sub_id] = io_pos;
-	}
+	// void OutputManager::MapSubsystemIO(uint32_t sub_id, uint16_t io_pos)
+	// {
+	// 	subsystem_io_map_[sub_id] = io_pos;
+	// }
 
 	// 根据功能信号，下发速度百分比 (适用于：快加料、慢加料、补料、卸料等 CSV速度控制场景)
 	void OutputManager::SetServoRateBySignal(uint32_t subsystem_id, DigitalSignalType signal, float rate_pct)
@@ -177,44 +177,150 @@ namespace weighing
 		}
 	}
 
-	void OutputManager::SetValveOutputs(uint32_t subsystem_id,
-										uint16_t channel,
+	// ==========================================================
+	// 🚀 核心信号分发：一个逻辑信号，自动分发到所有绑定的硬件引脚
+	// ==========================================================
+	void OutputManager::SetOutputSignal(uint32_t subsystem_id,
+										DigitalSignalType signal,
+										bool active,
 										AppType app_type,
-										bool fast, bool slow, bool refill, bool emptying)
+										uint16_t target_io_pos)
 	{
-		const uint16_t io_pos = GetSubsystemIOPosition(subsystem_id);
-		auto *dio = GetDigitalIO(io_pos);
-		if (!dio)
-			return;
-		dio->ApplyDioOutputs(subsystem_id, channel, app_type, fast, slow, refill, emptying, dio_map_);
+		// 1. 查找该子系统的数字量输出路由表
+		auto sub_it = subsystem_dio_route_.find(subsystem_id);
+		if (sub_it == subsystem_dio_route_.end())
+			return; // 该子系统未配置任何输出
+
+		// 2. 查找该子系统下，对应这个逻辑信号的配置列表
+		auto sig_it = sub_it->second.find(signal);
+		if (sig_it == sub_it->second.end())
+			return; // 该子系统未配置此特定信号
+
+		// 3. 遍历所有绑定到这个信号的引脚（可能是多个，分布在不同的 IO 模块上）
+		for (const auto &binding : sig_it->second)
+		{
+			// =========================================================
+			// 🚀 核心过滤 1：硬件寻址过滤 (定向打击 vs 全局广播)
+			// =========================================================
+			// 如果传入了大于 0 的 target_io_pos，说明业务要求精确打击某个特定的 IO 模块
+			// 此时如果当前遍历到的绑定项不属于这个目标模块，则跳过。
+			if (target_io_pos != 0 && binding.io_pos != target_io_pos)
+			{
+				continue;
+			}
+
+			// =========================================================
+			// 🚀 核心过滤 2：应用域 (AppScope) 隔离
+			// =========================================================
+			// app_scope = -1 表示通用（既适用于失重也适用于罐装）
+			// 如果配了专属域，且与当前运行的 app_type 不匹配，则跳过。
+			if (binding.app_scope != -1 && binding.app_scope != static_cast<int>(app_type))
+			{
+				continue;
+			}
+
+			// =========================================================
+			// 🚀 物理执行：找到底层 IO 控制器并执行位操作
+			// =========================================================
+			auto *dio = GetDigitalIO(binding.io_pos);
+			if (dio)
+			{
+				// 根据极性配置 (active_high) 计算出最终物理引脚该输出高电平还是低电平
+				// 逻辑：如果 active_high 为 true，业务要 true，物理就是 true
+				//      如果 active_high 为 false，业务要 true，物理就是 false (即拉低生效)
+				bool final_physical_state = binding.active_high ? active : !active;
+
+				// 计算位掩码 (例如 bit_index = 2, mask = 0000 0100)
+				uint16_t bit_mask = (1 << binding.bit_index);
+
+				// 执行物理层操作
+				if (final_physical_state)
+				{
+					dio->SetBit(bit_mask);
+				}
+				else
+				{
+					dio->ClearBit(bit_mask);
+				}
+			}
+		}
 	}
 
-	void OutputManager::SetAlarm(uint32_t subsystem_id, AppType app_type, bool active)
+	// ==========================================================
+	// 🚀 一键关断子系统的所有数字量输出 (恢复安全状态)
+	// ==========================================================
+	void OutputManager::StopAllDigitalOutputs(uint32_t subsystem_id)
 	{
-		const uint16_t io_pos = GetSubsystemIOPosition(subsystem_id);
-		auto *dio = GetDigitalIO(io_pos);
-		if (!dio)
+		auto sub_it = subsystem_dio_route_.find(subsystem_id);
+		if (sub_it == subsystem_dio_route_.end())
 			return;
-		dio->SetAlarm(subsystem_id, app_type, active, dio_map_);
+
+		// 遍历该子系统配置的所有信号
+		for (const auto &[signal, bindings] : sub_it->second)
+		{
+			// 如果是报警灯等状态指示灯，可能不需要在急停时关掉，可按需过滤
+			// if (signal == DigitalSignalType::kAlarmOut) continue;
+
+			// 遍历信号对应的所有物理引脚
+			for (const auto &binding : bindings)
+			{
+				auto *dio = GetDigitalIO(binding.io_pos);
+				if (dio)
+				{
+					// 【核心防错】：业务要求“关闭” (active = false)
+					// 如果 active_high 为 true，物理安全电平就是 false (低电平)
+					// 如果 active_high 为 false，物理安全电平就是 true (高电平拉高关阀)
+					bool safe_physical_state = !binding.active_high;
+
+					uint16_t mask = (1 << binding.bit_index);
+
+					if (safe_physical_state)
+						dio->SetBit(mask);
+					else
+						dio->ClearBit(mask);
+				}
+			}
+		}
 	}
 
-	void OutputManager::SetRunning(uint32_t subsystem_id, AppType app_type, bool running)
-	{
-		const uint16_t io_pos = GetSubsystemIOPosition(subsystem_id);
-		auto *dio = GetDigitalIO(io_pos);
-		if (!dio)
-			return;
-		dio->SetRunningIndicator(subsystem_id, app_type, running, dio_map_);
-	}
+	// void OutputManager::SetValveOutputs(uint32_t subsystem_id,
+	// 									uint16_t channel,
+	// 									AppType app_type,
+	// 									bool fast, bool slow, bool refill, bool emptying)
+	// {
+	// 	const uint16_t io_pos = GetSubsystemIOPosition(subsystem_id);
+	// 	auto *dio = GetDigitalIO(io_pos);
+	// 	if (!dio)
+	// 		return;
+	// 	dio->ApplyDioOutputs(subsystem_id, channel, app_type, fast, slow, refill, emptying, dio_map_);
+	// }
 
-	void OutputManager::SetWarning(uint32_t subsystem_id, AppType app_type, bool warning)
-	{
-		const uint16_t io_pos = GetSubsystemIOPosition(subsystem_id);
-		auto *dio = GetDigitalIO(io_pos);
-		if (!dio)
-			return;
-		dio->SetWarningIndicator(subsystem_id, app_type, warning, dio_map_);
-	}
+	// void OutputManager::SetAlarm(uint32_t subsystem_id, AppType app_type, bool active)
+	// {
+	// 	const uint16_t io_pos = GetSubsystemIOPosition(subsystem_id);
+	// 	auto *dio = GetDigitalIO(io_pos);
+	// 	if (!dio)
+	// 		return;
+	// 	dio->SetAlarm(subsystem_id, app_type, active, dio_map_);
+	// }
+
+	// void OutputManager::SetRunning(uint32_t subsystem_id, AppType app_type, bool running)
+	// {
+	// 	const uint16_t io_pos = GetSubsystemIOPosition(subsystem_id);
+	// 	auto *dio = GetDigitalIO(io_pos);
+	// 	if (!dio)
+	// 		return;
+	// 	dio->SetRunningIndicator(subsystem_id, app_type, running, dio_map_);
+	// }
+
+	// void OutputManager::SetWarning(uint32_t subsystem_id, AppType app_type, bool warning)
+	// {
+	// 	const uint16_t io_pos = GetSubsystemIOPosition(subsystem_id);
+	// 	auto *dio = GetDigitalIO(io_pos);
+	// 	if (!dio)
+	// 		return;
+	// 	dio->SetWarningIndicator(subsystem_id, app_type, warning, dio_map_);
+	// }
 	ServoController *OutputManager::GetServo(uint16_t pos)
 	{
 		auto it = servos_.find(pos);
@@ -248,6 +354,13 @@ namespace weighing
 
 			printf("OutputManager Route Map: Subsystem %u, Signal %d -> Bound to Servo Pos %u\n",
 				   b.subsystem_id, static_cast<int>(b.signal), b.servo_pos);
+		}
+
+		// 构建数字量 IO 路由表
+		for (const auto &b : cfg.bindings)
+		{
+			if (b.enabled)
+				subsystem_dio_route_[b.subsystem_id][b.signal].push_back(b);
 		}
 		return true;
 	}

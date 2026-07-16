@@ -905,6 +905,16 @@ class ELinuxWeighingSystem extends WeighingPlatform {
     }
   }
 
+  @override
+  Future<bool> setSubsystemActiveRecipe(
+      int subsystemId, String recipeName) async {
+    final m = await _channel.invokeMapMethod<String, dynamic>(
+      'setSubsystemActiveRecipe',
+      {'subsystem_id': subsystemId, 'recipe_name': recipeName},
+    );
+    return m?['ok'] == true;
+  }
+
   /// 删除物料配方
   @override
   Future<bool> deleteMaterialRecipe(int recipeId, int appType) async {

@@ -36,15 +36,32 @@ namespace weighing
 
 		// 3. 安全急停：停止该子系统下的所有伺服电机
 		void StopAllServos(uint32_t subsystem_id);
-		void SetValveOutputs(uint32_t subsystem_id,
-							 uint16_t channel,
-							 AppType app_type,
-							 bool fast, bool slow, bool refill, bool emptying);
+		// === 🚀 核心重构：统一的数字量输出信号下发接口 ===
+		/**
+		 * @brief 统一的数字量输出信号下发接口
+		 * @param subsystem_id  触发信号的子系统ID
+		 * @param signal        逻辑信号类型 (如 kFeedFast, kAlarmOut 等)
+		 * @param active        信号是否激活 (业务期望的状态)
+		 * @param app_type      当前子系统的应用类型 (默认 kBoth 不区分)
+		 * @param target_io_pos 目标硬件IO模块的位置。默认为 0，表示对该子系统名下所有匹配的引脚进行广播
+		 */
+		void SetOutputSignal(uint32_t subsystem_id,
+							 DigitalSignalType signal,
+							 bool active,
+							 AppType app_type = AppType::kLossInWeight,
+							 uint16_t target_io_pos = 0);
 
-		// 指示灯/报警输出（直接操作指定 IO 从站位置）
-		void SetAlarm(uint32_t subsystem_id, AppType app_type, bool active);
-		void SetRunning(uint32_t subsystem_id, AppType app_type, bool running);
-		void SetWarning(uint32_t subsystem_id, AppType app_type, bool warning);
+		// 🚀 【新增】：一键安全关断名下所有数字量输出（阀门、继电器等）
+		void StopAllDigitalOutputs(uint32_t subsystem_id);
+		// void SetValveOutputs(uint32_t subsystem_id,
+		// 					 uint16_t channel,
+		// 					 AppType app_type,
+		// 					 bool fast, bool slow, bool refill, bool emptying);
+
+		// // 指示灯/报警输出（直接操作指定 IO 从站位置）
+		// void SetAlarm(uint32_t subsystem_id, AppType app_type, bool active);
+		// void SetRunning(uint32_t subsystem_id, AppType app_type, bool running);
+		// void SetWarning(uint32_t subsystem_id, AppType app_type, bool warning);
 
 		// void SetDioInputCallback(DioInputCallback cb) { dio_callback_ = cb; }
 
@@ -53,11 +70,11 @@ namespace weighing
 		void MapSubsystemIO(uint32_t sub_id, uint16_t io_pos);
 
 		// 查询映射
-		uint16_t GetSubsystemIOPosition(uint32_t sub_id) const
-		{
-			auto it = subsystem_io_map_.find(sub_id);
-			return (it != subsystem_io_map_.end()) ? it->second : 0;
-		}
+		// uint16_t GetSubsystemIOPosition(uint32_t sub_id) const
+		// {
+		// 	auto it = subsystem_io_map_.find(sub_id);
+		// 	return (it != subsystem_io_map_.end()) ? it->second : 0;
+		// }
 
 		// === 修改 3：查询映射时增加 channel 参数 ===
 		// uint16_t GetSubsystemServoPosition(uint32_t sub_id, uint16_t channel) const
@@ -83,7 +100,7 @@ namespace weighing
 
 		DigitalOutputMap GetDigitalOutputMap() { return dio_map_; }
 
-		const std::map<uint32_t, uint16_t> &GetSubsystemIOMap() const { return subsystem_io_map_; }
+		// const std::map<uint32_t, uint16_t> &GetSubsystemIOMap() const { return subsystem_io_map_; }
 
 	private:
 		OutputManager() = default;
@@ -99,7 +116,8 @@ namespace weighing
 		// 动态路由表：子系统ID -> (工艺信号类型 -> 物理从站位置数组)
 		// 这样设计使得任意信号均可绑定 0 个、1 个或 N 个伺服电机，实现完全的自定义
 		std::map<uint32_t, std::map<DigitalSignalType, std::vector<uint16_t>>> subsystem_servo_route_;
-		std::map<uint32_t, uint16_t> subsystem_io_map_;
+		std::map<uint32_t, std::map<DigitalSignalType, std::vector<DigitalOutputBinding>>> subsystem_dio_route_;
+		// std::map<uint32_t, uint16_t> subsystem_io_map_;
 
 		// DioInputCallback dio_callback_;
 		bool initialized_ = false;

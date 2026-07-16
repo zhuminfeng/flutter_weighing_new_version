@@ -141,15 +141,26 @@ class AppState extends ChangeNotifier {
 
   // ============ Material Recipe API ============
 
-  /// 将当前子系统参数保存为物料配方
+  // 修改：只保存到数据库，不自动激活
   Future<bool> saveMaterialRecipe(
     int subsystemId,
     String name,
     int appType,
   ) async {
-    final ok = await _platform.saveMaterialRecipe(subsystemId, name, appType);
+    return await _platform.saveMaterialRecipe(subsystemId, name, appType);
+  }
+
+  // 新增：专门用于激活配方，并触发 C++ 写入 input_mode.json
+  Future<bool> setSubsystemActiveRecipe(
+    int subsystemId,
+    String recipeName,
+  ) async {
+    final ok = await _platform.setSubsystemActiveRecipe(
+      subsystemId,
+      recipeName,
+    );
     if (ok) {
-      setActiveRecipeName(subsystemId, name); // 保存成功后更新活跃名称
+      setActiveRecipeName(subsystemId, recipeName); // 更新内存和UI
     }
     return ok;
   }

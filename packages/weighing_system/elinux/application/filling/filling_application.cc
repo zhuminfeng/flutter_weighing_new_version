@@ -90,7 +90,8 @@ namespace weighing
 		// fast=false, slow=false, refill=open, emptying=false
 		// 注意：不影响 feed 阀门状态，需要保持当前 feed 状态
 		// 这里简化为独立控制 refill 位
-		SetValveOutputs(0, false, false, open, false);
+		// SetValveOutputs(0, false, false, open, false);
+		SetOutputSignal(DigitalSignalType::kRefillValve, open);
 	}
 
 	void FillingApplication::StartFeeding()
@@ -110,8 +111,7 @@ namespace weighing
 	void FillingApplication::StopFeeding()
 	{
 		// 关闭所有进料阀门 + 伺服停止
-		SetValveOutputs(0, false, false, false, false);
-		StopAllServos();
+		StopAllOutputs();
 	}
 
 	void FillingApplication::StartFastFeed()
@@ -120,7 +120,8 @@ namespace weighing
 		bool is_parallel = (system_config_.output_type == OutputType::kParallel);
 
 		// fast = true, slow = is_parallel
-		SetValveOutputs(0, true, is_parallel, false, false);
+		SetOutputSignal(DigitalSignalType::kFeedFast, true);
+		SetOutputSignal(DigitalSignalType::kFeedSlow, is_parallel);
 		SetServoRate(DigitalSignalType::kFeedFast, static_cast<float>(advanced_config_.fast_feed_speed));
 		if (is_parallel)
 		{
@@ -138,7 +139,8 @@ namespace weighing
 	{
 		// 无论是并行还是独立输出，在细加料(FineFeed)阶段，只有慢阀(slow)开启
 		// fast = false, slow = true (此函数保持不变)
-		SetValveOutputs(0, false, true, false, false);
+		SetOutputSignal(DigitalSignalType::kFeedFast, false);
+		SetOutputSignal(DigitalSignalType::kFeedSlow, true);
 
 		// 快加料电机停转，慢加料电机运行
 		SetServoRate(DigitalSignalType::kFeedFast, 0.0f);
@@ -531,7 +533,8 @@ namespace weighing
 			SetPhase(FillingPhase::kEmptying);
 			emptying_start_ = std::chrono::steady_clock::now();
 			// 打开排空阀门
-			SetValveOutputs(0, false, false, false, true);
+			// SetValveOutputs(0, false, false, false, true);
+			SetOutputSignal(DigitalSignalType::kEmptyingValve, true);
 			break;
 		}
 
@@ -978,14 +981,16 @@ namespace weighing
 			double weight = current_weight_.load();
 			if (weight <= emptying_config_.residual_weight)
 			{
-				SetValveOutputs(0, false, false, false, false); // 关闭排空阀
+				// SetValveOutputs(0, false, false, false, false); // 关闭排空阀
+				SetOutputSignal(DigitalSignalType::kEmptyingValve, false);
 				SetPhase(FillingPhase::kClearTare);
 			}
 
 			if (phase_elapsed > events_config_.emptying_timeout)
 			{
 				EmitWarning("Emptying timeout");
-				SetValveOutputs(0, false, false, false, false);
+				// SetValveOutputs(0, false, false, false, false);
+				SetOutputSignal(DigitalSignalType::kEmptyingValve, false);
 				SetPhase(FillingPhase::kClearTare);
 			}
 			break;
@@ -995,7 +1000,8 @@ namespace weighing
 		{
 			if (phase_elapsed >= emptying_config_.completion_time)
 			{
-				SetValveOutputs(0, false, false, false, false);
+				// SetValveOutputs(0, false, false, false, false);
+				SetOutputSignal(DigitalSignalType::kEmptyingValve, false);
 				SetPhase(FillingPhase::kClearTare);
 			}
 			break;

@@ -179,4 +179,8 @@ abstract class WeighingPlatform extends PlatformInterface {
       int subsystemId, int recipeId, String recipeName, int appType);
   Future<List<Map<String, dynamic>>> getAllMaterialRecipes(int appType);
   Future<bool> deleteMaterialRecipe(int recipeId, int appType);
+  Future<bool> setSubsystemActiveRecipe(int subsystemId, String recipeName) {
+    throw UnimplementedError(
+        'setSubsystemActiveRecipe() has not been implemented.');
+  }
 }

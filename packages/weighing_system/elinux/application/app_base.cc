@@ -50,8 +50,9 @@ namespace weighing
 		}
 
 		// 停止所有输出
-		StopAllServos();
-		SetValveOutputs(0, false, false, false, false);
+		// StopAllServos();
+		// SetValveOutputs(0, false, false, false, false);
+		StopAllOutputs();
 		SetRunningOutput(false);
 		SetAlarmOutput(false);
 		SetWarningOutput(false);
@@ -143,20 +144,16 @@ namespace weighing
 
 	void AppBase::SetAlarmOutput(bool active)
 	{
-		dio_outputs_.alarm = active;
-		OutputManager::Instance().SetAlarm(subsystem_id_, app_type_, active);
+		SetOutputSignal(DigitalSignalType::kAlarmOut, active);
 	}
 
 	void AppBase::SetRunningOutput(bool running)
 	{
-		dio_outputs_.running = running;
-		OutputManager::Instance().SetRunning(subsystem_id_, app_type_, running);
+		SetOutputSignal(DigitalSignalType::kRunningInd, running);
 	}
 
 	void AppBase::SetWarningOutput(bool warning)
 	{
-		dio_outputs_.warning = warning;
-		OutputManager::Instance().SetWarning(subsystem_id_, app_type_, warning);
+		SetOutputSignal(DigitalSignalType::kWarningInd, warning);
 	}
-
 } // namespace weighing
