@@ -124,6 +124,18 @@ class _DigitalInputSettingsScreenState
     }
   }
 
+  // 🚀 获取设备显示名称（优先显示别名）
+  String _getSlaveLabel(int pos, List<EthercatSlaveInfo> slaves) {
+    try {
+      final s = slaves.firstWhere((s) => s.position == pos);
+      return s.userAlias.isNotEmpty
+          ? '${s.position} - ${s.userAlias}'
+          : '${s.position} - ${s.description}';
+    } catch (_) {
+      return '位置 $pos (未识别)';
+    }
+  }
+
   // ==================== 主界面删除数字量配置 ====================
   void _removeBinding(int index) {
     final list = List<DigitalInputBinding>.from(_cfg.bindings);
@@ -272,7 +284,7 @@ class _DigitalInputSettingsScreenState
               ),
               _buildInfoRow(
                 '硬件引脚',
-                '子系统ID: ${b.subsystemId} | 设备位置: ${b.ioPos} | 引脚位(Bit): ${b.bitIndex}',
+                '子系统ID: ${b.subsystemId} | 设备: ${_getSlaveLabel(b.ioPos, _ioSlaves)} | 引脚位: ${b.bitIndex}',
                 Icons.developer_board,
               ),
               _buildInfoRow(

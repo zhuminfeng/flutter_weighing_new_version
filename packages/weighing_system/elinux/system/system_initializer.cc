@@ -198,6 +198,7 @@ namespace weighing
 					e.product_code = static_cast<uint32_t>(
 						std::stoul(s.value("product_code", "0x0"), nullptr, 16));
 					e.description = s.value("description", "");
+					e.user_alias = s.value("user_alias", "");
 					parsed_.output_slaves.push_back(e);
 				}
 			}
@@ -215,6 +216,7 @@ namespace weighing
 					e.product_code = static_cast<uint32_t>(
 						std::stoul(s.value("product_code", "0x0"), nullptr, 16));
 					e.description = s.value("description", "");
+					e.user_alias = s.value("user_alias", "");
 					parsed_.input_slaves.push_back(e);
 				}
 			}
@@ -1243,6 +1245,23 @@ namespace weighing
 			}
 			ofs << j.dump(2);
 			ofs.close();
+			// 🚀 【同步更新内存】
+			for (auto &s : parsed_.output_slaves)
+			{
+				if (s.position == position)
+				{
+					s.user_alias = alias;
+					break;
+				}
+			}
+			for (auto &s : parsed_.input_slaves)
+			{
+				if (s.position == position)
+				{
+					s.user_alias = alias;
+					break;
+				}
+			}
 			return true;
 		}
 		catch (const std::exception &e)
@@ -1294,6 +1313,7 @@ namespace weighing
 						{"vendor_id", to_hex(s.vendor_id)},
 						{"product_code", to_hex(s.product_code)},
 						{"description", s.description},
+						{"user_alias", s.user_alias},
 					});
 				}
 				// 更新内存缓存
@@ -1306,6 +1326,7 @@ namespace weighing
 					e.vendor_id = s.vendor_id;
 					e.product_code = s.product_code;
 					e.description = s.description;
+					e.user_alias = s.user_alias;
 					parsed_.output_slaves.push_back(e);
 				}
 			}
@@ -1324,6 +1345,7 @@ namespace weighing
 						{"vendor_id", to_hex(s.vendor_id)},
 						{"product_code", to_hex(s.product_code)},
 						{"description", s.description},
+						{"user_alias", s.user_alias},
 					});
 				}
 				// 更新内存缓存
@@ -1336,6 +1358,7 @@ namespace weighing
 					e.vendor_id = s.vendor_id;
 					e.product_code = s.product_code;
 					e.description = s.description;
+					e.user_alias = s.user_alias;
 					parsed_.input_slaves.push_back(e);
 				}
 			}
@@ -1357,6 +1380,21 @@ namespace weighing
 				*err = e.what();
 			return false;
 		}
+	}
+
+	std::string SystemInitializer::GetSlaveAlias(uint16_t position) const
+	{
+		for (const auto &s : parsed_.output_slaves)
+		{
+			if (s.position == position)
+				return s.user_alias;
+		}
+		for (const auto &s : parsed_.input_slaves)
+		{
+			if (s.position == position)
+				return s.user_alias;
+		}
+		return "";
 	}
 
 	// ============================================================================

@@ -3387,7 +3387,8 @@ namespace
 			item[EV("vendorId")] = EV(static_cast<int64_t>(s.vendor_id));
 			item[EV("productCode")] = EV(static_cast<int64_t>(s.product_code));
 			item[EV("description")] = EV(s.description);
-			item[EV("userAlias")] = EV(s.user_alias);
+			std::string saved_alias = SystemInitializer::Instance().GetSlaveAlias(s.position);
+			item[EV("userAlias")] = EV(saved_alias);
 			list.push_back(EV(item));
 		}
 		result->Success(EV(list));
@@ -3818,6 +3819,7 @@ namespace
 				e.vendor_id = static_cast<uint32_t>(GetInt(m, "vendorId"));
 				e.product_code = static_cast<uint32_t>(GetInt(m, "productCode"));
 				e.description = GetString(m, "description", "");
+				e.user_alias = GetString(m, "userAlias", "");
 				output_slaves.push_back(e);
 			}
 		}
@@ -3837,6 +3839,7 @@ namespace
 				e.vendor_id = static_cast<uint32_t>(GetInt(m, "vendorId"));
 				e.product_code = static_cast<uint32_t>(GetInt(m, "productCode"));
 				e.description = GetString(m, "description", "");
+				e.user_alias = GetString(m, "userAlias", "");
 				input_slaves.push_back(e);
 			}
 		}

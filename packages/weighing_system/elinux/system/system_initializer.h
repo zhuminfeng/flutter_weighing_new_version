@@ -50,6 +50,7 @@ namespace weighing
 			uint32_t vendor_id;
 			uint32_t product_code;
 			std::string description;
+			std::string user_alias;
 		};
 
 		struct SubMapping
@@ -91,6 +92,8 @@ namespace weighing
 
 		bool SetSubsystemAppType(uint32_t sub_id, int app_type, std::string *err);
 		bool SetSubsystemEnabled(uint32_t sub_id, bool enabled, std::string *err);
+
+		std::string GetSlaveAlias(uint16_t position) const;
 
 		int GetSubsystemCount() const
 		{

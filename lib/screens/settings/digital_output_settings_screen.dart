@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:weighing_system_elinux/weighing_system_elinux.dart';
-import '../../providers/app_state.dart';
 import '../../l10n/app_localizations.dart';
 import 'subsystem_config_screen.dart'; // === 引入以便复用 detectSlaveRole 和 SlaveRole ===
 
@@ -50,10 +49,23 @@ class _DigitalOutputSettingsScreenState
   List<EthercatSlaveInfo> _ioSlaves = [];
   List<EthercatSlaveInfo> _servoSlaves = [];
 
+  // 当前选中的 EtherCAT IO 设备位置
+  int? _selectedIoPos;
+  // 用于给新分配的引脚指定默认的子系统ID
+  final TextEditingController _subsystemController = TextEditingController(
+    text: "0",
+  );
+
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _subsystemController.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -129,6 +141,18 @@ class _DigitalOutputSettingsScreenState
       setState(() {
         _cfg = updatedCfg;
       });
+    }
+  }
+
+  // 🚀 获取设备显示名称（优先显示别名）
+  String _getSlaveLabel(int pos, List<EthercatSlaveInfo> slaves) {
+    try {
+      final s = slaves.firstWhere((s) => s.position == pos);
+      return s.userAlias.isNotEmpty
+          ? '${s.position} - ${s.userAlias}'
+          : '${s.position} - ${s.description}';
+    } catch (_) {
+      return '位置 $pos (未识别)';
     }
   }
 
@@ -220,44 +244,36 @@ class _DigitalOutputSettingsScreenState
     if (confirmed == true) _removeServoBinding(index);
   }
 
-  void _addServoBinding() {
-    final list = List<ServoOutputBinding>.from(_cfg.servoBindings);
-    list.add(
-      ServoOutputBinding(
-        subsystemId: 0,
-        servoPos: _servoSlaves.isNotEmpty ? _servoSlaves.first.position : 0,
-        signal: DigitalSignalType.feedFast,
-      ),
-    );
-    setState(() {
-      _cfg = DigitalOutputMapConfig(
-        version: _cfg.version,
-        bindings: _cfg.bindings,
-        servoBindings: list,
-      );
-    });
-  }
-
-  Future<void> _editServoBinding(int index) async {
+  // === 🚀 核心优化：共用的伺服配置弹窗 (新增/编辑复用) ===
+  Future<ServoOutputBinding?> _showServoBindingDialog({
+    ServoOutputBinding? current,
+  }) async {
     final l = AppLocalizations.of(context)!;
-    final current = _cfg.servoBindings[index];
+    final isEdit = current != null;
+
     final subsystemController = TextEditingController(
-      text: current.subsystemId.toString(),
+      text: isEdit
+          ? current.subsystemId.toString()
+          : (_subsystemController.text.isNotEmpty
+                ? _subsystemController.text
+                : "0"),
     );
     final appScopeController = TextEditingController(
-      text: current.appScope.toString(),
+      text: isEdit ? current.appScope.toString() : "-1",
     );
 
-    var servoPos = current.servoPos;
-    var signal = current.signal;
-    var enabled = current.enabled;
+    var servoPos = isEdit
+        ? current.servoPos
+        : (_servoSlaves.isNotEmpty ? _servoSlaves.first.position : 0);
+    var signal = isEdit ? current.signal : DigitalSignalType.feedFast;
+    var enabled = isEdit ? current.enabled : true;
 
-    final updated = await showDialog<ServoOutputBinding>(
+    return showDialog<ServoOutputBinding>(
       context: context,
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setDialogState) => AlertDialog(
-            title: Text(l.editServoMapping),
+            title: Text(isEdit ? l.editServoMapping : '添加伺服输出映射'),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -381,8 +397,32 @@ class _DigitalOutputSettingsScreenState
         );
       },
     );
+  }
 
-    if (updated != null) _replaceServoBinding(index, updated);
+  // === 🚀 修改：新增伺服绑定改为弹窗交互 ===
+  Future<void> _addServoBinding() async {
+    final newBinding = await _showServoBindingDialog();
+    if (newBinding != null) {
+      final list = List<ServoOutputBinding>.from(_cfg.servoBindings);
+      list.add(newBinding);
+      setState(() {
+        _cfg = DigitalOutputMapConfig(
+          version: _cfg.version,
+          bindings: _cfg.bindings,
+          servoBindings: list,
+        );
+      });
+    }
+  }
+
+  // === 🚀 修改：编辑伺服绑定复用统一弹窗 ===
+  Future<void> _editServoBinding(int index) async {
+    final updated = await _showServoBindingDialog(
+      current: _cfg.servoBindings[index],
+    );
+    if (updated != null) {
+      _replaceServoBinding(index, updated);
+    }
   }
 
   List<DropdownMenuItem<int>> _buildServoSlaveDropdownItems(int currentValue) {
@@ -581,7 +621,7 @@ class _DigitalOutputSettingsScreenState
               ),
               _buildInfoRow(
                 '硬件引脚',
-                '子系统ID: ${b.subsystemId} | 设备位置: ${b.ioPos} | 引脚位(Bit): ${b.bitIndex}',
+                '子系统ID: ${b.subsystemId} | 设备: ${_getSlaveLabel(b.ioPos, _ioSlaves)} | 引脚位: ${b.bitIndex}',
                 Icons.developer_board,
               ),
               _buildInfoRow(
@@ -638,7 +678,7 @@ class _DigitalOutputSettingsScreenState
               ),
               _buildInfoRow(
                 l.hardwareConfig,
-                '子系统ID: ${b.subsystemId} | 伺服位置: ${b.servoPos}',
+                '子系统ID: ${b.subsystemId} | 伺服: ${_getSlaveLabel(b.servoPos, _servoSlaves)}',
                 Icons.developer_board,
               ),
               _buildInfoRow(
@@ -668,10 +708,7 @@ class _DigitalOutputSettingsScreenState
 }
 
 // ==============================================================================
-// === 专用的数字量引脚分配器页面（之前的 8位小圆灯界面）===
-// ==============================================================================
-// ==============================================================================
-// === 专用的数字量引脚分配器页面（之前的 8位小圆灯界面）===
+// === 专用的数字量引脚分配器页面 ===
 // ==============================================================================
 class _DigitalIoAllocatorScreen extends StatefulWidget {
   final DigitalOutputMapConfig cfg;
@@ -695,12 +732,11 @@ class _DigitalIoAllocatorScreenState extends State<_DigitalIoAllocatorScreen> {
   final TextEditingController _subsystemController = TextEditingController(
     text: "0",
   );
-  bool _saving = false; // === 新增：保存状态 ===
+  bool _saving = false;
 
   @override
   void initState() {
     super.initState();
-    // 浅拷贝外部的配置状态，内部修改完统一返回
     _localCfg = DigitalOutputMapConfig(
       version: widget.cfg.version,
       bindings: List.from(widget.cfg.bindings),
@@ -717,7 +753,6 @@ class _DigitalIoAllocatorScreenState extends State<_DigitalIoAllocatorScreen> {
     super.dispose();
   }
 
-  // === 新增：页面内直接保存的方法 ===
   Future<void> _save() async {
     final l = AppLocalizations.of(context)!;
     setState(() => _saving = true);
@@ -734,7 +769,6 @@ class _DigitalIoAllocatorScreenState extends State<_DigitalIoAllocatorScreen> {
     );
   }
 
-  // 构建下拉列表
   List<DropdownMenuItem<int>> _buildIoSlaveDropdownItems(int? currentValue) {
     final items = widget.ioSlaves.map((s) {
       final label = s.userAlias.isNotEmpty ? s.userAlias : s.description;
@@ -946,7 +980,6 @@ class _DigitalIoAllocatorScreenState extends State<_DigitalIoAllocatorScreen> {
       appBar: AppBar(
         title: const Text('数字量输出端口分配'),
         actions: [
-          // === 修改：去掉写死的 color: Colors.white，跟随主题颜色 ===
           IconButton(
             icon: _saving
                 ? const SizedBox(
@@ -954,13 +987,13 @@ class _DigitalIoAllocatorScreenState extends State<_DigitalIoAllocatorScreen> {
                     height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Icon(Icons.save), // 去掉白色限制
+                : const Icon(Icons.save),
             tooltip: l.save,
             onPressed: _saving ? null : _save,
           ),
           TextButton.icon(
-            icon: const Icon(Icons.keyboard_return), // 去掉白色限制
-            label: const Text('返回'), // 去掉白色限制
+            icon: const Icon(Icons.keyboard_return),
+            label: const Text('返回'),
             onPressed: () => Navigator.of(context).pop(_localCfg),
           ),
           const SizedBox(width: 8),
