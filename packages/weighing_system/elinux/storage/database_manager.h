@@ -7,6 +7,7 @@
 #include <functional>
 #include <vector>
 #include <map>
+#include "../common_types.h"
 
 namespace weighing
 {
@@ -34,6 +35,8 @@ namespace weighing
 
 		// Schema initialization
 		bool InitializeSchema();
+		// 🚀 新增：为全新子系统在数据库中初始化一条占位记录
+		bool InitSubsystemConfig(uint32_t subsystem_id, AppType app_type, std::string *err = nullptr);
 
 	private:
 		DatabaseManager() = default;

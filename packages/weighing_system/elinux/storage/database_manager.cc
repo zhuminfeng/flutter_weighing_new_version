@@ -145,6 +145,36 @@ namespace weighing
 		return true;
 	}
 
+	bool DatabaseManager::InitSubsystemConfig(uint32_t subsystem_id, AppType app_type, std::string *err)
+	{
+		std::lock_guard<std::mutex> lock(db_mutex_);
+		if (!db_)
+		{
+			if (err)
+				*err = "DB not open";
+			return false;
+		}
+
+		// 根据应用类型，决定向哪张表插入初始行
+		const char *sql = (app_type == AppType::kLossInWeight)
+							  ? "INSERT OR IGNORE INTO liw_configs (subsystem_id) VALUES (?)"
+							  : "INSERT OR IGNORE INTO filling_configs (subsystem_id) VALUES (?)";
+
+		sqlite3_stmt *stmt = nullptr;
+		if (sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr) != SQLITE_OK)
+		{
+			if (err)
+				*err = sqlite3_errmsg(db_);
+			return false;
+		}
+
+		sqlite3_bind_int(stmt, 1, subsystem_id);
+		bool ok = (sqlite3_step(stmt) == SQLITE_DONE);
+		sqlite3_finalize(stmt);
+
+		return ok;
+	}
+
 	bool DatabaseManager::InitializeSchema()
 	{
 		const char *schema = R"SQL(

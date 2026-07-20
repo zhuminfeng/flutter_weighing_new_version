@@ -3457,7 +3457,6 @@ namespace
 		std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
 	{
 		int subsystem_id = GetInt(args, "subsystemId");
-		// int io_position = GetInt(args, "ioPosition", 0);
 		int scale_id = GetInt(args, "scaleId", 0);
 		std::string description = GetString(args, "description");
 
@@ -3468,16 +3467,71 @@ namespace
 			enabled = std::get<bool>(it->second);
 
 		std::string err;
+		// 1. 将映射信息写入本地 input_mode.json
 		bool ok = SystemInitializer::Instance().AddSubsystemToConfig(
 			static_cast<uint32_t>(subsystem_id),
-			// static_cast<uint16_t>(io_position),
 			static_cast<uint32_t>(scale_id),
 			description,
 			&err,
 			app_type,
 			enabled);
 
-		result->Success(EV(BuildMapResult(ok, err)));
+		if (ok)
+		{
+			uint32_t sub_id_u32 = static_cast<uint32_t>(subsystem_id);
+			weighing::AppType type_enum = static_cast<weighing::AppType>(app_type);
+
+			// 2. 数据库打底占坑
+			weighing::DatabaseManager::Instance().InitSubsystemConfig(sub_id_u32, type_enum, nullptr);
+
+			// 3. 组装 Config 并动态在内存中创建子系统实例
+			weighing::SubsystemConfig new_config;
+			new_config.id = sub_id_u32;
+			new_config.app_type = type_enum;
+			new_config.enabled = enabled;
+			new_config.scale_ids = {static_cast<uint32_t>(scale_id)};
+
+			auto *sub = weighing::SubsystemManager::Instance().CreateSubsystem(new_config);
+
+			if (sub)
+			{
+				// 4. 从数据库加载应用参数
+				if (type_enum == weighing::AppType::kLossInWeight && sub->GetLiwApp())
+				{
+					weighing::ConfigStore::Instance().LoadLiwConfig(sub_id_u32, sub->GetLiwApp());
+				}
+				else if (type_enum == weighing::AppType::kFilling && sub->GetFillingApp())
+				{
+					weighing::ConfigStore::Instance().LoadFillingConfig(sub_id_u32, sub->GetFillingApp());
+				}
+
+				// =========================================================
+				// 🚀 5. 核心补充：触发初始化，分配底层控制器内存和状态
+				// =========================================================
+				sub->Initialize();
+
+				// =========================================================
+				// 🚀 6. 核心补充：防呆兜底，确保全局输入路由回调已挂载
+				// =========================================================
+				weighing::InputManager::Instance().SetDioInputCallback(
+					[](uint32_t trigger_sub_id, const weighing::DioInputSignals &signals)
+					{
+						auto *target_sub = weighing::SubsystemManager::Instance().GetSubsystem(trigger_sub_id);
+						if (target_sub)
+						{
+							target_sub->HandleDioInputs(signals);
+						}
+					});
+
+				printf("[Hot-Plug] Subsystem %d successfully created, configured, and initialized.\n", sub_id_u32);
+			}
+
+			result->Success(EV(BuildMapResult(true, "")));
+		}
+		else
+		{
+			result->Success(EV(BuildMapResult(false, err)));
+		}
 	}
 
 	void WeighingSystemPlugin::HandleSetSubsystemAppType(
