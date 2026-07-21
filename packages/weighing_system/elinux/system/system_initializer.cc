@@ -522,16 +522,23 @@ namespace weighing
 			// 没有已保存的配置 -> 根据子系统映射创建默认秤台
 			for (const auto &m : parsed_.subsystem_mappings)
 			{
-				auto *scale = ScaleManager::Instance().CreateScale(m.scale_id);
-				if (scale)
+				// =================================================================
+				// 🚀 核心修复：先查询该秤台是否已经被其他子系统初始化过
+				// =================================================================
+				auto *scale = weighing::ScaleManager::Instance().GetScale(m.scale_id);
+				if (!scale)
 				{
-					// 使用默认参数初始化
-					ScaleParams params;
-					ZeroConfig zero;
-					TareConfig tare;
-					FilterStabilityConfig filter;
-					scale->Initialize(params, zero, tare, filter);
-					printf("  Created default scale %u\n", m.scale_id);
+					scale = ScaleManager::Instance().CreateScale(m.scale_id);
+					if (scale)
+					{
+						// 使用默认参数初始化
+						ScaleParams params;
+						ZeroConfig zero;
+						TareConfig tare;
+						FilterStabilityConfig filter;
+						scale->Initialize(params, zero, tare, filter);
+						printf("  Created default scale %u\n", m.scale_id);
+					}
 				}
 			}
 
