@@ -591,6 +591,7 @@ namespace
 
 		~WeighingSystemPlugin() override
 		{
+			StopUIDispatchThread(); // 🚀 析构时停止轮询
 			StopMockThread();
 			StopWeightEventStream();
 			SystemInitializer::Instance().Shutdown();
@@ -843,6 +844,14 @@ namespace
 		std::unique_ptr<InputSource> input_source_;
 		std::unique_ptr<flutter::EventSink<flutter::EncodableValue>> weight_event_sink_;
 		std::unique_ptr<flutter::EventSink<flutter::EncodableValue>> status_event_sink_;
+
+		// =======================================================
+		// 🚀 新增：UI 降频轮询线程相关
+		// =======================================================
+		std::thread ui_dispatch_thread_;
+		std::atomic<bool> ui_thread_running_{false};
+		void StartUIDispatchThread();
+		void StopUIDispatchThread();
 
 		// Weight event stream management
 		void StartWeightEventStream();
@@ -1409,6 +1418,7 @@ namespace
 	void WeighingSystemPlugin::HandleShutdown(
 		std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
 	{
+		StopUIDispatchThread(); // 🚀 关闭轮询
 		StopWeightEventStream();
 		StopMockThread();
 		SystemInitializer::Instance().Shutdown();
@@ -1422,18 +1432,39 @@ namespace
 		std::string db_path = GetString(args, "dbPath", "/data/weighing_system.db");
 		std::string config_path = GetString(args, "inputConfigPath", "/etc/weighing/input_mode.json");
 
+		// 1. 依然挂载状态事件回调 (状态事件属于极低频，使用回调没问题)
+		StartWeightEventStream();
+		// 2. 🚀 启动 20Hz 重量数据拉取线程
+		StartUIDispatchThread();
+
 		bool ok = SystemInitializer::Instance().Initialize(config_path, db_path);
 
-		// 启动物理闭环模型
-		StartMockThread();
 		if (ok)
 		{
-			StartWeightEventStream();
 			printf("Plugin: Initialization successful (input=%s)\n",
 				   SystemInitializer::Instance().GetInputMode().c_str());
 		}
+		else
+		{
+			// 如果初始化失败，清理掉刚刚挂载的回调
+			StopWeightEventStream();
+			StopUIDispatchThread(); // 🚀 初始化失败清理线程
+		}
 
 		result->Success(flutter::EncodableValue(ok));
+
+		// bool ok = SystemInitializer::Instance().Initialize(config_path, db_path);
+
+		// 启动物理闭环模型
+		// StartMockThread();
+		// if (ok)
+		// {
+		// 	StartWeightEventStream();
+		// 	printf("Plugin: Initialization successful (input=%s)\n",
+		// 		   SystemInitializer::Instance().GetInputMode().c_str());
+		// }
+
+		// result->Success(flutter::EncodableValue(ok));
 	}
 
 	void WeighingSystemPlugin::HandleUpdateScaleParams(const flutter::EncodableMap &args,
@@ -3685,23 +3716,67 @@ namespace
 		result->Success(EV(BuildMapResult(ok, err)));
 	}
 
+	// ============================================================================
+	// 🚀 UI 降频轮询实现 (20Hz)
+	// ============================================================================
+	void WeighingSystemPlugin::StartUIDispatchThread()
+	{
+		if (ui_thread_running_)
+			return;
+		ui_thread_running_ = true;
+
+		ui_dispatch_thread_ = std::thread([this]()
+										  {
+			while (ui_thread_running_)
+			{
+				if (weight_event_sink_)
+				{
+					// 遍历当前配置的所有子系统
+					auto mappings = weighing::SystemInitializer::Instance().GetSubsystemMappings();
+					for (const auto& m : mappings) {
+						if (!m.enabled || m.scale_id == 0) continue;
+
+						auto* scale = weighing::ScaleManager::Instance().GetScale(m.scale_id);
+						if (scale) {
+							// 🚀 调用基于 SeqLock 的防撕裂快照接口
+							weighing::WeightData current_data = scale->GetWeightData(); 
+							
+							auto map = WeightDataToMap(current_data);
+							weight_event_sink_->Success(flutter::EncodableValue(map));
+						}
+					}
+				}
+				// 严格降频：休眠 50 毫秒，保证 Flutter 端 20 帧的极限丝滑且不卡顿
+				std::this_thread::sleep_for(std::chrono::milliseconds(50));
+			} });
+	}
+
+	void WeighingSystemPlugin::StopUIDispatchThread()
+	{
+		ui_thread_running_ = false;
+		if (ui_dispatch_thread_.joinable())
+		{
+			ui_dispatch_thread_.join();
+		}
+	}
+
 	// Weight event stream management
 	void WeighingSystemPlugin::StartWeightEventStream()
 	{
-		ScaleManager::Instance().SetGlobalWeightCallback(
-			[this](const WeightData &data)
-			{
-				// 【核心修复】一旦启用了闭环模拟线程，直接抛弃底层的真实 ADC 回调！
-				// 避免 shmem 共享内存一直发 0.0 kg 把 UI 刷没。
-				if (mock_thread_running_)
-					return;
+		// ScaleManager::Instance().SetGlobalWeightCallback(
+		// 	[this](const WeightData &data)
+		// 	{
+		// 		// 【核心修复】一旦启用了闭环模拟线程，直接抛弃底层的真实 ADC 回调！
+		// 		// 避免 shmem 共享内存一直发 0.0 kg 把 UI 刷没。
+		// 		if (mock_thread_running_)
+		// 			return;
 
-				if (weight_event_sink_)
-				{
-					auto map = WeightDataToMap(data);
-					weight_event_sink_->Success(flutter::EncodableValue(map));
-				}
-			});
+		// 		if (weight_event_sink_)
+		// 		{
+		// 			auto map = WeightDataToMap(data);
+		// 			weight_event_sink_->Success(flutter::EncodableValue(map));
+		// 		}
+		// 	});
 
 		ScaleManager::Instance().SetGlobalStatusCallback(
 			[this](uint32_t scale_id, ScaleState state, const std::string &msg)
@@ -3722,7 +3797,7 @@ namespace
 
 	void WeighingSystemPlugin::StopWeightEventStream()
 	{
-		ScaleManager::Instance().SetGlobalWeightCallback(nullptr);
+		// ScaleManager::Instance().SetGlobalWeightCallback(nullptr);
 		ScaleManager::Instance().SetGlobalStatusCallback(nullptr);
 	}
 
@@ -3806,22 +3881,22 @@ namespace
 				}
 
 				// 实时推送重量事件给 Flutter
-				if (weight_event_sink_) {
-					WeightData data{};
-					data.scale_id = 0;
-					data.gross_weight = current_weight;
-					data.net_weight = current_weight;
-					data.tare_weight = 0.0;
-					data.motion = MotionState::kStable;
-					data.is_zero = (current_weight < 0.01);
-					data.is_overload = false;
-					data.is_underload = false;
-					data.is_net_mode = false;
-					data.unit = WeightUnit::kKilogram;
+				// if (weight_event_sink_) {
+				// 	WeightData data{};
+				// 	data.scale_id = 0;
+				// 	data.gross_weight = current_weight;
+				// 	data.net_weight = current_weight;
+				// 	data.tare_weight = 0.0;
+				// 	data.motion = MotionState::kStable;
+				// 	data.is_zero = (current_weight < 0.01);
+				// 	data.is_overload = false;
+				// 	data.is_underload = false;
+				// 	data.is_net_mode = false;
+				// 	data.unit = WeightUnit::kKilogram;
 					
-					auto map = WeightDataToMap(data);
-					weight_event_sink_->Success(flutter::EncodableValue(map));
-				}
+				// 	auto map = WeightDataToMap(data);
+				// 	weight_event_sink_->Success(flutter::EncodableValue(map));
+				// }
 
 				std::this_thread::sleep_for(std::chrono::milliseconds(50)); 
 			} });

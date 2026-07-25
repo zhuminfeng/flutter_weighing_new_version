@@ -115,20 +115,27 @@ namespace weighing
 		// Atomic state for lock-free access
 		std::atomic<ScaleState> state_;
 
-		// Latest weight data (atomic-friendly struct with padding)
-		struct alignas(64) AtomicWeightData
+		// // 你的原始普通结构体即可，不需要把里面改成 atomic
+		// struct WeightData
+		// {
+		// 	double gross_weight = 0.0;
+		// 	double net_weight = 0.0;
+		// 	double tare_weight = 0.0;
+		// 	int motion = 0;
+		// 	bool is_zero = false;
+		// 	bool is_overload = false;
+		// 	bool is_underload = false;
+		// 	bool is_net_mode = false;
+		// 	int unit = 1;
+		// 	uint64_t timestamp_ns = 0;
+		// };
+
+		// 缓存行对齐的 SeqLock 包装器
+		struct alignas(64) SeqLockWeightData
 		{
-			std::atomic<double> gross_weight{0.0};
-			std::atomic<double> net_weight{0.0};
-			std::atomic<double> tare_weight{0.0};
-			std::atomic<int> motion{0};
-			std::atomic<bool> is_zero{false};
-			std::atomic<bool> is_overload{false};
-			std::atomic<bool> is_underload{false};
-			std::atomic<bool> is_net_mode{false};
-			std::atomic<int> unit{1}; // kg
-			std::atomic<uint64_t> timestamp_ns{0};
-		} atomic_weight_;
+			std::atomic<uint32_t> seq{0}; // 序列号，用于防撕裂校验
+			WeightData data;			  // 完整的重量数据快照
+		} shared_weight_;
 
 		// ADC input ring buffer (lock-free)
 		LockFreeRingBuffer<AdcSample, 4096> adc_buffer_;

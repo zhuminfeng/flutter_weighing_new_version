@@ -166,25 +166,27 @@ namespace weighing
 		if (!app_)
 			return;
 
-		auto it = scale_to_channel_.find(scale_id);
-		if (it == scale_to_channel_.end())
-		{
-			fprintf(stderr, "Subsystem %u: Unknown scale %u\n", config_.id, scale_id);
-			return;
-		}
+		// 单秤台模式：直接调用 OnWeightUpdate
+		app_->OnWeightUpdate(data);
+		// auto it = scale_to_channel_.find(scale_id);
+		// if (it == scale_to_channel_.end())
+		// {
+		// 	fprintf(stderr, "Subsystem %u: Unknown scale %u\n", config_.id, scale_id);
+		// 	return;
+		// }
 
-		uint16_t channel = it->second;
+		// uint16_t channel = it->second;
 
-		if (config_.scale_mode == ScaleMode::kSingle)
-		{
-			// 单秤台模式：直接调用 OnWeightUpdate
-			app_->OnWeightUpdate(data);
-		}
-		else
-		{
-			// 多秤台模式：调用通道接口
-			app_->OnChannelWeightUpdate(channel, data);
-		}
+		// if (config_.scale_mode == ScaleMode::kSingle)
+		// {
+		// 	// 单秤台模式：直接调用 OnWeightUpdate
+		// 	app_->OnWeightUpdate(data);
+		// }
+		// else
+		// {
+		// 	// 多秤台模式：调用通道接口
+		// 	app_->OnChannelWeightUpdate(channel, data);
+		// }
 	}
 
 	void Subsystem::HandleDioInputs(const DioInputSignals &signals)

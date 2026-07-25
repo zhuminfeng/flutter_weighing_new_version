@@ -104,21 +104,38 @@ namespace weighing
 
 	WeightData ScalePlatform::GetWeightData() const
 	{
-		WeightData data;
-		data.gross_weight = atomic_weight_.gross_weight.load(std::memory_order_acquire);
-		data.net_weight = atomic_weight_.net_weight.load(std::memory_order_acquire);
-		data.tare_weight = atomic_weight_.tare_weight.load(std::memory_order_acquire);
-		data.motion = static_cast<MotionState>(
-			atomic_weight_.motion.load(std::memory_order_acquire));
-		data.is_zero = atomic_weight_.is_zero.load(std::memory_order_acquire);
-		data.is_overload = atomic_weight_.is_overload.load(std::memory_order_acquire);
-		data.is_underload = atomic_weight_.is_underload.load(std::memory_order_acquire);
-		data.is_net_mode = atomic_weight_.is_net_mode.load(std::memory_order_acquire);
-		data.unit = static_cast<WeightUnit>(
-			atomic_weight_.unit.load(std::memory_order_acquire));
-		data.timestamp_ns = atomic_weight_.timestamp_ns.load(std::memory_order_acquire);
-		data.scale_id = scale_id_;
-		return data;
+		WeightData copy;
+		uint32_t seq0, seq1;
+
+		do
+		{
+			// 读取开始时的序列号
+			seq0 = shared_weight_.seq.load(std::memory_order_acquire);
+
+			// 如果序列号是奇数，说明 RT 线程正在写入，此时数据是撕裂的
+			if (seq0 & 1)
+			{
+				// 发送 CPU yield/pause 指令，防止紧循环空转烤机
+#if defined(__aarch64__) || defined(__arm__)
+				asm volatile("yield" ::: "memory");
+#elif defined(__x86_64__) || defined(__i386__)
+				asm volatile("pause" ::: "memory");
+#else
+				std::this_thread::yield();
+#endif
+				continue;
+			}
+
+			// 快速深拷贝整个结构体
+			copy = shared_weight_.data;
+
+			// 读取结束时的序列号
+			seq1 = shared_weight_.seq.load(std::memory_order_acquire);
+
+			// 如果序列号发生改变，说明拷贝途中被 RT 线程篡改了，必须重试
+		} while (seq0 != seq1 || (seq0 & 1));
+
+		return copy;
 	}
 
 	void ScalePlatform::ProcessLoop()
@@ -230,19 +247,29 @@ namespace weighing
 		overload_update(&overload_, static_cast<float>(gross), 0.0f);
 
 		// 9. Update atomic weight data
-		atomic_weight_.gross_weight.store(gross, std::memory_order_release);
-		atomic_weight_.net_weight.store(net, std::memory_order_release);
-		atomic_weight_.tare_weight.store(weight_calc_get_tare(&weight_calc_),
-										 std::memory_order_release);
-		atomic_weight_.motion.store(is_stable ? 0 : 1, std::memory_order_release);
-		atomic_weight_.is_zero.store(std::abs(gross) < params_.division,
-									 std::memory_order_release);
-		atomic_weight_.is_overload.store(overload_.is_overload, std::memory_order_release);
-		atomic_weight_.is_underload.store(overload_.is_underload, std::memory_order_release);
-		atomic_weight_.is_net_mode.store(is_net, std::memory_order_release);
-		atomic_weight_.unit.store(static_cast<int>(params_.primary_unit),
-								  std::memory_order_release);
-		atomic_weight_.timestamp_ns.store(sample.timestamp_ns, std::memory_order_release);
+		WeightData new_data;
+		new_data.gross_weight = gross;
+		new_data.net_weight = net;
+		new_data.tare_weight = weight_calc_get_tare(&weight_calc_);
+		new_data.motion = static_cast<MotionState>(is_stable ? 0 : 1);
+		new_data.is_zero = std::abs(gross) < params_.division;
+		new_data.is_overload = overload_.is_overload;
+		new_data.is_underload = overload_.is_underload;
+		new_data.is_net_mode = is_net;
+		new_data.unit = static_cast<WeightUnit>(params_.primary_unit);
+		new_data.timestamp_ns = sample.timestamp_ns;
+		new_data.scale_id = scale_id_;
+
+		// === SeqLock 写入序列 ===
+		uint32_t current_seq = shared_weight_.seq.load(std::memory_order_relaxed);
+		// 序列号加 1 (奇数)，标记开始写入
+		shared_weight_.seq.store(current_seq + 1, std::memory_order_release);
+
+		// 覆盖结构体
+		shared_weight_.data = new_data;
+
+		// 序列号再加 1 (偶数)，标记写入完成
+		shared_weight_.seq.store(current_seq + 2, std::memory_order_release);
 
 		// Update state
 		if (overload_.is_overload)
@@ -258,6 +285,12 @@ namespace weighing
 			UpdateState(ScaleState::kRunning);
 		}
 
+		static int print_divider_1 = 0;
+		if (print_divider_1++ % 100 == 0)
+		{ // 降频打印，每秒打印10次左右，防止日志刷屏卡死
+			printf("[Probe-1 EtherCAT] Scale %d | Gross: %f | Raw ADC: %d\n",
+				   sample.channel_id, GetWeightData().gross_weight, sample.raw_value);
+		}
 		// Notify callback
 		if (weight_callback_)
 		{
@@ -271,7 +304,7 @@ namespace weighing
 	{
 		if (!stability_.is_stable)
 			return false;
-		double gross = atomic_weight_.gross_weight.load(std::memory_order_acquire);
+		double gross = GetWeightData().gross_weight;
 		return weight_calc_do_zero(&weight_calc_, gross, 100.0, 100.0);
 	}
 
@@ -281,7 +314,7 @@ namespace weighing
 			return false;
 		if (!stability_.is_stable)
 			return false;
-		double gross = atomic_weight_.gross_weight.load(std::memory_order_acquire);
+		double gross = GetWeightData().gross_weight;
 		return weight_calc_do_zero(&weight_calc_, gross,
 								   zero_cfg_.pushbutton_zero_pos_pct,
 								   zero_cfg_.pushbutton_zero_neg_pct);
@@ -293,7 +326,7 @@ namespace weighing
 			return false;
 		if (!stability_.is_stable)
 			return false;
-		double gross = atomic_weight_.gross_weight.load(std::memory_order_acquire);
+		double gross = GetWeightData().gross_weight;
 		return weight_calc_do_tare(&weight_calc_, gross);
 	}
 
@@ -501,19 +534,30 @@ namespace weighing
 	// 【新增】注入模拟数据
 	void ScalePlatform::FeedMockWeight(double net_weight)
 	{
-		// 直接覆盖底层重量数据结构
-		atomic_weight_.gross_weight.store(net_weight, std::memory_order_relaxed);
-		atomic_weight_.net_weight.store(net_weight, std::memory_order_relaxed);
-		atomic_weight_.tare_weight.store(0.0, std::memory_order_relaxed);
-		atomic_weight_.motion.store(0, std::memory_order_relaxed); // 状态设为稳定 (0=Stable)
-		atomic_weight_.is_zero.store(net_weight <= 0.01, std::memory_order_relaxed);
+		WeightData new_data;
+		new_data.gross_weight = net_weight;
+		new_data.net_weight = net_weight;
+		new_data.tare_weight = 0.0;
+		new_data.motion = static_cast<MotionState>(0); // 稳定
+		new_data.is_zero = (net_weight <= 0.01);
+		new_data.is_overload = false;
+		new_data.is_underload = false;
+		new_data.is_net_mode = false;
+		new_data.unit = static_cast<WeightUnit>(params_.primary_unit);
 
-		// 生成真实的时间戳，供 PID 控制器计算微分(流速)使用
 		auto now = std::chrono::steady_clock::now().time_since_epoch();
-		uint64_t ns = std::chrono::duration_cast<std::chrono::nanoseconds>(now).count();
-		atomic_weight_.timestamp_ns.store(ns, std::memory_order_release);
+		new_data.timestamp_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(now).count();
+		new_data.scale_id = scale_id_;
 
-		// 触发回调，让 UI 更新重量
+		// === SeqLock 写入序列 ===
+		uint32_t current_seq = shared_weight_.seq.load(std::memory_order_relaxed);
+		shared_weight_.seq.store(current_seq + 1, std::memory_order_release);
+
+		shared_weight_.data = new_data;
+
+		shared_weight_.seq.store(current_seq + 2, std::memory_order_release);
+
+		// 触发回调
 		if (weight_callback_)
 		{
 			weight_callback_(GetWeightData());

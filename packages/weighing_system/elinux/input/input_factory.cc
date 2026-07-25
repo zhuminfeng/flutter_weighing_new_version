@@ -4,6 +4,7 @@
 #include "../ethercat/ethercat_master.h"
 #include <fstream>
 #include <cstring>
+#include "../include/nlohmann/json.hpp"
 #include <cstdio>
 
 namespace weighing
@@ -14,18 +15,31 @@ namespace weighing
 		std::ifstream file(config_path);
 		if (!file.is_open())
 		{
+			fprintf(stderr, "InputFactory: Failed to open %s. Defaulting to EtherCAT.\n", config_path.c_str());
 			return InputMode::kEtherCAT;
 		}
 
-		std::string content((std::istreambuf_iterator<char>(file)),
-							std::istreambuf_iterator<char>());
-
-		if (content.find("\"shmem\"") != std::string::npos ||
-			content.find("\"shared_memory\"") != std::string::npos)
+		try
 		{
-			return InputMode::kSharedMemory;
+			// 🚀 使用标准 JSON 解析树去精确读取配置
+			nlohmann::json j;
+			file >> j;
+
+			if (j.contains("input_mode") && j["input_mode"].is_string())
+			{
+				std::string mode_str = j["input_mode"].get<std::string>();
+				if (mode_str == "shmem" || mode_str == "shared_memory")
+				{
+					return InputMode::kSharedMemory;
+				}
+			}
+		}
+		catch (const std::exception &e)
+		{
+			fprintf(stderr, "InputFactory: JSON parse error in %s: %s\n", config_path.c_str(), e.what());
 		}
 
+		// 默认兜底：EtherCAT
 		return InputMode::kEtherCAT;
 	}
 

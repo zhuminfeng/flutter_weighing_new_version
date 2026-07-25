@@ -74,7 +74,18 @@ namespace weighing
 			sample.channel_id = pos;
 			sample.timestamp_ns = now_ns;
 			sample.raw_value = EC_READ_S32(domain_data + rt->offsets.weighing.off_weight_raw);
-			sample.status = EC_READ_U16(domain_data + rt->offsets.weighing.off_status);
+			// 读取 毛重（借用 off_status 的内存偏移量读取）
+			int32_t gross_weight = EC_READ_S32(domain_data + rt->offsets.weighing.off_status);
+			// sample.status = EC_READ_U16(domain_data + rt->offsets.weighing.off_status);
+			sample.status = 0;
+
+			// 🚀 探针 1：查看物理层是否拿到了非 0 的原始数据
+			static int print_divider_1 = 0;
+			if (print_divider_1++ % 100 == 0)
+			{ // 降频打印，每秒打印10次左右，防止日志刷屏卡死
+				printf("[Probe-1 EtherCAT] Scale %d | Gross: %d | Raw ADC: %d\n",
+					   sample.channel_id, gross_weight, sample.raw_value);
+			}
 
 			adc_callback_(sample);
 		}

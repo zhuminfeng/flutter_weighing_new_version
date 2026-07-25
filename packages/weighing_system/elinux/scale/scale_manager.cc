@@ -22,14 +22,14 @@ namespace weighing
 
 		auto scale = std::make_unique<ScalePlatform>(scale_id, sample_rate);
 
-		if (global_weight_cb_)
-		{
-			scale->SetWeightCallback(global_weight_cb_);
-		}
-		if (global_status_cb_)
-		{
-			scale->SetStatusCallback(global_status_cb_);
-		}
+		// if (global_weight_cb_)
+		// {
+		// 	scale->SetWeightCallback(global_weight_cb_);
+		// }
+		// if (global_status_cb_)
+		// {
+		// 	scale->SetStatusCallback(global_status_cb_);
+		// }
 
 		auto *ptr = scale.get();
 		scales_[scale_id] = std::move(scale);

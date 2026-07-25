@@ -33,8 +33,34 @@ namespace weighing
 		// 停止所有秤台和输入源
 		void StopAll();
 
-		void SetGlobalWeightCallback(WeightCallback cb) { global_weight_cb_ = cb; }
-		void SetGlobalStatusCallback(StatusCallback cb) { global_status_cb_ = cb; }
+		// void SetGlobalWeightCallback(WeightCallback cb)
+		// {
+		// 	std::lock_guard<std::mutex> lock(scales_mutex_);
+		// 	global_weight_cb_ = cb;
+
+		// 	// 🚀 核心防呆：如果内存中已经有建好的秤台，给它们补发回调挂载！
+		// 	for (auto &pair : scales_)
+		// 	{
+		// 		if (pair.second)
+		// 		{
+		// 			pair.second->SetWeightCallback(cb);
+		// 		}
+		// 	}
+		// }
+		void SetGlobalStatusCallback(StatusCallback cb)
+		{
+			std::lock_guard<std::mutex> lock(scales_mutex_);
+			global_status_cb_ = cb;
+
+			// 🚀 核心防呆：给已存在的秤台补发状态回调
+			for (auto &pair : scales_)
+			{
+				if (pair.second)
+				{
+					pair.second->SetStatusCallback(cb);
+				}
+			}
+		}
 
 	private:
 		ScaleManager() = default;
@@ -47,7 +73,7 @@ namespace weighing
 
 		std::unique_ptr<InputSource> input_source_;
 
-		WeightCallback global_weight_cb_;
+		// WeightCallback global_weight_cb_;
 		StatusCallback global_status_cb_;
 	};
 
