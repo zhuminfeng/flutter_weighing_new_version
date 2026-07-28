@@ -26,10 +26,12 @@ namespace weighing
 		// {
 		// 	scale->SetWeightCallback(global_weight_cb_);
 		// }
-		// if (global_status_cb_)
-		// {
-		// 	scale->SetStatusCallback(global_status_cb_);
-		// }
+		if (global_status_cb_)
+		{
+			scale->SetStatusCallback(global_status_cb_);
+		}
+		if (global_cal_cb_)
+			scale->SetCalibrationCallback(global_cal_cb_);
 
 		auto *ptr = scale.get();
 		scales_[scale_id] = std::move(scale);

@@ -181,6 +181,7 @@ namespace weighing
         CREATE TABLE IF NOT EXISTS scale_config (
             scale_id INTEGER PRIMARY KEY,
             primary_unit INTEGER DEFAULT 1,
+			calibration_unit INTEGER DEFAULT 1,
             capacity REAL DEFAULT 15.0,
             division REAL DEFAULT 0.005,
             overload_range INTEGER DEFAULT 9,

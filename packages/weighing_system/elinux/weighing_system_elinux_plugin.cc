@@ -32,6 +32,7 @@ namespace
 	constexpr char kChannelName[] = "plugins.weighing_system/method";
 	constexpr char kWeightEventChannel[] = "plugins.weighing_system/weight_events";
 	constexpr char kStatusEventChannel[] = "plugins.weighing_system/status_events";
+	constexpr char kCalEventChannel[] = "plugins.weighing_system/cal_events";
 
 	// Helper: extract int from encodable value
 	int GetInt(const flutter::EncodableMap &map, const std::string &key, int def = 0)
@@ -641,6 +642,8 @@ namespace
 								  std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 		void HandleTriggerCalSpan(const flutter::EncodableMap &args,
 								  std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+		void HandleTriggerCalibrationAddLoad(const flutter::EncodableMap &args,
+											 std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 		void HandleTriggerSaveCalibration(const flutter::EncodableMap &args,
 										  std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 		void HandleTriggerAbortCalibration(const flutter::EncodableMap &args,
@@ -844,6 +847,7 @@ namespace
 		std::unique_ptr<InputSource> input_source_;
 		std::unique_ptr<flutter::EventSink<flutter::EncodableValue>> weight_event_sink_;
 		std::unique_ptr<flutter::EventSink<flutter::EncodableValue>> status_event_sink_;
+		std::unique_ptr<flutter::EventSink<flutter::EncodableValue>> cal_event_sink_;
 
 		// =======================================================
 		// 🚀 新增：UI 降频轮询线程相关
@@ -935,6 +939,28 @@ namespace
 			});
 		status_event_channel->SetStreamHandler(std::move(status_handler));
 
+		auto cal_event_channel =
+			std::make_unique<flutter::EventChannel<flutter::EncodableValue>>(
+				registrar->messenger(), kCalEventChannel,
+				&flutter::StandardMethodCodec::GetInstance());
+
+		auto cal_handler = std::make_unique<flutter::StreamHandlerFunctions<flutter::EncodableValue>>(
+			[plugin_ptr = plugin.get()](
+				const flutter::EncodableValue *arguments,
+				std::unique_ptr<flutter::EventSink<flutter::EncodableValue>> &&events)
+				-> std::unique_ptr<flutter::StreamHandlerError<flutter::EncodableValue>>
+			{
+				plugin_ptr->cal_event_sink_ = std::move(events);
+				return nullptr;
+			},
+			[plugin_ptr = plugin.get()](const flutter::EncodableValue *arguments)
+				-> std::unique_ptr<flutter::StreamHandlerError<flutter::EncodableValue>>
+			{
+				plugin_ptr->cal_event_sink_.reset();
+				return nullptr;
+			});
+		cal_event_channel->SetStreamHandler(std::move(cal_handler));
+
 		registrar->AddPlugin(std::move(plugin));
 	}
 
@@ -1021,6 +1047,10 @@ namespace
 		else if (method == "triggerCalSpan")
 		{
 			HandleTriggerCalSpan(args, std::move(result));
+		}
+		else if (method == "triggerCalibrationAddLoad")
+		{
+			HandleTriggerCalibrationAddLoad(args, std::move(result));
 		}
 		else if (method == "triggerSaveCalibration")
 		{
@@ -1481,6 +1511,7 @@ namespace
 
 		ScaleParams params;
 		params.primary_unit = static_cast<WeightUnit>(GetInt(args, "primaryUnit", 1));
+		params.calibration_unit = static_cast<WeightUnit>(GetInt(args, "calibrationUnit", 1)); // 🚀 新增这行[cite: 10]
 		params.capacity = GetDouble(args, "capacity", 15.0);
 		params.division = GetDouble(args, "division", 0.005);
 		params.overload_range = GetInt(args, "overloadRange", 9);
@@ -1519,6 +1550,7 @@ namespace
 		auto params = scale->GetScaleParams();
 		flutter::EncodableMap map;
 		map[flutter::EncodableValue("primaryUnit")] = flutter::EncodableValue(static_cast<int>(params.primary_unit));
+		map[flutter::EncodableValue("calibrationUnit")] = flutter::EncodableValue(static_cast<int>(params.calibration_unit)); // 🚀 新增这行[cite: 10]
 		map[flutter::EncodableValue("capacity")] = flutter::EncodableValue(params.capacity);
 		map[flutter::EncodableValue("division")] = flutter::EncodableValue(params.division);
 		map[flutter::EncodableValue("overloadRange")] = flutter::EncodableValue(params.overload_range);
@@ -1783,6 +1815,22 @@ namespace
 		}
 
 		scale->StartSpanCalibration(linear_mode, loads.data(), static_cast<int>(loads.size()));
+		result->Success(flutter::EncodableValue(true));
+	}
+
+	void WeighingSystemPlugin::HandleTriggerCalibrationAddLoad(const flutter::EncodableMap &args,
+															   std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+	{
+		std::string scale_err;
+		auto *scale = ResolveScaleFromArgs(args, nullptr, &scale_err);
+		if (!scale)
+		{
+			result->Error("NOT_FOUND", scale_err.empty() ? "Scale not found" : scale_err);
+			return;
+		}
+
+		// 调用底层称台对象的添加负载确认方法
+		scale->CalibrationAddLoad(); //
 		result->Success(flutter::EncodableValue(true));
 	}
 
@@ -3793,12 +3841,27 @@ namespace
 					status_event_sink_->Success(flutter::EncodableValue(map));
 				}
 			});
+
+		ScaleManager::Instance().SetGlobalCalibrationCallback(
+			[this](uint32_t scale_id, CalibrationState state, const std::string &msg)
+			{
+				if (cal_event_sink_)
+				{
+					flutter::EncodableMap map;
+					map[flutter::EncodableValue("scaleId")] = flutter::EncodableValue(static_cast<int>(scale_id));
+					// 将 enum 转为 int 发送 (0=Idle, 1=InProgress, 2=Completed, 3=DynamicCompleted, 4=Failed)
+					map[flutter::EncodableValue("state")] = flutter::EncodableValue(static_cast<int>(state));
+					map[flutter::EncodableValue("message")] = flutter::EncodableValue(msg);
+					cal_event_sink_->Success(flutter::EncodableValue(map));
+				}
+			});
 	}
 
 	void WeighingSystemPlugin::StopWeightEventStream()
 	{
 		// ScaleManager::Instance().SetGlobalWeightCallback(nullptr);
 		ScaleManager::Instance().SetGlobalStatusCallback(nullptr);
+		ScaleManager::Instance().SetGlobalCalibrationCallback(nullptr);
 	}
 
 	// 3. 重写模拟线程（精华部分：物理环境闭环仿真）

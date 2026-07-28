@@ -229,6 +229,7 @@ namespace weighing
 	struct ScaleParams
 	{
 		WeightUnit primary_unit = WeightUnit::kKilogram;
+		WeightUnit calibration_unit = WeightUnit::kKilogram;
 		double capacity = 15.0;
 		double division = 0.005;
 		int overload_range = 9;

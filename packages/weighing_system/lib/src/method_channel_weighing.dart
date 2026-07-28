@@ -21,6 +21,8 @@ class ELinuxWeighingSystem extends WeighingPlatform {
       EventChannel('plugins.weighing_system/weight_events');
   static const EventChannel _statusEventChannel =
       EventChannel('plugins.weighing_system/status_events');
+  static const EventChannel _calEventChannel =
+      const EventChannel('plugins.weighing_system/cal_events');
 
   Stream<WeightData>? _weightStream;
   Stream<Map<String, dynamic>>? _statusStreamCached;
@@ -60,6 +62,13 @@ class ELinuxWeighingSystem extends WeighingPlatform {
         .receiveBroadcastStream()
         .map((event) => Map<String, dynamic>.from(event as Map));
     return _statusStreamCached!;
+  }
+
+  @override
+  Stream<Map<String, dynamic>> get calibrationEvents {
+    return _calEventChannel
+        .receiveBroadcastStream()
+        .map((event) => Map<String, dynamic>.from(event));
   }
 
   // ============ Scale Config ============
@@ -178,6 +187,14 @@ class ELinuxWeighingSystem extends WeighingPlatform {
       'linearMode': linearMode,
       'testLoads': testLoads,
     });
+    return result ?? false;
+  }
+
+  // 触发校正的“下一步/确认添加负载”
+  @override
+  Future<bool> triggerCalibrationAddLoad(int scaleId) async {
+    final result = await _channel
+        .invokeMethod<bool>('triggerCalibrationAddLoad', {'scaleId': scaleId});
     return result ?? false;
   }
 

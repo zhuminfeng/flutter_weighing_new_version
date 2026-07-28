@@ -31,6 +31,7 @@ abstract class WeighingPlatform extends PlatformInterface {
   // Weight stream
   Stream<WeightData> get weightStream;
   Stream<Map<String, dynamic>> get statusStream;
+  Stream<Map<String, dynamic>> get calibrationEvents;
 
   // Scale config
   Future<bool> updateScaleParams(int scaleId, ScaleParams params);
@@ -52,6 +53,7 @@ abstract class WeighingPlatform extends PlatformInterface {
   Future<bool> triggerCalZero(int scaleId);
   Future<bool> triggerCalSpan(
       int scaleId, int linearMode, List<double> testLoads);
+  Future<bool> triggerCalibrationAddLoad(int scaleId);
   Future<bool> triggerSaveCalibration(int scaleId);
   Future<bool> triggerAbortCalibration(int scaleId);
   Future<bool> triggerStepCalibration(int scaleId, double testWeight);

@@ -18,7 +18,7 @@ namespace weighing
 		auto &db = DatabaseManager::Instance();
 
 		std::ostringstream sql;
-		sql << "INSERT OR REPLACE INTO scale_config (scale_id, primary_unit, capacity, division, "
+		sql << "INSERT OR REPLACE INTO scale_config (scale_id, primary_unit, calibration_unit, capacity, division, "
 			<< "overload_range, auto_zero_mode, auto_zero_range_d, underload_range_d, "
 			<< "power_up_zero, power_up_zero_pos_pct, power_up_zero_neg_pct, "
 			<< "pushbutton_zero_enabled, pushbutton_zero_pos_pct, pushbutton_zero_neg_pct, "
@@ -28,6 +28,7 @@ namespace weighing
 			<< "motion_range_d, motion_detect_time, stability_timeout) VALUES ("
 			<< scale_id << ","
 			<< static_cast<int>(params.primary_unit) << ","
+			<< static_cast<int>(params.calibration_unit) << "," // 🚀 新增：保存标定单位
 			<< params.capacity << "," << params.division << ","
 			<< params.overload_range << ","
 			<< static_cast<int>(zero.auto_zero_mode) << ","
@@ -72,6 +73,7 @@ namespace weighing
         };
 
         params.primary_unit = static_cast<WeightUnit>(getI("primary_unit", 1));
+		params.calibration_unit = static_cast<WeightUnit>(getI("calibration_unit", 1));
         params.capacity = get("capacity", 15.0);
         params.division = get("division", 0.005);
         params.overload_range = getI("overload_range", 9);

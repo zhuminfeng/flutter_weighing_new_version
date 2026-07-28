@@ -62,6 +62,22 @@ namespace weighing
 			}
 		}
 
+		// 👇 新增：挂载全局标定回调
+		void SetGlobalCalibrationCallback(CalibrationCallback cb)
+		{
+			std::lock_guard<std::mutex> lock(scales_mutex_);
+			global_cal_cb_ = cb;
+
+			// 给已存在的秤台补发标定回调
+			for (auto &pair : scales_)
+			{
+				if (pair.second)
+				{
+					pair.second->SetCalibrationCallback(cb);
+				}
+			}
+		}
+
 	private:
 		ScaleManager() = default;
 		~ScaleManager() = default;
@@ -75,6 +91,7 @@ namespace weighing
 
 		// WeightCallback global_weight_cb_;
 		StatusCallback global_status_cb_;
+		CalibrationCallback global_cal_cb_;
 	};
 
 } // namespace weighing

@@ -161,6 +161,30 @@ namespace weighing
 		}
 	}
 
+	// 🚀 新增：计算单位转换倍率 (从标定单位 -> 目标工作单位)
+	double GetUnitMultiplier(WeightUnit from, WeightUnit to)
+	{
+		auto to_kg = [](int u) -> double
+		{
+			switch (u)
+			{
+			case 0:
+				return 0.001; // g
+			case 1:
+				return 1.0; // kg
+			case 2:
+				return 0.45359237; // lb
+			case 3:
+				return 1000.0; // t
+			case 4:
+				return 1000.0; // ton
+			default:
+				return 1.0;
+			}
+		};
+		return to_kg(static_cast<int>(from)) / to_kg(static_cast<int>(to));
+	}
+
 	void ScalePlatform::ProcessingSample(const AdcSample &sample)
 	{
 		// Check ADC status
@@ -225,10 +249,15 @@ namespace weighing
 		}
 
 		// 4. Weight calculation
-		// double weight = weight_calc_raw_to_weight(&weight_calc_,
-		//   static_cast<double>(stkf_out));
-		double gross = weight_calc_get_gross(&weight_calc_);
+		double gross = weight_calc_raw_to_weight(&weight_calc_,
+												 static_cast<double>(stkf_out));
+		// double gross = weight;
 		double net = weight_calc_get_net(&weight_calc_);
+
+		// 🚀 核心修改：在四舍五入之前，将“标定单位”换算为用户需要的“显示单位”
+		double factor = GetUnitMultiplier(params_.calibration_unit, static_cast<WeightUnit>(params_.primary_unit));
+		gross *= factor;
+		net *= factor;
 
 		// 5. Round to division
 		gross = weight_calc_round_to_division(&weight_calc_, gross);
