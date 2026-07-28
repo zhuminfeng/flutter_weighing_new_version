@@ -424,13 +424,18 @@ namespace weighing
 
 		// Transfer calibration data
 		cal_data_.zero_raw = cal_engine_.zero_raw;
-		cal_data_.span_points.clear();
-		for (int i = 0; i < cal_engine_.current_span_idx; i++)
+		// 2. 🚀 核心修复：只有在“量程校正(SPAN)”完成时，才重写跨度点！
+		// 绝对不能在“零点校正”时 clear 掉已经存在的 span_points！
+		if (cal_engine_.state == CAL_STATE_SPAN_COMPLETE)
 		{
-			CalPoint pt;
-			pt.test_load = cal_engine_.span_weight[i];
-			pt.raw_reading = cal_engine_.span_raw[i];
-			cal_data_.span_points.push_back(pt);
+			cal_data_.span_points.clear();
+			for (int i = 0; i < cal_engine_.current_span_idx; i++)
+			{
+				CalPoint pt;
+				pt.test_load = cal_engine_.span_weight[i];
+				pt.raw_reading = cal_engine_.span_raw[i];
+				cal_data_.span_points.push_back(pt);
+			}
 		}
 		cal_data_.is_valid = true;
 
@@ -442,6 +447,13 @@ namespace weighing
 			weight_calc_add_span_point(&weight_calc_, pt.raw_reading, pt.test_load);
 		}
 		weight_calc_compute_linearization(&weight_calc_);
+
+		// 4. 🚀 核心修复：硬件零点变更后，必须强制清空之前的“手动清零”和“去皮”偏移量
+		weight_calc_clear_tare(&weight_calc_);
+
+		// 方法 B：如果底层没有提供 clear_zero 函数，可以通过注入 0.0 来强制覆盖手动偏移
+		// 因为此时硬件零点刚被重置，纯物理重量严格等于 0.0
+		weight_calc_do_zero(&weight_calc_, 0.0, 100.0, 100.0);
 
 		UpdateState(ScaleState::kRunning, "Calibration saved");
 		cal_engine_init(&cal_engine_);
